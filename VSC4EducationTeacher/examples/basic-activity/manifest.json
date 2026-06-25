@@ -1,0 +1,24 @@
+{
+  "id": "poo-basico-01",
+  "title": "POO Basica",
+  "description": "Practica introductoria de encapsulamiento.",
+  "version": "1.0.0",
+  "type": "exercise",
+  "tasks": [
+    {
+      "id": "encapsulamiento",
+      "title": "Encapsular Animal",
+      "description": "Protege el estado interno.",
+      "file": "tasks/encapsulamiento.md",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "El estado no puede modificarse directamente"
+      ],
+      "expectedEvidence": [
+        "source_changes",
+        "task_events",
+        "git_commits"
+      ]
+    }
+  ]
+}

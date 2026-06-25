@@ -1,0 +1,58 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run extension: Students",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationStudents",
+        "--disable-extension",
+        "pdconsec.vscode-print"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/VSC4EducationStudents/out/**/*.js",
+        "${workspaceFolder}/VSC4EducationStudents/dist/**/*.js"
+      ]
+    },
+    {
+      "name": "Run extension: Professors",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationTeacher"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/VSC4EducationTeacher/out/**/*.js",
+        "${workspaceFolder}/VSC4EducationTeacher/dist/**/*.js"
+      ]
+    },
+    {
+      "name": "Run both extensions: Same window",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationStudents",
+        "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationTeacher",
+        "--disable-extension",
+        "pdconsec.vscode-print"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/VSC4EducationStudents/out/**/*.js",
+        "${workspaceFolder}/VSC4EducationStudents/dist/**/*.js",
+        "${workspaceFolder}/VSC4EducationTeacher/out/**/*.js",
+        "${workspaceFolder}/VSC4EducationTeacher/dist/**/*.js"
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run both extensions: Separate windows",
+      "configurations": [
+        "Run extension: Students",
+        "Run extension: Professors"
+      ],
+      "stopAll": true
+    }
+  ]
+}

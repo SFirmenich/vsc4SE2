@@ -1,0 +1,16 @@
+# Student extension compatibility
+
+Exported activity ZIP files keep `manifest.json` at the archive root and retain
+the standard `theory/`, `tasks/`, `agent/`, `starter/`, and `signatures/`
+directories.
+
+Only `id`, `title`, and a non-empty task list with task `id` and `title` are
+required. Teacher-only task fields are optional, so consumers that understand
+the base format can ignore acceptance criteria and expected evidence.
+
+`signatures/hashes.json` is explicitly marked with `"signed": false`. The
+extension never claims that hashes constitute a real digital signature.
+
+Submission import locates
+`.vsc4education/activity-manifest.json` recursively and reads contributions
+under `.vsc4education/contributions/<studentId>/`.

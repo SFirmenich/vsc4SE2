@@ -1,0 +1,70 @@
+{
+  "name": "learning-activity-tracker-teacher",
+  "displayName": "Learning Activity Tracker - Teacher",
+  "description": "Author, validate, export, and review Learning Activity Tracker packages.",
+  "version": "0.1.0",
+  "publisher": "vsc4education",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:teacherActivity.openPanel",
+    "onCommand:teacherActivity.create",
+    "onCommand:teacherActivity.open",
+    "onCommand:teacherActivity.validate",
+    "onCommand:teacherActivity.export",
+    "onCommand:teacherSubmission.import",
+    "onCommand:teacherSubmission.openReview",
+    "onCommand:teacherSubmission.exportFeedback"
+  ],
+  "main": "./out/src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "teacherActivity.openPanel",
+        "title": "Learning Activity Teacher: Open Teacher Panel"
+      },
+      {
+        "command": "teacherSubmission.import",
+        "title": "Learning Activity Teacher: Import Student Submission"
+      },
+      {
+        "command": "teacherSubmission.openReview",
+        "title": "Learning Activity Teacher: Open Submission Review"
+      },
+      {
+        "command": "teacherSubmission.exportFeedback",
+        "title": "Learning Activity Teacher: Export Feedback"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src test --ext .ts",
+    "test": "npm run compile-tests && mocha \"out/test/**/*.test.js\"",
+    "compile-tests": "tsc -p tsconfig.test.json",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "d3": "^7.9.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vscode/vsce": "^3.2.1",
+    "eslint": "^8.57.1",
+    "mocha": "^11.0.1",
+    "typescript": "^5.7.2"
+  }
+}

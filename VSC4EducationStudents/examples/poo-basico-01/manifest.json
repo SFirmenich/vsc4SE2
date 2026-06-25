@@ -1,0 +1,26 @@
+{
+  "id": "poo-basico-01",
+  "title": "POO Básica",
+  "description": "Práctica introductoria de clases, encapsulamiento y comportamiento.",
+  "version": "1.0.0",
+  "tasks": [
+    {
+      "id": "encapsulamiento",
+      "title": "Encapsular Animal",
+      "description": "Convierte el estado en privado y expón operaciones controladas.",
+      "file": "tasks/tarea1.md"
+    },
+    {
+      "id": "comportamiento",
+      "title": "Añadir comportamiento",
+      "description": "Implementa métodos que describan y alimenten al animal.",
+      "file": "tasks/tarea2.md"
+    },
+    {
+      "id": "pruebas",
+      "title": "Verificar la clase",
+      "description": "Añade pruebas básicas para los casos principales.",
+      "file": "tasks/tarea3.md"
+    }
+  ]
+}

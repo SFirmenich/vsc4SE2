@@ -1,0 +1,10 @@
+{
+  "id": "poo-basico-01",
+  "title": "POO Basica",
+  "tasks": [
+    {
+      "id": "encapsulamiento",
+      "title": "Encapsular Animal"
+    }
+  ]
+}

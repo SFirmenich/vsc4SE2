@@ -1,0 +1,29 @@
+{
+  "id": "main-rubric",
+  "title": "Rubrica principal",
+  "criteria": [
+    {
+      "id": "encapsulation",
+      "title": "Encapsulamiento",
+      "description": "Protege el estado y conserva invariantes.",
+      "weight": 100,
+      "taskIds": [
+        "encapsulamiento"
+      ],
+      "levels": [
+        {
+          "value": 0,
+          "label": "No demostrado"
+        },
+        {
+          "value": 1,
+          "label": "Parcial"
+        },
+        {
+          "value": 2,
+          "label": "Conseguido"
+        }
+      ]
+    }
+  ]
+}

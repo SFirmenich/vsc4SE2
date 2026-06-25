@@ -1,0 +1,117 @@
+{
+  "name": "learning-activity-tracker-student",
+  "displayName": "Learning Activity Tracker - Student",
+  "description": "Load programming activities, track student work, manage Git evidence, and generate local AI-agent context.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.120.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:learningActivity.loadFromZip",
+    "onCommand:learningActivity.loadFromUrl",
+    "onCommand:learningActivity.openPanel",
+    "onCommand:learningActivity.registerStudent",
+    "onCommand:learningActivity.startTask",
+    "onCommand:learningActivity.finishTask",
+    "onCommand:learningActivity.exportSubmission",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "learningActivity.loadFromZip",
+        "title": "Learning Activity: Load Activity from ZIP"
+      },
+      {
+        "command": "learningActivity.loadFromUrl",
+        "title": "Learning Activity: Load Activity from URL"
+      },
+      {
+        "command": "learningActivity.openPanel",
+        "title": "Learning Activity: Open Student Panel"
+      },
+      {
+        "command": "learningActivity.registerStudent",
+        "title": "Learning Activity: Register Student"
+      },
+      {
+        "command": "learningActivity.startTask",
+        "title": "Learning Activity: Start Task"
+      },
+      {
+        "command": "learningActivity.finishTask",
+        "title": "Learning Activity: Finish Task"
+      },
+      {
+        "command": "learningActivity.exportSubmission",
+        "title": "Learning Activity: Export Submission"
+      }
+    ],
+    "configuration": {
+      "title": "Learning Activity Tracker",
+      "properties": {
+        "learningActivity.heartbeatIntervalSeconds": {
+          "type": "number",
+          "default": 30,
+          "minimum": 5,
+          "description": "Intervalo, en segundos, entre eventos heartbeat."
+        },
+        "learningActivity.autoOpenPanelAfterLoad": {
+          "type": "boolean",
+          "default": true,
+          "description": "Abre automáticamente el panel después de cargar una actividad."
+        },
+        "learningActivity.enableGitIntegration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inicializa y gestiona un repositorio Git local para la actividad."
+        },
+        "learningActivity.trackTextChanges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Registra metadatos de cambios de texto sin guardar su contenido."
+        },
+        "learningActivity.trackTerminalOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Registra la apertura de terminales integrados."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run example:zip && npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "example:zip": "node scripts/create-example-zip.js"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.120.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.3",
+    "eslint": "^9.39.3",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17"
+  }
+}
