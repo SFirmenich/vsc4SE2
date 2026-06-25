@@ -1,94 +1,107 @@
-# Visión general de Learning Activity Tracker - Student
+# Learning Activity Tracker - Student Overview
 
-Este documento describe la idea general de la extensión **Learning Activity Tracker - Student** como herramienta para trabajar con paquetes de aprendizaje basados en prácticas de programación, acompañar el proceso del alumno y generar una entrega revisable por el docente.
+This document describes the general idea of the **Learning Activity Tracker -
+Student** extension as a tool for working with programming learning packages,
+supporting the student's process, and generating a submission that teachers can
+review.
 
-Para detalles operativos sobre cómo construir un paquete compatible, consulta la [guía completa de autoría](activity-authoring-guide.md). Para detalles técnicos específicos, consulta [activity-format.md](activity-format.md), [events.md](events.md) y [security-limitations.md](security-limitations.md).
+For operational details about building a compatible package, see the
+[complete activity authoring guide](activity-authoring-guide.md). For technical
+details, see [activity-format.md](activity-format.md),
+[events.md](events.md), and [security-limitations.md](security-limitations.md).
 
-## Idea central
+## Core Idea
 
-La extensión permite convertir una práctica de programación en un **paquete de aprendizaje importable** por VS Code.
+The extension turns a programming practice into a **learning package importable
+by VS Code**.
 
-Un paquete de aprendizaje contiene:
+A learning package contains:
 
-- La definición de la actividad.
-- La teoría necesaria.
-- Las tareas que debe realizar el estudiante.
-- Un proyecto base.
-- Instrucciones para agentes de IA.
-- Archivos de apoyo opcionales.
+- the activity definition;
+- the required theory;
+- the tasks the student must complete;
+- a starter project;
+- instructions for AI agents;
+- optional supporting files.
 
-El objetivo no es solamente entregar código inicial, sino crear un entorno de trabajo donde el proceso del estudiante quede acompañado y documentado.
+The goal is not only to deliver initial code, but to create a working
+environment where the student's process is supported and documented.
 
-## Ciclo de trabajo
+## Workflow
 
-El flujo esperado es:
+The expected flow is:
 
-1. El profesor prepara una actividad de aprendizaje.
-2. El profesor exporta la actividad como ZIP.
-3. El estudiante importa el ZIP desde VS Code.
-4. La extensión prepara el proyecto de trabajo.
-5. El estudiante registra su identidad.
-6. El estudiante inicia y termina tareas desde el panel.
-7. La extensión registra eventos, commits, metadata e interacciones.
-8. El estudiante exporta una entrega.
-9. El profesor revisa el proyecto, la evolución y las evidencias.
+1. The teacher prepares a learning activity.
+2. The teacher exports the activity as a ZIP.
+3. The student imports the ZIP from VS Code.
+4. The extension prepares the working project.
+5. The student registers their identity.
+6. The student starts and finishes tasks from the panel.
+7. The extension records events, commits, metadata, and interactions.
+8. The student exports a submission.
+9. The teacher reviews the project, evolution, and evidence.
 
-## Paquete de aprendizaje
+## Learning Package
 
-Una actividad se distribuye como un ZIP con una estructura como:
+An activity is distributed as a ZIP with a structure like:
 
 ```text
-actividad.zip
-├── manifest.json
-├── theory/
-├── tasks/
-├── agent/
-│   └── instructions.md
-├── starter/
-│   └── proyecto-base/
-└── signatures/
+activity.zip
+|-- manifest.json
+|-- theory/
+|-- tasks/
+|-- agent/
+|   `-- instructions.md
+|-- starter/
+|   `-- proyecto-base/
+`-- signatures/
 ```
 
-El archivo `manifest.json` define la actividad y sus tareas. La carpeta `starter/proyecto-base` contiene el proyecto inicial que se copiará al root del workspace del alumno.
+`manifest.json` defines the activity and its tasks. The
+`starter/proyecto-base` directory contains the initial project that will be
+copied to the root of the student's workspace.
 
-Al importar la actividad, el paquete completo queda preservado dentro de:
+When the activity is imported, the full package is preserved inside:
 
 ```text
 .vsc4education/
 ```
 
-Esto permite que el proyecto del alumno tenga a mano el material académico original, las tareas, la teoría y las instrucciones de agente utilizadas.
+This keeps the original academic material, tasks, theory, and agent
+instructions available inside the student project.
 
-## Proyecto del estudiante
+## Student Project
 
-Después de importar, el workspace queda organizado de forma que el alumno trabaja sobre el proyecto real en el root:
+After import, the workspace is organized so the student works on the real
+project at the root:
 
 ```text
-proyecto-del-estudiante/
-├── src/
-├── package.json
-├── AGENTS.md
-├── .git/
-└── .vsc4education/
+student-project/
+|-- src/
+|-- package.json
+|-- AGENTS.md
+|-- .git/
+`-- .vsc4education/
 ```
 
-El código que debe modificar el alumno está en el proyecto normal, por ejemplo en `src/`. El material académico y la evidencia quedan en `.vsc4education/`.
+The code the student must modify lives in the normal project, such as `src/`.
+Academic material and evidence live in `.vsc4education/`.
 
-## Identidad y contribuciones
+## Identity And Contributions
 
-Antes de empezar una tarea, el estudiante debe registrarse con:
+Before starting a task, the student must register with:
 
-- Identificador institucional.
-- Nombre.
-- Apellido.
+- institutional identifier;
+- first name;
+- last name.
 
-La extensión crea un espacio individual:
+The extension creates an individual workspace:
 
 ```text
 .vsc4education/contributions/<studentId>/
 ```
 
-Dentro de ese directorio se guarda todo lo relativo a ese estudiante:
+Everything related to that student is stored in that directory:
 
 ```text
 profile.json
@@ -100,63 +113,72 @@ current-task.json
 task-metadata/
 ```
 
-Esto permite que un mismo repositorio pueda contener evidencias separadas por estudiante, especialmente útil en prácticas grupales o proyectos compartidos.
+This allows the same repository to contain separate evidence for multiple
+students, which is useful in group practices or shared projects.
 
-La extensión vincula localmente la instalación de VS Code a un único estudiante para ese workspace. No es una barrera de seguridad del sistema operativo, pero evita que la propia extensión escriba accidentalmente evidencia en la contribución de otro compañero.
+The extension locally binds the VS Code installation to one student for that
+workspace. This is not an operating-system security boundary, but it prevents
+the extension itself from accidentally writing evidence into another
+classmate's contribution.
 
-## Acompañamiento del proceso
+## Process Support
 
-La extensión acompaña al alumno mediante:
+The extension supports the student through:
 
-- Un panel con tareas.
-- Estados de tarea: `pending`, `active`, `completed`.
-- Botones para iniciar y terminar tareas.
-- Registro automático de eventos.
-- Heartbeats periódicos.
-- Commits Git automáticos.
-- Generación de contexto para agentes.
-- Exportación final de la entrega.
+- a task panel;
+- task states: `pending`, `active`, and `completed`;
+- buttons to start and finish tasks;
+- automatic event logging;
+- periodic heartbeats;
+- automatic Git commits;
+- generated context for agents;
+- final submission export.
 
-La intención es que el alumno trabaje dentro de VS Code sin tener que gestionar manualmente archivos de evidencia.
+The intention is for the student to work normally inside VS Code without
+manually managing evidence files.
 
-## Eventos y evidencia
+## Events And Evidence
 
-Cada estudiante tiene su propio registro:
+Each student has their own log:
 
 ```text
 .vsc4education/contributions/<studentId>/events.jsonl
 ```
 
-Los eventos registran acciones como:
+Events record actions such as:
 
-- Actividad cargada.
-- Estudiante registrado.
-- Sesión iniciada.
-- Tarea iniciada.
-- Archivo editado.
-- Archivo guardado.
-- Terminal abierta.
-- Tarea finalizada.
-- Entrega exportada.
-- Restauración de `AGENTS.md`.
-- Modificación detectada en una contribución ajena.
+- activity loaded;
+- student registered;
+- session started;
+- task started;
+- file edited;
+- file saved;
+- terminal opened;
+- task finished;
+- submission exported;
+- `AGENTS.md` restored;
+- modification detected in another contribution.
 
-Cada evento se guarda como una línea JSON y forma parte de una cadena hash. Esto permite detectar alteraciones accidentales o inconsistencias en la secuencia.
+Each event is stored as one JSON line and participates in a hash chain. This
+helps detect accidental alterations or inconsistencies in the sequence.
 
-La extensión no guarda el contenido completo de los archivos. Registra rutas, tipo de evento, timestamps y metadatos mínimos.
+The extension does not store full file contents. It records paths, event type,
+timestamps, and minimal metadata.
 
 ## Git
 
-La extensión utiliza Git como soporte de evolución del proyecto.
+The extension uses Git to support project evolution.
 
-Contempla varios escenarios:
+It handles several scenarios:
 
-- Si no existe repositorio, lo inicializa.
-- Si existe un repositorio sin commits, crea el primer commit.
-- Si existe un repositorio con historial, lo conserva y añade un checkpoint.
-- Si se abre una actividad ya instalada, reanuda la sesión sin crear un nuevo commit de carga.
+- If no repository exists, it initializes one.
+- If a repository exists without commits, it creates the first commit.
+- If a repository exists with history, it preserves the history and adds a
+  checkpoint.
+- If an already installed activity is opened, it resumes the session without
+  creating another load commit.
 
-Durante el trabajo genera commits como:
+During work it generates commits such as:
 
 ```text
 [studentId] Task started: <taskId>
@@ -164,167 +186,180 @@ Durante el trabajo genera commits como:
 [studentId] Checkpoint: Submission export
 ```
 
-Esto permite revisar la evolución del código junto con la evidencia registrada en `.vsc4education`.
+This allows reviewers to inspect code evolution alongside evidence recorded in
+`.vsc4education`.
 
-## Rol de los agentes de IA
+## Role Of AI Agents
 
-La extensión no se integra con APIs privadas de Codex, ChatGPT, Claude ni Copilot.
+The extension does not integrate with private APIs from Codex, ChatGPT, Claude,
+or Copilot.
 
-La integración con agentes se realiza mediante archivos del workspace.
+Agent integration happens through workspace files.
 
-El paquete de aprendizaje incluye:
+The learning package includes:
 
 ```text
 agent/instructions.md
 ```
 
-Al importar la actividad, la extensión genera y protege:
+When the activity is imported, the extension generates and protects:
 
 ```text
 AGENTS.md
 ```
 
-Este archivo indica a los agentes cómo deben comportarse dentro del proyecto.
+This file tells agents how they should behave inside the project.
 
-El rol esperado del agente es pedagógico:
+The expected agent role is pedagogical:
 
-- No resolver la práctica.
-- No escribir código funcional de solución.
-- No reemplazar implementaciones del estudiante.
-- No crear tests completos que resuelvan la tarea.
-- Sí puede insertar comentarios pedagógicos.
-- Sí puede señalar riesgos, preguntas o conceptos a revisar.
-- Sí puede proponer estrategias en lenguaje natural.
+- Do not solve the practice.
+- Do not write functional solution code.
+- Do not replace student implementations.
+- Do not create complete tests that solve the task.
+- It may add pedagogical comments.
+- It may point out risks, questions, or concepts to review.
+- It may propose strategies in natural language.
 
-Además, las instrucciones piden al agente registrar la conversación en:
+The instructions also ask the agent to record the conversation in:
 
 ```text
 .vsc4education/contributions/<studentId>/agent-interactions.jsonl
 ```
 
-Cada entrada debe indicar:
+Each entry must include:
 
-- Timestamp.
-- Actor.
-- Mensaje.
-- Proveedor del agente cuando corresponde: `chatGPT`, `claude` o `copilot`.
+- timestamp;
+- actor;
+- message;
+- agent provider when relevant: `chatGPT`, `claude`, or `copilot`.
 
-Ejemplo:
+Example:
 
 ```json
-{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"No entiendo esta tarea"}
-{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"copilot","message":"Revisa primero qué campos deberían ser privados."}
+{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"I do not understand this task"}
+{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"copilot","message":"First review which fields should be private."}
 ```
 
-Este registro depende de que el agente respete las instrucciones. La extensión no puede leer conversaciones privadas de herramientas externas.
+This log depends on the agent following the instructions. The extension cannot
+read private conversations from external tools.
 
-## Protección de AGENTS.md
+## AGENTS.md Protection
 
-`AGENTS.md` es una pieza importante del contrato pedagógico.
+`AGENTS.md` is an important part of the pedagogical contract.
 
-Mientras la extensión está activa:
+While the extension is active:
 
-- Si `AGENTS.md` se modifica, se restaura.
-- Si se elimina, se vuelve a crear.
-- Si se modifica el archivo interno de instrucciones, también se restaura desde la copia maestra.
+- if `AGENTS.md` is modified, it is restored;
+- if it is deleted, it is recreated;
+- if the internal instructions file is modified, it is also restored from the
+  master copy.
 
-La copia canónica se conserva en:
+The canonical copy is preserved in:
 
 ```text
 .vsc4education/agent/instructions.master.md
 ```
 
-Esta protección funciona dentro de las capacidades normales de una extensión de VS Code. No impide que un usuario con acceso al sistema de archivos modifique archivos cuando la extensión no está activa.
+This protection works within the normal capabilities of a VS Code extension. It
+does not prevent a user with filesystem access from modifying files while the
+extension is inactive.
 
-## Entrega exportada
+## Exported Submission
 
-Al exportar, la extensión genera un ZIP de entrega.
+On export, the extension generates a submission ZIP.
 
-Antes de crear el ZIP:
+Before creating the ZIP, it:
 
-1. Restaura `AGENTS.md` si es necesario.
-2. Registra el evento `submission_exported`.
-3. Pausa eventos automáticos para evitar ruido durante el empaquetado.
-4. Ejecuta `git add .`.
-5. Crea un checkpoint final.
-6. Genera el archivo ZIP.
+1. Restores `AGENTS.md` if necessary.
+2. Records the `submission_exported` event.
+3. Pauses automatic events to avoid noise during packaging.
+4. Runs `git add .`.
+5. Creates a final checkpoint.
+6. Generates the ZIP file.
 
-El nombre sugerido es:
+The suggested name is:
 
 ```text
 submission-<activityId>-<studentId>-<timestamp>.zip
 ```
 
-La entrega incluye:
+The submission includes:
 
-- El proyecto completo.
-- El código fuente.
-- `.git` si existe.
-- `.vsc4education`.
-- Las contribuciones de estudiantes presentes.
-- Eventos, metadata y conversaciones registradas.
+- the full project;
+- source code;
+- `.git` if present;
+- `.vsc4education`;
+- student contributions present in the workspace;
+- events, metadata, and recorded conversations.
 
-## Revisión docente
+## Teacher Review
 
-Aunque esta extensión está orientada al estudiante, la entrega está preparada para que una herramienta docente pueda analizar:
+Although this extension is student-facing, the submission is prepared so a
+teacher tool can analyze:
 
-- Evolución del repositorio.
-- Commits y diffs.
-- Tareas iniciadas y terminadas.
-- Tiempos aproximados.
-- Archivos modificados.
-- Eventos por estudiante.
-- Interacciones con agentes.
-- Metadata por tarea.
-- Posibles huecos de actividad.
-- Inconsistencias en cadenas hash.
+- repository evolution;
+- commits and diffs;
+- started and finished tasks;
+- approximate time spans;
+- modified files;
+- events per student;
+- agent interactions;
+- task metadata;
+- possible activity gaps;
+- hash-chain inconsistencies.
 
-La entrega no pretende ser una prueba forense. Es una fuente de evidencia local para apoyar la revisión docente.
+The submission is not intended to be forensic proof. It is a source of local
+evidence to support teacher review.
 
-## Limitaciones importantes
+## Important Limitations
 
-La extensión debe entenderse como una herramienta de acompañamiento y evidencia, no como un sistema antifraude.
+The extension should be understood as a support and evidence tool, not an
+anti-cheating system.
 
-Limitaciones principales:
+Main limitations:
 
-- El estudiante controla su equipo.
-- El estudiante puede modificar archivos manualmente.
-- La extensión sólo observa mientras está activa.
-- Los registros de agentes dependen de que el agente obedezca `AGENTS.md`.
-- Los hashes detectan inconsistencias, pero no garantizan autenticidad absoluta.
-- Git ayuda a reconstruir evolución, pero también está bajo control local.
+- The student controls their machine.
+- The student can modify files manually.
+- The extension only observes while it is active.
+- Agent logs depend on the agent obeying `AGENTS.md`.
+- Hashes detect inconsistencies, but do not guarantee absolute authenticity.
+- Git helps reconstruct evolution, but is also under local control.
 
-Más detalles en [security-limitations.md](security-limitations.md).
+See [security-limitations.md](security-limitations.md) for more detail.
 
-## Relación con una futura extensión docente
+## Relationship With A Teacher Extension
 
-Una futura extensión para profesores podría usar estos mismos archivos para:
+A teacher extension can use these same files to:
 
-- Crear actividades visualmente.
-- Exportar paquetes compatibles.
-- Importar entregas.
-- Revisar timelines.
-- Ver commits y diffs.
-- Navegar conversaciones con agentes.
-- Verificar cadenas hash.
-- Comparar estado inicial y final.
-- Asociar feedback a evidencias.
+- create activities visually;
+- export compatible packages;
+- import submissions;
+- review timelines;
+- view commits and diffs;
+- navigate agent conversations;
+- verify hash chains;
+- compare initial and final state;
+- associate feedback with evidence.
 
-Por ahora, el formato se mantiene pragmático y documentado, sin introducir todavía un metamodelo formal completo.
+For now, the format stays pragmatic and documented, without introducing a full
+formal metamodel yet.
 
-## Resumen
+## Summary
 
-Learning Activity Tracker - Student convierte una práctica de programación en un entorno de aprendizaje instrumentado.
+Learning Activity Tracker - Student turns a programming practice into an
+instrumented learning environment.
 
-El valor principal está en combinar:
+Its main value is combining:
 
-- Proyecto inicial.
-- Tareas explícitas.
-- Teoría.
-- Reglas para agentes de IA.
-- Registro de actividad.
-- Evidencia por estudiante.
-- Evolución Git.
-- Exportación revisable.
+- starter project;
+- explicit tasks;
+- theory;
+- rules for AI agents;
+- activity logging;
+- per-student evidence;
+- Git evolution;
+- reviewable export.
 
-La extensión busca que el alumno trabaje normalmente en VS Code, mientras el proceso queda documentado de una forma útil para aprendizaje, seguimiento y revisión docente.
+The extension aims to let the student work normally in VS Code while the process
+is documented in a way that is useful for learning, monitoring, and teacher
+review.

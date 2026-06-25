@@ -1,18 +1,19 @@
-# Formato de actividad
+# Activity Format
 
-Una actividad es un ZIP con `manifest.json` en la raíz. También se admite un único directorio contenedor.
+An activity is a ZIP archive with `manifest.json` at the root. A single
+container directory is also supported.
 
 ```text
-actividad.zip
-├── manifest.json
-├── theory/
-├── tasks/
-├── agent/
-│   └── instructions.md
-├── starter/
-│   └── proyecto-base/
-└── signatures/
-    └── manifest.sig
+activity.zip
+|-- manifest.json
+|-- theory/
+|-- tasks/
+|-- agent/
+|   `-- instructions.md
+|-- starter/
+|   `-- proyecto-base/
+`-- signatures/
+    `-- manifest.sig
 ```
 
 ## Manifest
@@ -20,75 +21,94 @@ actividad.zip
 ```json
 {
   "id": "poo-basico-01",
-  "title": "POO Básica",
-  "description": "Introducción práctica a clases y encapsulamiento.",
+  "title": "Basic OOP",
+  "description": "A practical introduction to classes and encapsulation.",
   "version": "1.0.0",
   "tasks": [
     {
-      "id": "encapsulamiento",
-      "title": "Aplicar encapsulamiento",
-      "description": "Protege el estado interno de Animal.",
-      "file": "tasks/tarea1.md"
+      "id": "encapsulation",
+      "title": "Apply encapsulation",
+      "description": "Protect the internal state of Animal.",
+      "file": "tasks/task1.md"
     }
   ]
 }
 ```
 
-`id`, `title` y una lista no vacía de `tasks` son obligatorios. Cada tarea requiere `id` y `title`; los identificadores deben ser únicos.
+`id`, `title`, and a non-empty `tasks` list are required. Each task requires an
+`id` and `title`; identifiers must be unique.
 
-## Importación
+## Import
 
-El contenido de `starter/proyecto-base` se copia al root de la carpeta elegida. Por tanto, `starter/proyecto-base/src` se convierte en `src`, que es donde trabaja el estudiante.
+The contents of `starter/proyecto-base` are copied to the root of the selected
+workspace folder. For example, `starter/proyecto-base/src` becomes `src`, where
+the student works.
 
-El paquete académico completo se conserva dentro de `.vsc4education/`:
+The full academic package is preserved inside `.vsc4education/`:
 
 ```text
-proyecto-del-estudiante/
-├── AGENTS.md
-├── src/
-├── package.json
-└── .vsc4education/
-    ├── manifest.json
-    ├── theory/
-    ├── tasks/
-    ├── agent/
-    │   ├── instructions.md
-    │   └── instructions.master.md
-    ├── starter/
-    ├── signatures/
-    ├── activity-configuration.json
-    └── contributions/
-        ├── ana-001/
-        │   ├── profile.json
-        │   ├── state.json
-        │   ├── events.jsonl
-        │   ├── agent-interactions.jsonl
-        │   └── task-metadata/
-        └── juan-002/
+student-project/
+|-- AGENTS.md
+|-- src/
+|-- package.json
+`-- .vsc4education/
+    |-- manifest.json
+    |-- theory/
+    |-- tasks/
+    |-- agent/
+    |   |-- instructions.md
+    |   `-- instructions.master.md
+    |-- starter/
+    |-- signatures/
+    |-- activity-configuration.json
+    `-- contributions/
+        |-- ana-001/
+        |   |-- profile.json
+        |   |-- state.json
+        |   |-- events.jsonl
+        |   |-- agent-interactions.jsonl
+        |   `-- task-metadata/
+        `-- juan-002/
 ```
 
-No se copian `manifest.json`, `theory`, `tasks` ni `agent` directamente al root.
+`manifest.json`, `theory`, `tasks`, and `agent` are not copied directly to the
+workspace root.
 
-`AGENTS.md` es una copia exacta de las instrucciones canónicas almacenadas en `agent/instructions.master.md`. La extensión restaura tanto `AGENTS.md` como `agent/instructions.md` si son modificados o eliminados mientras está activa.
+`AGENTS.md` is an exact copy of the canonical instructions stored in
+`agent/instructions.master.md`. The extension restores both `AGENTS.md` and
+`agent/instructions.md` if they are modified or deleted while the extension is
+active.
 
-La extensión añade a las instrucciones originales el contrato técnico requerido para registrar interacciones de agentes en formato JSONL.
+The extension appends the technical contract required to record agent
+interactions in JSONL format.
 
-## Identidad y contribuciones
+## Identity And Contributions
 
-Antes de iniciar una tarea, el estudiante debe indicar nombre, apellido e identificador institucional. El identificador normalizado se utiliza como nombre de contribución.
+Before starting a task, the student must provide first name, last name, and an
+institutional identifier. The normalized identifier is used as the contribution
+directory name.
 
-Cada instalación local de VS Code guarda en `workspaceState` qué contribución le pertenece. La extensión sólo crea y actualiza estado, eventos, metadata y conversaciones dentro de esa contribución.
+Each local VS Code installation stores the active contribution in
+`workspaceState`. The extension only creates and updates state, events,
+metadata, and conversations inside that contribution.
 
-Los cambios detectados dentro de una contribución diferente generan un evento `foreign_contribution_modified` en el espacio del estudiante activo.
+Changes detected inside another contribution generate a
+`foreign_contribution_modified` event in the active student's contribution.
 
-## Repositorio Git
+## Git Repository
 
-Al importar:
+On import:
 
-- Si no existe repositorio, se inicializa y se crea el commit inicial.
-- Si existe un repositorio sin commits, se reutiliza y se crea su primer commit.
-- Si existe historial, se conserva y la incorporación de la actividad queda registrada mediante un checkpoint.
+- If no repository exists, the extension initializes one and creates the initial
+  commit.
+- If a repository exists without commits, the extension reuses it and creates
+  its first commit.
+- If history exists, the extension preserves it and records activity loading as
+  a checkpoint.
 
-Al abrir posteriormente el workspace, no se genera un nuevo commit de carga. La configuración común permite recuperar el modo del repositorio y reanudar la contribución local.
+When the workspace is opened later, no new load commit is created. The shared
+configuration allows the extension to recover the repository mode and resume the
+local contribution.
 
-La firma de `signatures/manifest.sig` se conserva, pero el MVP no implementa validación criptográfica.
+The `signatures/manifest.sig` file is preserved, but the MVP does not implement
+cryptographic validation.

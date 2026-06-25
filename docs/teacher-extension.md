@@ -1,30 +1,29 @@
 # Learning Activity Tracker - Teacher
 
-## Idea general
+## General Idea
 
-**Learning Activity Tracker - Teacher** es una extension de VS Code pensada
-para que el profesor pueda convertir una practica de aprendizaje en un paquete
-estructurado, reutilizable y revisable por herramientas.
+**Learning Activity Tracker - Teacher** is a VS Code extension designed to help
+teachers turn a learning practice into a structured, reusable package that tools
+can review.
 
-La idea central es que una actividad no sea solo un enunciado, sino un pequeno
-proyecto compuesto por:
+The central idea is that an activity is not just an assignment statement, but a
+small project made of:
 
-- Un manifiesto con la identidad de la actividad.
-- Tareas ordenadas y con dependencias.
-- Archivos Markdown con teoria y enunciados.
-- Un proyecto inicial para el alumno.
-- Instrucciones para agentes de IA.
-- Rubricas de evaluacion.
-- Metadatos suficientes para validar y exportar el paquete.
+- a manifest with the activity identity;
+- ordered tasks with dependencies;
+- Markdown files with theory and task statements;
+- a starter project for the student;
+- instructions for AI agents;
+- evaluation rubrics;
+- enough metadata to validate and export the package.
 
-Estos paquetes estan orientados a ser consumidos por la extension
-**Learning Activity Tracker - Student**, que los usa como base de trabajo para
-los alumnos.
+These packages are meant to be consumed by **Learning Activity Tracker -
+Student**, which uses them as the working base for students.
 
-## Paquetes de aprendizaje
+## Learning Packages
 
-Un paquete de aprendizaje representa una practica docente en formato ZIP. Su
-estructura principal es:
+A learning package represents a teaching practice as a ZIP archive. Its main
+structure is:
 
 ```text
 manifest.json
@@ -36,134 +35,133 @@ rubrics/main.json
 signatures/
 ```
 
-El archivo `manifest.json` describe la actividad: identificador, titulo,
-descripcion, version, tipo y lista de tareas. Cada tarea puede tener un archivo
-Markdown asociado, dependencias, criterios de aceptacion y evidencias esperadas.
+`manifest.json` describes the activity: identifier, title, description, version,
+type, and task list. Each task may have an associated Markdown file,
+dependencies, acceptance criteria, and expected evidence.
 
-Los directorios cumplen funciones diferentes:
+The directories serve different purposes:
 
-- `tasks/`: contiene los enunciados de las tareas.
-- `theory/`: contiene material teorico de apoyo.
-- `starter/proyecto-base/`: contiene el proyecto inicial que recibe el alumno.
-- `agent/`: contiene instrucciones pedagogicas para agentes de IA.
-- `rubrics/`: contiene criterios de evaluacion.
-- `signatures/`: contiene hashes u otros metadatos de integridad, sin afirmar
-  firma digital si no existe una firma real.
+- `tasks/`: task statements.
+- `theory/`: supporting theoretical material.
+- `starter/proyecto-base/`: initial project received by the student.
+- `agent/`: pedagogical instructions for AI agents.
+- `rubrics/`: evaluation criteria.
+- `signatures/`: hashes or other integrity metadata, without claiming a digital
+  signature when no real signature exists.
 
-El paquete busca que la practica sea portable, validable y suficientemente
-explicita para que distintas herramientas puedan entender su estructura.
+The package is intended to be portable, validatable, and explicit enough for
+different tools to understand its structure.
 
-## Funcion docente
+## Teacher Workflow
 
-La extension docente trabaja sobre un directorio abierto en VS Code. Ese
-directorio es la fuente de verdad de la actividad: los archivos se editan como
-archivos normales y el panel docente los interpreta para mostrar el estado de la
-actividad.
+The teacher extension works on a directory opened in VS Code. That directory is
+the activity source of truth: files are edited as normal files and the teacher
+panel interprets them to show activity state.
 
-El comando principal es:
+The main command is:
 
 ```text
 Learning Activity Teacher: Open Teacher Panel
 ```
 
-Desde ese panel se puede:
+From that panel, the teacher can:
 
-- Inicializar una actividad si el proyecto aun no contiene `manifest.json`.
-- Ver el estado general de la actividad.
-- Crear nuevas tareas `task-N`.
-- Detectar automaticamente archivos `tasks/task-N.md` creados manualmente.
-- Registrar tareas detectadas en `manifest.json`.
-- Abrir manifiesto, tareas, teoria, rubrica e instrucciones en el editor normal.
-- Validar la estructura antes de exportar.
-- Exportar un ZIP compatible con la extension de estudiantes.
+- initialize an activity if the project does not yet contain `manifest.json`;
+- view the general activity state;
+- create new `task-N` tasks;
+- automatically detect manually created `tasks/task-N.md` files;
+- register detected tasks in `manifest.json`;
+- open the manifest, tasks, theory, rubric, and instructions in the normal
+  editor;
+- validate the structure before export;
+- export a ZIP compatible with the student extension.
 
-La extension evita imponer un editor cerrado. El profesor puede trabajar
-directamente sobre Markdown, JSON y el proyecto inicial, mientras el panel
-ofrece una vista sintetica y acciones de apoyo.
+The extension avoids imposing a closed editor. The teacher can work directly on
+Markdown, JSON, and the starter project, while the panel provides a summary view
+and supporting actions.
 
-## Validacion y exportacion
+## Validation And Export
 
-Antes de exportar, la extension valida aspectos como:
+Before export, the extension validates items such as:
 
-- Existencia y sintaxis de `manifest.json`.
-- Identificadores validos y unicos.
-- Lista de tareas no vacia.
-- Archivos Markdown referenciados.
-- Dependencias inexistentes o circulares.
-- Existencia del proyecto inicial.
-- Existencia de instrucciones para agentes.
-- Rubricas invalidas.
-- Rutas que escapan del paquete.
-- Directorios no recomendados como `node_modules`, `.git`, `dist` u `out`.
+- existence and syntax of `manifest.json`;
+- valid and unique identifiers;
+- non-empty task list;
+- referenced Markdown files;
+- missing or circular dependencies;
+- existence of the starter project;
+- existence of agent instructions;
+- invalid rubrics;
+- paths that escape the package;
+- discouraged directories such as `node_modules`, `.git`, `dist`, or `out`.
 
-La exportacion genera un ZIP con `manifest.json` en la raiz y excluye archivos
-temporales o no recomendados. Si se generan hashes SHA-256, se presentan como
-evidencia local de integridad, no como firma digital.
+Export generates a ZIP with `manifest.json` at the root and excludes temporary
+or discouraged files. If SHA-256 hashes are generated, they are presented as
+local integrity evidence, not as digital signatures.
 
-## Revision de entregas
+## Submission Review
 
-Ademas de crear paquetes, la extension permite importar entregas ZIP generadas
-por alumnos. Una entrega puede incluir:
+In addition to creating packages, the extension can import ZIP submissions
+generated by students. A submission may include:
 
-- Proyecto final del alumno.
-- Metadatos `.vsc4education`.
-- Contribuciones por estudiante.
-- Eventos de trabajo.
-- Interacciones con agentes de IA.
-- Estado de tareas.
-- Repositorio Git.
+- the student's final project;
+- `.vsc4education` metadata;
+- per-student contributions;
+- work events;
+- AI-agent interactions;
+- task state;
+- a Git repository.
 
-La extension extrae la entrega en almacenamiento de la extension y no ejecuta
-codigo del alumno ni instala dependencias. Todo contenido importado se trata
-como no confiable.
+The extension extracts the submission into extension storage and does not
+execute student code or install dependencies. All imported content is treated as
+untrusted.
 
-El panel de revision permite inspeccionar:
+The review panel can inspect:
 
-- Actividad asociada.
-- Estudiantes y contribuciones.
-- Timeline de eventos.
-- Estado de tareas.
-- Commits y archivos modificados.
-- Diffs de Git de solo lectura.
-- Interacciones con agentes.
-- Integridad de cadenas hash.
-- Rubrica y feedback docente.
+- associated activity;
+- students and contributions;
+- event timeline;
+- task state;
+- commits and modified files;
+- read-only Git diffs;
+- agent interactions;
+- hash-chain integrity;
+- rubric and teacher feedback.
 
-## Integridad y evidencias
+## Integrity And Evidence
 
-Las entregas pueden contener eventos encadenados mediante hashes. La extension
-puede recalcular la cadena para detectar modificaciones locales, entradas JSON
-invalidas o rupturas de `previousHash`.
+Submissions may contain events chained with hashes. The extension can recompute
+the chain to detect local modifications, invalid JSON entries, or broken
+`previousHash` links.
 
-Una cadena valida indica consistencia interna local, pero no garantiza autoria,
-completitud ni autenticidad absoluta. Por eso la extension presenta estos datos
-como apoyo a la revision docente, no como prueba forense ni como calificacion
-automatica.
+A valid chain indicates local internal consistency, but it does not guarantee
+authorship, completeness, or absolute authenticity. The extension presents this
+data as support for teacher review, not as forensic proof or automatic grading.
 
-## Feedback y rubricas
+## Feedback And Rubrics
 
-La revision docente permite relacionar criterios de rubrica con evidencias como:
+Teacher review can connect rubric criteria with evidence such as:
 
-- Commits.
-- Eventos.
-- Archivos.
-- Interacciones con agentes.
+- commits;
+- events;
+- files;
+- agent interactions.
 
-El feedback se guarda fuera de la entrega importada, en un directorio separado
-de revisiones. Esto evita modificar el trabajo original del alumno y permite
-exportar el feedback como JSON o ZIP.
+Feedback is stored outside the imported submission, in a separate reviews
+directory. This avoids modifying the student's original work and allows feedback
+to be exported as JSON or ZIP.
 
-## Alcance
+## Scope
 
-El objetivo de la extension es apoyar un flujo pedagogico completo:
+The extension supports a complete pedagogical flow:
 
-1. Diseñar una practica estructurada.
-2. Convertirla en paquete portable.
-3. Entregarla a alumnos mediante la extension de estudiantes.
-4. Recibir entregas con trazas de trabajo.
-5. Revisar evidencias, progreso, Git e interacciones con agentes.
-6. Emitir feedback conectado con rubricas.
+1. Design a structured practice.
+2. Turn it into a portable package.
+3. Deliver it to students through the student extension.
+4. Receive submissions with work traces.
+5. Review evidence, progress, Git, and agent interactions.
+6. Provide feedback connected with rubrics.
 
-La extension no sustituye el juicio docente. Organiza informacion, detecta
-problemas estructurales y facilita la revision, pero la evaluacion final sigue
-dependiendo del profesor.
+The extension does not replace teacher judgment. It organizes information,
+detects structural problems, and makes review easier, but final evaluation still
+depends on the teacher.

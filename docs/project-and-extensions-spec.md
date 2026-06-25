@@ -1,35 +1,50 @@
-# Documentacion general y especificacion de extensiones
+# General Documentation And Extension Specification
 
-Este documento define la vision general de **VSCode4Education** como sistema de actividades de aprendizaje para programacion y fija los requisitos principales de sus dos extensiones:
+This document defines the overall vision for **VSCode4Education** as a learning
+activity system for programming, and establishes the main requirements for its
+two extensions:
 
-- **Learning Activity Tracker - Student**, extension de estudiante actualmente implementada en este repositorio.
-- **Learning Activity Tracker - Teacher**, extension docente prevista para crear, validar y revisar actividades y entregas.
+- **Learning Activity Tracker - Student**, the student extension implemented in
+  this repository.
+- **Learning Activity Tracker - Teacher**, the teacher extension for creating,
+  validating, and reviewing activities and submissions.
 
-La idea central es que ambas extensiones puedan funcionar sobre un mismo contrato: una estructura de actividad clara, versionada, portable y suficientemente estable para que una herramienta produzca paquetes y la otra los consuma sin depender de convenciones implicitas.
+The central idea is that both extensions operate on the same contract: a clear,
+versioned, portable activity structure that is stable enough for one tool to
+produce packages and another to consume them without relying on implicit
+conventions.
 
-## 1. Proposito del proyecto
+## 1. Project Purpose
 
-El proyecto convierte una practica de programacion en una actividad de aprendizaje importable por VS Code. Una actividad no es solo un proyecto base: tambien contiene teoria, tareas, instrucciones pedagogicas para agentes de IA, configuracion, evidencias y version academica.
+The project turns a programming practice into a learning activity importable by
+VS Code. An activity is not only a starter project: it also contains theory,
+tasks, pedagogical instructions for AI agents, configuration, evidence, and an
+academic version.
 
-El flujo esperado es:
+The expected flow is:
 
-1. El docente disena una actividad.
-2. La extension docente valida la estructura y genera un paquete ZIP.
-3. El estudiante importa el paquete con la extension de estudiante.
-4. La extension prepara el workspace, copia el proyecto inicial y conserva el paquete academico.
-5. El estudiante trabaja por tareas.
-6. La extension registra eventos, estado, commits Git, metadata e interacciones con agentes.
-7. El estudiante exporta una entrega.
-8. La extension docente importa la entrega y revisa codigo, evolucion y evidencias.
+1. The teacher designs an activity.
+2. The teacher extension validates the structure and generates a ZIP package.
+3. The student imports the package with the student extension.
+4. The extension prepares the workspace, copies the starter project, and
+   preserves the academic package.
+5. The student works through tasks.
+6. The extension records events, state, Git commits, metadata, and agent
+   interactions.
+7. The student exports a submission.
+8. The teacher extension imports the submission and reviews code, evolution,
+   and evidence.
 
-El valor del sistema depende de que el paquete de actividad sea el punto de verdad compartido. Por eso el formato debe estar documentado, versionado y validado.
+The system's value depends on the activity package being the shared source of
+truth. For that reason, the format must be documented, versioned, and validated.
 
-## 2. Modelo comun de actividad
+## 2. Shared Activity Model
 
-Una actividad se distribuye como un ZIP con `manifest.json` en la raiz o dentro de un unico directorio contenedor. La estructura base es:
+An activity is distributed as a ZIP with `manifest.json` at the root or inside a
+single container directory. The base structure is:
 
 ```text
-actividad/
+activity/
 |-- manifest.json
 |-- theory/
 |-- tasks/
@@ -41,10 +56,12 @@ actividad/
     `-- manifest.sig
 ```
 
-Al importarse en el workspace del estudiante, el contenido de `starter/proyecto-base/` se copia al root del proyecto. El paquete academico completo se conserva en `.vsc4education/`:
+When imported into the student's workspace, the contents of
+`starter/proyecto-base/` are copied to the project root. The full academic
+package is preserved in `.vsc4education/`:
 
 ```text
-workspace-estudiante/
+student-workspace/
 |-- AGENTS.md
 |-- src/
 |-- package.json
@@ -64,105 +81,118 @@ workspace-estudiante/
 
 ### 2.1 `manifest.json`
 
-El manifiesto identifica la actividad y declara sus tareas.
+The manifest identifies the activity and declares its tasks.
 
 ```json
 {
   "id": "poo-basico-01",
-  "title": "POO Basica",
-  "description": "Practica introductoria de clases, encapsulamiento y comportamiento.",
+  "title": "Basic OOP",
+  "description": "An introductory practice on classes, encapsulation, and behavior.",
   "version": "1.0.0",
   "tasks": [
     {
-      "id": "encapsulamiento",
-      "title": "Encapsular Animal",
-      "description": "Convierte el estado en privado y expone operaciones controladas.",
-      "file": "tasks/tarea1.md"
+      "id": "encapsulation",
+      "title": "Encapsulate Animal",
+      "description": "Make state private and expose controlled operations.",
+      "file": "tasks/task1.md"
     }
   ]
 }
 ```
 
-Campos de actividad:
+Activity fields:
 
-| Campo | Obligatorio | Uso |
+| Field | Required | Use |
 |---|---:|---|
-| `id` | Si | Identificador estable de la actividad. No debe cambiar entre versiones de la misma actividad. |
-| `title` | Si | Nombre visible para estudiante y docente. |
-| `description` | No | Resumen pedagogico breve. |
-| `version` | No en el MVP, requerido como politica del proyecto | Version academica del paquete. Debe seguir SemVer cuando sea posible. |
-| `tasks` | Si | Lista no vacia de tareas. |
+| `id` | Yes | Stable activity identifier. It must not change between versions of the same activity. |
+| `title` | Yes | Visible name for students and teachers. |
+| `description` | No | Brief pedagogical summary. |
+| `version` | Not in the MVP, required as project policy | Academic package version. It should follow SemVer when possible. |
+| `tasks` | Yes | Non-empty task list. |
 
-Campos de tarea:
+Task fields:
 
-| Campo | Obligatorio | Uso |
+| Field | Required | Use |
 |---|---:|---|
-| `id` | Si | Identificador estable y unico dentro de la actividad. |
-| `title` | Si | Nombre visible de la tarea. |
-| `description` | No | Resumen breve para paneles y revision. |
-| `file` | No en el MVP, recomendado | Ruta relativa al documento Markdown de la tarea. |
+| `id` | Yes | Stable identifier unique within the activity. |
+| `title` | Yes | Visible task name. |
+| `description` | No | Brief task summary for panels and review. |
+| `file` | Not in the MVP, recommended | Relative path to the task Markdown document. |
 
-Los identificadores deben comenzar con una letra o numero y solo pueden contener letras, numeros, puntos, guiones y guiones bajos.
+Identifiers must start with a letter or number and may contain only letters,
+numbers, dots, hyphens, and underscores.
 
-### 2.2 Versionado de actividades
+### 2.2 Activity Versioning
 
-La version de la actividad permite coordinar autor, estudiante y revision. La extension de estudiante actual conserva `version` si existe; la extension docente debe tratarla como obligatoria al publicar.
+The activity version coordinates authors, students, and review. The current
+student extension preserves `version` when it exists; the teacher extension
+should treat it as required when publishing.
 
-Recomendacion de versionado:
+Recommended versioning:
 
-- `MAJOR`: cambia la estructura de tareas, ids, criterios o starter de forma incompatible con entregas anteriores.
-- `MINOR`: agrega tareas opcionales, teoria, recursos o mejoras compatibles.
-- `PATCH`: corrige textos, errores menores o instrucciones sin cambiar requisitos evaluables.
+- `MAJOR`: changes task structure, IDs, criteria, or starter project in a way
+  that is incompatible with earlier submissions.
+- `MINOR`: adds optional tasks, theory, resources, or compatible improvements.
+- `PATCH`: fixes text, minor errors, or instructions without changing
+  assessable requirements.
 
-Reglas de compatibilidad:
+Compatibility rules:
 
-- `id` de actividad debe permanecer estable.
-- `id` de tarea no debe reutilizarse para otra consigna.
-- Si una tarea cambia sustancialmente, debe cambiar la version de actividad y documentarse en changelog del paquete.
-- Las entregas deben poder indicar con claridad contra que `activityId` y `version` fueron producidas.
+- The activity `id` must remain stable.
+- A task `id` must not be reused for a different prompt.
+- If a task changes substantially, the activity version must change and the
+  package changelog must document the change.
+- Submissions must clearly indicate the `activityId` and `version` they were
+  produced against.
 
-## 3. Requisitos de la extension de estudiante
+## 3. Student Extension Requirements
 
-La extension de estudiante es la pieza que prepara el entorno de trabajo y registra el proceso local del alumno.
+The student extension prepares the work environment and records the student's
+local process.
 
-### 3.1 Carga de actividades
+### 3.1 Activity Loading
 
-Debe:
+It must:
 
-- Importar actividades desde ZIP local.
-- Importar actividades desde URL confiable.
-- Aceptar `manifest.json` en raiz o en un unico directorio contenedor.
-- Validar campos minimos del manifiesto.
-- Copiar `starter/proyecto-base/` al root del workspace elegido.
-- Conservar el paquete academico completo en `.vsc4education/`.
-- Escribir `.vsc4education/activity-manifest.json` como copia normalizada del manifiesto.
-- Escribir `.vsc4education/activity-configuration.json` con fecha de carga, estado Git y modo de repositorio.
+- import activities from a local ZIP;
+- import activities from a trusted URL;
+- accept `manifest.json` at the root or inside a single container directory;
+- validate the minimum manifest fields;
+- copy `starter/proyecto-base/` to the selected workspace root;
+- preserve the full academic package in `.vsc4education/`;
+- write `.vsc4education/activity-manifest.json` as a normalized manifest copy;
+- write `.vsc4education/activity-configuration.json` with load date, Git state,
+  and repository mode.
 
-### 3.2 Identidad y contribuciones
+### 3.2 Identity And Contributions
 
-Debe:
+It must:
 
-- Solicitar identificador institucional, nombre y apellido.
-- Normalizar el identificador para usarlo como directorio de contribucion.
-- Crear `.vsc4education/contributions/<studentId>/`.
-- Mantener por estudiante `profile.json`, `state.json`, `events.jsonl`, `agent-interactions.jsonl`, `AGENTS.generated.md`, `current-task.json` y `task-metadata/`.
-- Vincular localmente el workspace a un estudiante mediante `workspaceState`.
-- Evitar que la extension escriba accidentalmente en la contribucion de otro estudiante.
+- request institutional identifier, first name, and last name;
+- normalize the identifier for use as a contribution directory;
+- create `.vsc4education/contributions/<studentId>/`;
+- maintain per student `profile.json`, `state.json`, `events.jsonl`,
+  `agent-interactions.jsonl`, `AGENTS.generated.md`, `current-task.json`, and
+  `task-metadata/`;
+- locally bind the workspace to a student through `workspaceState`;
+- prevent the extension from accidentally writing into another student's
+  contribution.
 
-### 3.3 Gestion de tareas
+### 3.3 Task Management
 
-Debe:
+It must:
 
-- Mostrar la lista de tareas declaradas en `manifest.tasks`.
-- Permitir iniciar una unica tarea activa.
-- Impedir finalizar una tarea que no esta activa.
-- Impedir reiniciar una tarea completada.
-- Registrar estado `pending`, `active` y `completed`.
-- Crear metadata al finalizar: duracion, archivos modificados, cantidad de guardados, commit inicial y commit final cuando Git esta disponible.
+- show the task list declared in `manifest.tasks`;
+- allow a single active task;
+- prevent finishing a task that is not active;
+- prevent restarting a completed task;
+- record `pending`, `active`, and `completed` states;
+- create metadata on completion: duration, modified files, save count, initial
+  commit, and final commit when Git is available.
 
-### 3.4 Evidencia local
+### 3.4 Local Evidence
 
-Debe registrar eventos JSONL por estudiante con cadena hash:
+It must record JSONL events per student with a hash chain:
 
 - `activity_loaded`
 - `student_registered`
@@ -180,181 +210,202 @@ Debe registrar eventos JSONL por estudiante con cadena hash:
 - `agents_file_restored`
 - `foreign_contribution_modified`
 
-Los eventos deben registrar metadata minima, no el contenido completo de archivos. La cadena hash ayuda a detectar inconsistencias, pero no debe presentarse como garantia forense.
+Events must record minimal metadata, not full file contents. The hash chain
+helps detect inconsistencies, but must not be presented as a forensic
+guarantee.
 
 ### 3.5 Git
 
-Debe:
+It must:
 
-- Inicializar Git si no hay repositorio y la integracion esta habilitada.
-- Reutilizar repositorios existentes sin destruir historial.
-- Crear checkpoint de carga cuando el repositorio ya tiene historial.
-- Crear commits al iniciar y terminar tareas.
-- Crear checkpoint final antes de exportar entrega.
-- Continuar funcionando si Git no esta disponible.
+- initialize Git if no repository exists and integration is enabled;
+- reuse existing repositories without destroying history;
+- create a load checkpoint when the repository already has history;
+- create commits when tasks start and finish;
+- create a final checkpoint before exporting a submission;
+- keep working if Git is not available.
 
-### 3.6 Agentes de IA
+### 3.6 AI Agents
 
-Debe:
+It must:
 
-- Generar `AGENTS.md` desde las instrucciones canonicas de la actividad.
-- Conservar una copia maestra en `.vsc4education/agent/instructions.master.md`.
-- Anadir instrucciones tecnicas para registrar interacciones en `agent-interactions.jsonl`.
-- Restaurar `AGENTS.md` y las instrucciones internas si se modifican mientras la extension esta activa.
-- Dejar claro que no usa APIs privadas de ChatGPT, Claude, Codex ni Copilot.
+- generate `AGENTS.md` from the activity's canonical instructions;
+- preserve a master copy in `.vsc4education/agent/instructions.master.md`;
+- add technical instructions for recording interactions in
+  `agent-interactions.jsonl`;
+- restore `AGENTS.md` and internal instructions if they are modified while the
+  extension is active;
+- clearly state that it does not use private APIs from ChatGPT, Claude, Codex,
+  or Copilot.
 
-### 3.7 Exportacion
+### 3.7 Export
 
-Debe:
+It must:
 
-- Registrar `submission_exported`.
-- Pausar tracking automatico durante el empaquetado.
-- Crear checkpoint Git final si corresponde.
-- Generar un ZIP con proyecto, `.vsc4education/` y, si existe, `.git/`.
-- Usar nombres de entrega trazables, por ejemplo `submission-<activityId>-<studentId>-<timestamp>.zip`.
+- record `submission_exported`;
+- pause automatic tracking during packaging;
+- create a final Git checkpoint when appropriate;
+- generate a ZIP with the project, `.vsc4education/`, and `.git/` when present;
+- use traceable submission names, for example
+  `submission-<activityId>-<studentId>-<timestamp>.zip`.
 
-## 4. Requisitos de la extension docente
+## 4. Teacher Extension Requirements
 
-La extension docente debe ser la contraparte que crea actividades compatibles y revisa entregas generadas por estudiantes.
+The teacher extension is the counterpart that creates compatible activities and
+reviews submissions generated by students.
 
-### 4.1 Autoria de actividades
+### 4.1 Activity Authoring
 
-Debe permitir:
+It must allow teachers to:
 
-- Crear una actividad nueva desde una plantilla.
-- Editar `manifest.json` mediante formulario y vista JSON.
-- Gestionar teoria en `theory/`.
-- Gestionar tareas en `tasks/`.
-- Asociar cada tarea del manifiesto con su documento Markdown.
-- Preparar o seleccionar `starter/proyecto-base/`.
-- Crear y editar `agent/instructions.md`.
-- Mantener un changelog del paquete.
-- Incrementar version de actividad segun el tipo de cambio.
+- create a new activity from a template;
+- edit `manifest.json` through a form and JSON view;
+- manage theory in `theory/`;
+- manage tasks in `tasks/`;
+- associate each manifest task with its Markdown document;
+- prepare or select `starter/proyecto-base/`;
+- create and edit `agent/instructions.md`;
+- maintain a package changelog;
+- increment the activity version according to the type of change.
 
-### 4.2 Validacion antes de publicar
+### 4.2 Pre-Publish Validation
 
-Debe validar:
+It must validate that:
 
-- `manifest.json` es JSON valido.
-- `id`, `title`, `version` y `tasks` existen.
-- Los ids cumplen el patron permitido.
-- No hay tareas duplicadas.
-- Cada `task.file` apunta a un archivo existente.
-- Existe `agent/instructions.md`.
-- Existe `starter/proyecto-base/`.
-- El starter no contiene `.git`, `node_modules`, builds innecesarios ni archivos temporales.
-- No hay secretos o credenciales evidentes.
-- Las instrucciones de agente no incluyen una solucion directa.
-- El ZIP resultante tiene una sola raiz valida.
+- `manifest.json` is valid JSON;
+- `id`, `title`, `version`, and `tasks` exist;
+- IDs match the allowed pattern;
+- there are no duplicate tasks;
+- each `task.file` points to an existing file;
+- `agent/instructions.md` exists;
+- `starter/proyecto-base/` exists;
+- the starter does not contain `.git`, `node_modules`, unnecessary builds, or
+  temporary files;
+- there are no obvious secrets or credentials;
+- agent instructions do not include a direct solution;
+- the resulting ZIP has exactly one valid root.
 
-### 4.3 Empaquetado
+### 4.3 Packaging
 
-Debe:
+It must:
 
-- Exportar un ZIP compatible con la extension de estudiante.
-- Preservar rutas relativas.
-- Incluir `manifest.json`, `theory/`, `tasks/`, `agent/`, `starter/` y recursos opcionales.
-- Generar o actualizar `signatures/manifest.sig` cuando exista soporte criptografico.
-- Calcular checksums del paquete cuando se agregue soporte formal.
+- export a ZIP compatible with the student extension;
+- preserve relative paths;
+- include `manifest.json`, `theory/`, `tasks/`, `agent/`, `starter/`, and
+  optional resources;
+- generate or update `signatures/manifest.sig` when cryptographic support
+  exists;
+- calculate package checksums when formal support is added.
 
-### 4.4 Revision de entregas
+### 4.4 Submission Review
 
-Debe poder importar una entrega y analizar:
+It must be able to import a submission and analyze:
 
-- `activity-manifest.json` y version de actividad.
-- `activity-configuration.json`.
-- Contribuciones por estudiante.
-- `state.json` y estado final de tareas.
-- `task-metadata/*.json`.
-- `events.jsonl` y validez de cadena hash.
-- `agent-interactions.jsonl`.
-- Historial Git y diffs por tarea.
-- Archivos modificados respecto al starter.
-- Huecos largos de heartbeat o inconsistencias temporales.
-- Modificaciones en contribuciones ajenas.
+- `activity-manifest.json` and activity version;
+- `activity-configuration.json`;
+- contributions per student;
+- `state.json` and final task state;
+- `task-metadata/*.json`;
+- `events.jsonl` and hash-chain validity;
+- `agent-interactions.jsonl`;
+- Git history and diffs by task;
+- files changed relative to the starter;
+- long heartbeat gaps or temporal inconsistencies;
+- modifications in foreign contributions.
 
-La revision debe ayudar al docente a evaluar proceso y resultado, no prometer deteccion absoluta de fraude.
+Review should help the teacher evaluate process and result. It must not promise
+absolute fraud detection.
 
-### 4.5 Feedback docente
+### 4.5 Teacher Feedback
 
-Debe permitir generar feedback asociado a evidencias:
+It must allow feedback associated with evidence:
 
-- Comentarios por tarea.
-- Comentarios por archivo o diff.
-- Observaciones sobre uso de agentes.
-- Advertencias sobre eventos inconsistentes.
-- Rubrica o criterios de evaluacion.
-- Exportacion de reporte en Markdown, JSON o PDF.
+- comments by task;
+- comments by file or diff;
+- observations about agent use;
+- warnings about inconsistent events;
+- rubric or evaluation criteria;
+- report export as Markdown, JSON, or PDF.
 
-## 5. Contrato entre extensiones
+## 5. Contract Between Extensions
 
-Ambas extensiones deben compartir estas reglas:
+Both extensions must share these rules:
 
-- El paquete de actividad es la fuente canonica antes de la importacion.
-- `.vsc4education/activity-manifest.json` es la fuente canonica despues de la importacion.
-- Las tareas se referencian siempre por `task.id`, nunca por posicion.
-- Los archivos de tarea y teoria se referencian por rutas relativas dentro del paquete.
-- Cada estudiante tiene una contribucion independiente en `.vsc4education/contributions/<studentId>/`.
-- Los eventos son JSON Lines, una entrada por linea.
-- Las conversaciones con agentes son JSON Lines separadas de los eventos.
-- La evidencia local es orientativa y revisable, no inviolable.
-- Los cambios incompatibles del formato deben incrementar una version de esquema.
+- The activity package is the canonical source before import.
+- `.vsc4education/activity-manifest.json` is the canonical source after import.
+- Tasks are always referenced by `task.id`, never by position.
+- Task and theory files are referenced by relative paths inside the package.
+- Each student has an independent contribution in
+  `.vsc4education/contributions/<studentId>/`.
+- Events are JSON Lines, one entry per line.
+- Agent conversations are JSON Lines separate from events.
+- Local evidence is review-oriented and advisory, not invulnerable.
+- Incompatible format changes must increase a schema version.
 
-## 6. Versionado del formato
+## 6. Format Versioning
 
-El MVP no incluye un campo explicito de version de esquema. Para que ambas extensiones evolucionen con seguridad, se recomienda introducirlo en una version futura:
+The MVP does not include an explicit schema-version field. To let both
+extensions evolve safely, a future version should introduce one:
 
 ```json
 {
   "schemaVersion": "1.0.0",
   "id": "poo-basico-01",
-  "title": "POO Basica",
+  "title": "Basic OOP",
   "version": "1.0.0",
   "tasks": []
 }
 ```
 
-Politica propuesta:
+Proposed policy:
 
-- `schemaVersion` describe el contrato tecnico.
-- `version` describe la version academica de la actividad.
-- La extension docente debe declarar que version de esquema produce.
-- La extension de estudiante debe declarar que versiones de esquema consume.
-- La extension docente debe advertir si una entrega usa una version no soportada.
+- `schemaVersion` describes the technical contract.
+- `version` describes the academic activity version.
+- The teacher extension must declare which schema version it produces.
+- The student extension must declare which schema versions it consumes.
+- The teacher extension must warn when a submission uses an unsupported version.
 
-## 7. Criterios minimos de compatibilidad
+## 7. Minimum Compatibility Criteria
 
-Una actividad es compatible con la extension de estudiante actual si:
+An activity is compatible with the current student extension if:
 
-- El ZIP contiene `manifest.json` en la raiz o en un unico directorio contenedor.
-- `manifest.json` tiene `id`, `title` y `tasks` no vacio.
-- Cada tarea tiene `id` y `title`.
-- Los ids cumplen el patron permitido.
-- No hay ids de tarea duplicados.
-- Existe `starter/proyecto-base/`.
-- Existe `agent/instructions.md`.
+- the ZIP contains `manifest.json` at the root or inside a single container
+  directory;
+- `manifest.json` has `id`, `title`, and a non-empty `tasks` list;
+- each task has `id` and `title`;
+- IDs match the allowed pattern;
+- there are no duplicate task IDs;
+- `starter/proyecto-base/` exists;
+- `agent/instructions.md` exists.
 
-Una entrega es revisable por la extension docente si:
+A submission is reviewable by the teacher extension if:
 
-- Contiene `.vsc4education/activity-manifest.json`.
-- Contiene `.vsc4education/activity-configuration.json`.
-- Contiene al menos una contribucion en `.vsc4education/contributions/`.
-- Cada contribucion tiene `profile.json`, `state.json` y `events.jsonl`.
-- Los eventos pueden leerse linea a linea como JSON.
-- La ausencia de Git o de conversaciones de agente se trata como dato faltante, no como error fatal.
+- it contains `.vsc4education/activity-manifest.json`;
+- it contains `.vsc4education/activity-configuration.json`;
+- it contains at least one contribution in `.vsc4education/contributions/`;
+- each contribution has `profile.json`, `state.json`, and `events.jsonl`;
+- events can be read line by line as JSON;
+- missing Git or agent conversations are treated as missing data, not as fatal
+  errors.
 
-## 8. Documentos relacionados
+## 8. Related Documents
 
-- [Formato de actividad](activity-format.md)
-- [Guia completa para crear una actividad](activity-authoring-guide.md)
-- [Modelo de eventos](events.md)
-- [Seguridad, privacidad y limitaciones](security-limitations.md)
-- [README del proyecto](../README.md)
+- [Activity format](activity-format.md)
+- [Complete activity authoring guide](activity-authoring-guide.md)
+- [Event model](events.md)
+- [Security, privacy, and limitations](security-limitations.md)
+- [Documentation index](README.md)
 
-## 9. Resumen ejecutivo
+## 9. Executive Summary
 
-El proyecto debe entenderse como un ecosistema de dos extensiones alrededor de una actividad versionada.
+The project should be understood as a two-extension ecosystem around a versioned
+activity.
 
-La extension docente produce actividades y revisa entregas. La extension de estudiante consume actividades, acompana el trabajo y genera evidencia. El puente entre ambas no debe ser la UI ni la implementacion interna, sino una estructura de archivos documentada: `manifest.json`, carpetas academicas, starter, instrucciones de agente, `.vsc4education/`, contribuciones, eventos y metadata.
+The teacher extension produces activities and reviews submissions. The student
+extension consumes activities, supports work, and generates evidence. The bridge
+between them must not be the UI or internal implementation, but a documented
+file structure: `manifest.json`, academic folders, starter project, agent
+instructions, `.vsc4education/`, contributions, events, and metadata.
 
-Mientras ese contrato se mantenga claro y versionado, ambas extensiones pueden evolucionar por separado sin romper el flujo pedagogico completo.
+As long as that contract remains clear and versioned, both extensions can evolve
+separately without breaking the full pedagogical workflow.

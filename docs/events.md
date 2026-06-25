@@ -1,6 +1,8 @@
-# Modelo de eventos
+# Event Model
 
-Los eventos se almacenan como JSON Lines en `.vsc4education/contributions/<studentId>/events.jsonl`. Cada estudiante tiene una cadena hash independiente.
+Events are stored as JSON Lines in
+`.vsc4education/contributions/<studentId>/events.jsonl`. Each student has an
+independent hash chain.
 
 ```json
 {
@@ -8,24 +10,25 @@ Los eventos se almacenan como JSON Lines en `.vsc4education/contributions/<stude
   "studentId": "ana-001",
   "timestamp": "2026-06-11T10:00:00.000Z",
   "event": "file_saved",
-  "taskId": "encapsulamiento",
+  "taskId": "encapsulation",
   "data": {
     "file": "src/Animal.ts"
   },
-  "previousHash": "hash-anterior",
-  "hash": "hash-actual"
+  "previousHash": "previous-hash",
+  "hash": "current-hash"
 }
 ```
 
-El hash se calcula como:
+The hash is calculated as:
 
 ```text
-SHA256((previousHash o "") + canonicalJson(evento sin hash))
+SHA256((previousHash or "") + canonicalJson(event without hash))
 ```
 
-El JSON canónico ordena recursivamente las claves. El primer evento usa `previousHash: null`.
+Canonical JSON recursively sorts keys. The first event uses
+`previousHash: null`.
 
-## Eventos del MVP
+## MVP Events
 
 - `activity_loaded`
 - `student_registered`
@@ -43,17 +46,20 @@ El JSON canónico ordena recursivamente las claves. El primer evento usa `previo
 - `agents_file_restored`
 - `foreign_contribution_modified`
 
-Antes de exportar, `submission_exported` se añade al registro y después se crea el checkpoint Git final. Durante la creación del ZIP se pausan los eventos automáticos de tracking y heartbeat.
+Before export, `submission_exported` is appended to the log and then the final
+Git checkpoint is created. Automatic tracking and heartbeat events are paused
+while the ZIP is being created.
 
-## Conversaciones con agentes
+## Agent Conversations
 
-Las conversaciones no forman parte de `events.jsonl`. Se almacenan separadamente en `.vsc4education/contributions/<studentId>/agent-interactions.jsonl`:
+Conversations are not part of `events.jsonl`. They are stored separately in
+`.vsc4education/contributions/<studentId>/agent-interactions.jsonl`:
 
 ```json
 {"timestamp":"ISO-8601","actor":"student","message":"..."}
 {"timestamp":"ISO-8601","actor":"agent","agent":"claude","message":"..."}
 ```
 
-Los proveedores admitidos son `chatGPT`, `claude` y `copilot`.
+Supported providers are `chatGPT`, `claude`, and `copilot`.
 
-Los cambios de texto registran cantidad de cambios y rangos de líneas, no el contenido editado.
+Text-change events record counts and line ranges, not the edited content.

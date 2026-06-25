@@ -1,636 +1,657 @@
-# Guía completa para crear una actividad de aprendizaje
+# Complete Guide To Creating A Learning Activity
 
-Este documento explica cómo preparar, organizar, validar y empaquetar una actividad compatible con **Learning Activity Tracker - Student**.
+This document explains how to prepare, organize, validate, and package an
+activity compatible with **Learning Activity Tracker - Student**.
 
-La guía describe el formato que implementa actualmente la extensión. No define todavía un metamodelo compartido con una futura extensión docente.
+The guide describes the format currently implemented by the extension. It does
+not yet define a full shared metamodel with the teacher extension.
 
-Documentación complementaria:
+Complementary documentation:
 
-- [Formato técnico de la actividad](activity-format.md)
-- [Modelo de eventos y evidencias](events.md)
-- [Seguridad, privacidad y limitaciones](security-limitations.md)
-- [Instrucciones generales de la extensión](../VSC4EducationStudents/README.md)
+- [Technical activity format](activity-format.md)
+- [Events and evidence model](events.md)
+- [Security, privacy, and limitations](security-limitations.md)
+- [Student extension README](../VSC4EducationStudents/README.md)
 
-## 1. Objetivo de una actividad
+## 1. Activity Goal
 
-Una actividad de aprendizaje combina:
+A learning activity combines:
 
-- Material teórico.
-- Una lista de tareas.
-- Un proyecto inicial para el estudiante.
-- Instrucciones para agentes de IA.
-- Recursos opcionales.
-- Una definición estructurada en `manifest.json`.
+- theoretical material;
+- a task list;
+- a starter project for the student;
+- instructions for AI agents;
+- optional resources;
+- a structured definition in `manifest.json`.
 
-La actividad se distribuye como un archivo ZIP. El estudiante lo importa desde VS Code y selecciona un directorio de trabajo.
+The activity is distributed as a ZIP file. The student imports it from VS Code
+and selects a working directory.
 
-La extensión:
+The extension:
 
-1. Copia el proyecto inicial al directorio elegido.
-2. Conserva el paquete académico dentro de `.vsc4education/`.
-3. Solicita la identidad del estudiante.
-4. Crea un espacio de contribución individual.
-5. Configura o reutiliza el repositorio Git.
-6. Registra tareas, eventos, commits e interacciones con agentes.
+1. Copies the starter project into the selected directory.
+2. Preserves the academic package inside `.vsc4education/`.
+3. Requests the student's identity.
+4. Creates an individual contribution space.
+5. Configures or reuses the Git repository.
+6. Records tasks, events, commits, and agent interactions.
 
-## 2. Estructura del paquete
+## 2. Package Structure
 
-La estructura recomendada es:
-
-```text
-mi-actividad/
-├── manifest.json
-├── theory/
-│   └── teoria.md
-├── tasks/
-│   ├── tarea1.md
-│   ├── tarea2.md
-│   └── tarea3.md
-├── agent/
-│   └── instructions.md
-├── starter/
-│   └── proyecto-base/
-│       ├── src/
-│       ├── package.json
-│       └── ...
-└── signatures/
-    └── manifest.sig
-```
-
-El ZIP puede contener estos elementos directamente en su raíz o dentro de un único directorio contenedor.
-
-Ejemplos válidos:
+The recommended structure is:
 
 ```text
-actividad.zip
-└── manifest.json
+my-activity/
+|-- manifest.json
+|-- theory/
+|   `-- theory.md
+|-- tasks/
+|   |-- task1.md
+|   |-- task2.md
+|   `-- task3.md
+|-- agent/
+|   `-- instructions.md
+|-- starter/
+|   `-- proyecto-base/
+|       |-- src/
+|       |-- package.json
+|       `-- ...
+`-- signatures/
+    `-- manifest.sig
+```
+
+The ZIP may contain these elements directly at its root or inside a single
+container directory.
+
+Valid examples:
+
+```text
+activity.zip
+`-- manifest.json
 ```
 
 ```text
-actividad.zip
-└── mi-actividad/
-    └── manifest.json
+activity.zip
+`-- my-activity/
+    `-- manifest.json
 ```
 
-No deben existir varios directorios candidatos con distintos `manifest.json`.
+There must not be multiple candidate directories with different
+`manifest.json` files.
 
-## 3. Archivo manifest.json
+## 3. `manifest.json`
 
-`manifest.json` identifica la actividad y declara las tareas disponibles.
+`manifest.json` identifies the activity and declares the available tasks.
 
-Ejemplo:
+Example:
 
 ```json
 {
   "id": "poo-basico-01",
-  "title": "POO Básica",
-  "description": "Práctica introductoria de clases y encapsulamiento.",
+  "title": "Basic OOP",
+  "description": "Introductory practice on classes and encapsulation.",
   "version": "1.0.0",
   "tasks": [
     {
-      "id": "encapsulamiento",
-      "title": "Encapsular Animal",
-      "description": "Protege el estado interno y expone operaciones controladas.",
-      "file": "tasks/tarea1.md"
+      "id": "encapsulation",
+      "title": "Encapsulate Animal",
+      "description": "Protect internal state and expose controlled operations.",
+      "file": "tasks/task1.md"
     },
     {
-      "id": "comportamiento",
-      "title": "Añadir comportamiento",
-      "description": "Implementa las operaciones principales del dominio.",
-      "file": "tasks/tarea2.md"
+      "id": "behavior",
+      "title": "Add behavior",
+      "description": "Implement the main domain operations.",
+      "file": "tasks/task2.md"
     }
   ]
 }
 ```
 
-### Campos de la actividad
+### Activity Fields
 
-| Campo | Obligatorio | Descripción |
+| Field | Required | Description |
 |---|---:|---|
-| `id` | Sí | Identificador estable y único de la actividad. |
-| `title` | Sí | Nombre visible para el estudiante. |
-| `description` | No | Resumen mostrado en el panel. |
-| `version` | No | Versión académica del paquete. Se recomienda usar versionado semántico. |
-| `tasks` | Sí | Lista no vacía de tareas. |
+| `id` | Yes | Stable and unique activity identifier. |
+| `title` | Yes | Name visible to the student. |
+| `description` | No | Summary shown in the panel. |
+| `version` | No | Academic package version. Semantic versioning is recommended. |
+| `tasks` | Yes | Non-empty task list. |
 
-### Campos de una tarea
+### Task Fields
 
-| Campo | Obligatorio | Descripción |
+| Field | Required | Description |
 |---|---:|---|
-| `id` | Sí | Identificador estable y único dentro de la actividad. |
-| `title` | Sí | Título visible en el panel. |
-| `description` | No | Resumen breve de la tarea. |
-| `file` | No | Ruta relativa al documento detallado de la tarea. |
+| `id` | Yes | Stable identifier unique within the activity. |
+| `title` | Yes | Title visible in the panel. |
+| `description` | No | Brief task summary. |
+| `file` | No | Relative path to the detailed task document. |
 
-Los identificadores sólo pueden contener:
-
-```text
-letras, números, puntos, guiones y guiones bajos
-```
-
-Ejemplos válidos:
+Identifiers may contain only:
 
 ```text
-tarea-01
-encapsulamiento
-fase_1.diseno
+letters, numbers, dots, hyphens, and underscores
 ```
 
-Ejemplos no válidos:
+Valid examples:
 
 ```text
-tarea 01
-../otra-carpeta
-tarea/01
+task-01
+encapsulation
+phase_1.design
 ```
 
-Los identificadores de tareas no pueden repetirse.
+Invalid examples:
 
-## 4. Material teórico
+```text
+task 01
+../other-folder
+task/01
+```
 
-La carpeta `theory/` contiene el material conceptual que necesita el estudiante.
+Task identifiers cannot be repeated.
 
-Se recomienda:
+## 4. Theoretical Material
 
-- Utilizar Markdown.
-- Dividir documentos extensos por tema.
-- Incluir ejemplos conceptuales sin entregar la solución exacta.
-- Referenciar conceptos utilizados por las tareas.
-- Indicar bibliografía o recursos externos cuando corresponda.
+The `theory/` directory contains the conceptual material needed by the student.
 
-Ejemplo:
+Recommended practices:
+
+- Use Markdown.
+- Split long documents by topic.
+- Include conceptual examples without giving away the exact solution.
+- Reference concepts used by the tasks.
+- Include bibliography or external resources when appropriate.
+
+Example:
 
 ```text
 theory/
-├── introduccion.md
-├── encapsulamiento.md
-└── testing.md
+|-- introduction.md
+|-- encapsulation.md
+`-- testing.md
 ```
 
-Los agentes de IA reciben instrucciones para consultar este directorio antes de orientar al estudiante.
+AI agents are instructed to consult this directory before guiding the student.
 
-## 5. Definición de tareas
+## 5. Task Definitions
 
-La carpeta `tasks/` contiene la descripción completa de cada tarea.
+The `tasks/` directory contains the full description of each task.
 
-Un documento de tarea debería incluir:
+A task document should include:
 
-1. Objetivo.
-2. Contexto.
-3. Requisitos.
-4. Restricciones.
-5. Resultado esperado.
-6. Evidencias que debería producir el estudiante.
-7. Criterios de finalización.
+1. Goal.
+2. Context.
+3. Requirements.
+4. Constraints.
+5. Expected result.
+6. Evidence the student should produce.
+7. Completion criteria.
 
-Ejemplo:
+Example:
 
 ```markdown
-# Tarea: encapsulamiento
+# Task: encapsulation
 
-## Objetivo
+## Goal
 
-Proteger el estado interno de la clase `Animal`.
+Protect the internal state of the `Animal` class.
 
-## Requisitos
+## Requirements
 
-- El nombre no puede estar vacío.
-- La energía no puede ser negativa.
-- El estado no debe modificarse directamente desde fuera de la clase.
+- The name cannot be empty.
+- Energy cannot be negative.
+- State must not be changed directly from outside the class.
 
-## Criterios de finalización
+## Completion Criteria
 
-- El proyecto compila.
-- Las invariantes se mantienen.
-- El estudiante puede justificar sus decisiones.
+- The project compiles.
+- Invariants are preserved.
+- The student can justify their decisions.
 ```
 
-En el MVP, la extensión muestra `title` y `description` desde el manifiesto. El campo `file` documenta la relación con el Markdown, aunque todavía no se valida automáticamente que el archivo exista.
+In the MVP, the extension shows `title` and `description` from the manifest. The
+`file` field documents the relationship with the Markdown file, although some
+student-side flows may not validate automatically that the file exists.
 
-## 6. Proyecto inicial
+## 6. Starter Project
 
-El proyecto que recibirá el estudiante debe ubicarse en:
+The project the student receives must be located at:
 
 ```text
 starter/proyecto-base/
 ```
 
-Todo su contenido se copia al root del directorio de trabajo.
+All of its contents are copied to the root of the working directory.
 
-Por ejemplo:
+For example:
 
 ```text
 starter/proyecto-base/src/Animal.ts
 ```
 
-se convierte en:
+becomes:
 
 ```text
-proyecto-del-estudiante/src/Animal.ts
+student-project/src/Animal.ts
 ```
 
-El starter puede incluir:
+The starter may include:
 
-- Código fuente incompleto.
-- Configuración del lenguaje.
-- Dependencias.
-- Scripts de compilación.
-- Tests parciales.
-- README técnico del proyecto.
-- Recursos necesarios para ejecutar la solución.
+- incomplete source code;
+- language configuration;
+- dependencies;
+- build scripts;
+- partial tests;
+- a technical README for the project;
+- resources needed to run the solution.
 
-Debe evitar:
+Avoid:
 
-- Contener una solución completa.
-- Incluir secretos o credenciales.
-- Depender de rutas absolutas del equipo del profesor.
-- Incluir `node_modules`, builds o archivos temporales.
-- Contener un `.git` propio dentro de `proyecto-base`.
+- including a complete solution;
+- including secrets or credentials;
+- depending on absolute paths from the teacher's machine;
+- including `node_modules`, build outputs, or temporary files;
+- including a `.git` directory inside `proyecto-base`.
 
-Antes de empaquetar, el profesor debería copiar `starter/proyecto-base` a una carpeta temporal limpia y verificar que puede instalarse, compilarse y ejecutarse.
+Before packaging, the teacher should copy `starter/proyecto-base` to a clean
+temporary directory and verify that it can be installed, built, and run.
 
-## 7. Instrucciones para agentes de IA
+## 7. Instructions For AI Agents
 
-El archivo:
+The following file is required for the intended workflow:
 
 ```text
 agent/instructions.md
 ```
 
-es obligatorio para el funcionamiento previsto.
+Its content defines how Codex, Claude, Copilot, or other agents that read
+`AGENTS.md` should behave.
 
-Su contenido define cómo deben comportarse Codex, Claude, Copilot u otros agentes que lean `AGENTS.md`.
+These instructions should:
 
-Estas instrucciones deberían:
+- forbid the agent from solving the activity;
+- allow only pedagogical guidance;
+- require the agent to consult theory, tasks, and state;
+- define the allowed comment format;
+- prevent generation of complete tests or implementations.
 
-- Prohibir que el agente resuelva la actividad.
-- Permitir únicamente orientación pedagógica.
-- Exigir que consulte teoría, tareas y estado.
-- Definir el formato de comentarios permitidos.
-- Evitar la generación de tests o implementaciones completas.
-
-Ejemplo reducido:
+Reduced example:
 
 ```markdown
 # AGENTS.md
 
-## Rol del agente
+## Agent Role
 
-Actúa como revisor pedagógico. No implementes la solución.
+Act as a pedagogical reviewer. Do not implement the solution.
 
-## Está prohibido
+## Forbidden
 
-- Completar funciones o clases.
-- Reescribir el código del estudiante.
-- Crear tests que resuelvan la tarea.
+- Completing functions or classes.
+- Rewriting the student's code.
+- Creating tests that solve the task.
 
-## Está permitido
+## Allowed
 
-- Añadir comentarios pedagógicos.
-- Formular preguntas.
-- Señalar riesgos y conceptos a revisar.
+- Adding pedagogical comments.
+- Asking questions.
+- Pointing out risks and concepts to review.
 
-## Formato obligatorio
+## Required Format
 
-// AI-REVIEW [tipo] [severidad] [tarea-id]:
-// Observación: ...
-// Pregunta pedagógica: ...
-// Sugerencia conceptual: ...
-// Evidencia esperada del estudiante: ...
+// AI-REVIEW [type] [severity] [task-id]:
+// Observation: ...
+// Pedagogical question: ...
+// Conceptual suggestion: ...
+// Expected student evidence: ...
 ```
 
-Durante la importación y el registro del estudiante, la extensión:
+During import and student registration, the extension:
 
-1. Conserva las instrucciones base.
-2. Añade instrucciones técnicas para registrar la conversación.
-3. Genera `AGENTS.md` en el root.
-4. Protege `AGENTS.md` y restaura su contenido mientras la extensión está activa.
-5. Ajusta las rutas de estado e interacciones a la contribución del estudiante activo.
+1. Preserves the base instructions.
+2. Adds technical instructions for recording the conversation.
+3. Generates `AGENTS.md` at the root.
+4. Protects `AGENTS.md` and restores its content while the extension is active.
+5. Adjusts state and interaction paths to the active student's contribution.
 
-El ejemplo completo se encuentra en:
+The full example is available at:
 
 [examples/poo-basico-01/agent/instructions.md](../VSC4EducationStudents/examples/poo-basico-01/agent/instructions.md)
 
-## 8. Firmas
+## 8. Signatures
 
-La carpeta `signatures/` es opcional en el MVP.
+The `signatures/` directory is optional in the MVP.
 
-Puede contener:
+It may contain:
 
 ```text
 signatures/manifest.sig
 ```
 
-Actualmente la extensión conserva este archivo, pero no valida su firma criptográfica. No debe utilizarse como garantía de autenticidad o integridad.
+The extension currently preserves this file, but it does not validate a
+cryptographic signature. It must not be used as a guarantee of authenticity or
+integrity.
 
-## 9. Preparación del directorio fuente
+## 9. Preparing The Source Directory
 
-Antes de crear el ZIP, comprueba:
+Before creating the ZIP, check that:
 
-- `manifest.json` es JSON válido.
-- Existe al menos una tarea.
-- Los identificadores son únicos.
-- Cada campo `file` apunta al documento correcto.
-- Existe `agent/instructions.md`.
-- Existe `starter/proyecto-base`.
-- El proyecto inicial compila en una carpeta limpia.
-- No se incluyen dependencias instaladas ni archivos temporales.
-- No hay secretos, tokens ni datos personales.
-- Las instrucciones del agente no contienen soluciones.
+- `manifest.json` is valid JSON;
+- at least one task exists;
+- identifiers are unique;
+- each `file` field points to the correct document;
+- `agent/instructions.md` exists;
+- `starter/proyecto-base` exists;
+- the starter project builds in a clean directory;
+- no installed dependencies or temporary files are included;
+- there are no secrets, tokens, or personal data;
+- agent instructions do not contain solutions.
 
-## 10. Creación del ZIP
+## 10. Creating The ZIP
 
-El repositorio incluye una actividad de ejemplo:
+The repository includes an example activity:
 
 ```text
 examples/poo-basico-01/
 ```
 
-Para empaquetarla:
+To package it:
 
 ```powershell
 npm run example:zip
 ```
 
-Esto genera:
+This generates:
 
 ```text
 examples/poo-basico-01.zip
 ```
 
-El script utilizado está en:
+The script is:
 
 [scripts/create-example-zip.js](../VSC4EducationStudents/scripts/create-example-zip.js)
 
-Para otra actividad puede reutilizarse el mismo patrón:
+For another activity, the same pattern can be reused:
 
 ```javascript
 const AdmZip = require('adm-zip');
 
 const zip = new AdmZip();
-zip.addLocalFolder('ruta/a/mi-actividad');
-zip.writeZip('mi-actividad.zip');
+zip.addLocalFolder('path/to/my-activity');
+zip.writeZip('my-activity.zip');
 ```
 
-No debe añadirse al ZIP la carpeta padre equivocada si eso provoca varios niveles contenedores. La extensión admite la raíz directa o un único directorio contenedor.
+Do not add the wrong parent directory to the ZIP if that creates multiple
+container levels. The extension accepts either a direct root or one container
+directory.
 
-## 11. Prueba del paquete
+## 11. Testing The Package
 
-Para probar una actividad:
+To test an activity:
 
-1. Ejecuta la extensión con `F5`.
-2. Ejecuta `Learning Activity: Load Activity from ZIP`.
-3. Selecciona el ZIP.
-4. Selecciona una carpeta temporal.
-5. Registra un estudiante de prueba.
-6. Abre `Learning Activity: Open Student Panel`.
-7. Inicia una tarea.
-8. Modifica y guarda un archivo.
-9. Termina la tarea.
-10. Exporta la entrega.
+1. Run the extension with `F5`.
+2. Run `Learning Activity: Load Activity from ZIP`.
+3. Select the ZIP.
+4. Select a temporary folder.
+5. Register a test student.
+6. Open `Learning Activity: Open Student Panel`.
+7. Start a task.
+8. Modify and save a file.
+9. Finish the task.
+10. Export the submission.
 
-Comprueba:
+Check that:
 
-- El starter quedó en el root.
-- El paquete completo quedó en `.vsc4education/`.
-- Existe `AGENTS.md`.
-- Existe la contribución del estudiante.
-- Los eventos están encadenados.
-- Los commits Git tienen los mensajes esperados.
-- La entrega ZIP contiene el proyecto completo.
+- the starter was copied to the root;
+- the full package was preserved in `.vsc4education/`;
+- `AGENTS.md` exists;
+- the student's contribution exists;
+- events are chained;
+- Git commits have the expected messages;
+- the submission ZIP contains the complete project.
 
-## 12. Resultado de la importación
+## 12. Import Result
 
-Después de importar y registrar un estudiante:
+After import and student registration:
 
 ```text
-proyecto-del-estudiante/
-├── AGENTS.md
-├── src/
-├── package.json
-├── .git/
-└── .vsc4education/
-    ├── manifest.json
-    ├── activity-manifest.json
-    ├── activity-configuration.json
-    ├── theory/
-    ├── tasks/
-    ├── agent/
-    │   ├── instructions.md
-    │   └── instructions.master.md
-    ├── starter/
-    ├── signatures/
-    └── contributions/
-        └── alumno-001/
-            ├── profile.json
-            ├── state.json
-            ├── events.jsonl
-            ├── agent-interactions.jsonl
-            ├── AGENTS.generated.md
-            ├── current-task.json
-            └── task-metadata/
+student-project/
+|-- AGENTS.md
+|-- src/
+|-- package.json
+|-- .git/
+`-- .vsc4education/
+    |-- manifest.json
+    |-- activity-manifest.json
+    |-- activity-configuration.json
+    |-- theory/
+    |-- tasks/
+    |-- agent/
+    |   |-- instructions.md
+    |   `-- instructions.master.md
+    |-- starter/
+    |-- signatures/
+    `-- contributions/
+        `-- student-001/
+            |-- profile.json
+            |-- state.json
+            |-- events.jsonl
+            |-- agent-interactions.jsonl
+            |-- AGENTS.generated.md
+            |-- current-task.json
+            `-- task-metadata/
 ```
 
-`current-task.json` sólo existe mientras haya una tarea activa.
+`current-task.json` only exists while a task is active.
 
-## 13. Identidad y contribuciones
+## 13. Identity And Contributions
 
-Antes de trabajar, el estudiante proporciona:
+Before working, the student provides:
 
-- Identificador institucional.
-- Nombre.
-- Apellido.
+- institutional identifier;
+- first name;
+- last name.
 
-El identificador normalizado se utiliza como directorio:
+The normalized identifier is used as a directory:
 
 ```text
 .vsc4education/contributions/<studentId>/
 ```
 
-Cada contribución mantiene de forma independiente:
+Each contribution independently maintains:
 
-- Perfil.
-- Estado de tareas.
-- Cadena hash de eventos.
-- Metadata de tareas.
-- Interacciones con agentes.
-- Contexto dinámico.
+- profile;
+- task state;
+- event hash chain;
+- task metadata;
+- agent interactions;
+- dynamic context.
 
-Una instalación local de VS Code queda vinculada a un único estudiante para ese workspace. Esta separación no equivale a permisos inviolables del sistema de archivos; consulta [security-limitations.md](security-limitations.md).
+A local VS Code installation is bound to one student for that workspace. This
+separation is not equivalent to invulnerable filesystem permissions; see
+[security-limitations.md](security-limitations.md).
 
-## 14. Gestión Git
+## 14. Git Management
 
-La actividad puede cargarse en distintas situaciones.
+The activity can be loaded in different situations.
 
-### Carpeta sin repositorio
+### Folder Without A Repository
 
-La extensión:
+The extension:
 
-1. Ejecuta `git init`.
-2. Añade el contenido.
-3. Crea `Initial activity state`.
+1. Runs `git init`.
+2. Adds the contents.
+3. Creates `Initial activity state`.
 
-### Repositorio existente sin commits
+### Existing Repository Without Commits
 
-La extensión reutiliza el repositorio y crea su primer commit con el estado inicial.
+The extension reuses the repository and creates its first commit with the
+initial state.
 
-### Repositorio existente con historial
+### Existing Repository With History
 
-La extensión conserva el historial y crea:
+The extension preserves the history and creates:
 
 ```text
 Checkpoint: Activity loaded
 ```
 
-### Actividad abierta posteriormente
+### Activity Opened Later
 
-Al abrir un proyecto que ya contiene:
+When a project already contains:
 
 ```text
 .vsc4education/activity-manifest.json
 ```
 
-la extensión recupera la actividad y la contribución local sin crear otro commit de carga.
+the extension recovers the activity and local contribution without creating
+another load commit.
 
-Los commits asociados a estudiantes incluyen su identificador:
+Student-associated commits include the student identifier:
 
 ```text
-[alumno-001] Task started: encapsulamiento
-[alumno-001] Task completed: encapsulamiento
-[alumno-001] Checkpoint: Submission export
+[student-001] Task started: encapsulation
+[student-001] Task completed: encapsulation
+[student-001] Checkpoint: Submission export
 ```
 
-## 15. Eventos y evidencias
+## 15. Events And Evidence
 
-Cada estudiante tiene:
+Each student has:
 
 ```text
 .vsc4education/contributions/<studentId>/events.jsonl
 ```
 
-Los eventos incluyen:
+Events include:
 
-- Identidad del estudiante.
-- Timestamp.
-- Tipo de evento.
-- Tarea activa.
-- Metadata mínima.
-- Hash anterior.
-- Hash actual.
+- student identity;
+- timestamp;
+- event type;
+- active task;
+- minimal metadata;
+- previous hash;
+- current hash.
 
-No se guarda el contenido completo de los archivos.
+Full file contents are not stored.
 
-La especificación detallada está en [events.md](events.md).
+The detailed specification is in [events.md](events.md).
 
-## 16. Interacciones con agentes
+## 16. Agent Interactions
 
-Las instrucciones generadas piden al agente registrar cada mensaje en:
+Generated instructions ask the agent to record each message in:
 
 ```text
 .vsc4education/contributions/<studentId>/agent-interactions.jsonl
 ```
 
-Formato:
+Format:
 
 ```json
-{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"Pregunta"}
-{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"copilot","message":"Respuesta"}
+{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"Question"}
+{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"copilot","message":"Answer"}
 ```
 
-Cuando `actor` es `agent`, el campo `agent` debe ser:
+When `actor` is `agent`, the `agent` field must be:
 
 - `chatGPT`
 - `claude`
 - `copilot`
 
-La extensión no utiliza APIs privadas para capturar conversaciones. El registro depende del cumplimiento del agente.
+The extension does not use private APIs to capture conversations. Recording
+depends on agent compliance.
 
-## 17. Exportación de la entrega
+## 17. Submission Export
 
-Antes de generar el ZIP, la extensión:
+Before generating the ZIP, the extension:
 
-1. Restaura `AGENTS.md` si fuera necesario.
-2. Registra `submission_exported`.
-3. Pausa eventos automáticos.
-4. Ejecuta `git add .`.
-5. Crea el checkpoint final.
-6. Genera el ZIP completo.
+1. Restores `AGENTS.md` if necessary.
+2. Records `submission_exported`.
+3. Pauses automatic events.
+4. Runs `git add .`.
+5. Creates the final checkpoint.
+6. Generates the full ZIP.
 
-Nombre típico:
+Typical name:
 
 ```text
 submission-<activityId>-<studentId>-<timestamp>.zip
 ```
 
-La entrega incluye el proyecto, `.vsc4education` y `.git` si existe.
+The submission includes the project, `.vsc4education`, and `.git` if present.
 
-## 18. Errores frecuentes
+## 18. Common Errors
 
-### El ZIP no contiene manifest.json
+### The ZIP Does Not Contain `manifest.json`
 
-Comprueba que esté en la raíz o dentro de un único directorio contenedor.
+Check that it is at the root or inside a single container directory.
 
-### El manifiesto no tiene tareas
+### The Manifest Has No Tasks
 
-`tasks` debe ser una lista no vacía.
+`tasks` must be a non-empty list.
 
-### Identificadores inválidos
+### Invalid Identifiers
 
-No utilices espacios, barras ni rutas relativas en `id`.
+Do not use spaces, slashes, or relative paths in `id`.
 
-### No se genera AGENTS.md
+### `AGENTS.md` Is Not Generated
 
-Comprueba que exista `agent/instructions.md` y que el estudiante haya sido registrado.
+Check that `agent/instructions.md` exists and that the student has been
+registered.
 
-### El starter aparece dentro de otra carpeta
+### The Starter Appears Inside Another Folder
 
-El contenido ejecutable debe estar directamente dentro de `starter/proyecto-base`.
+The executable content must be directly inside `starter/proyecto-base`.
 
-### El proyecto no compila después de importar
+### The Project Does Not Compile After Import
 
-Prueba el starter fuera del paquete e incluye todos los archivos de configuración necesarios.
+Test the starter outside the package and include all required configuration
+files.
 
-### El agente no registra conversaciones
+### The Agent Does Not Record Conversations
 
-La extensión sólo puede instruir al agente. No puede obligar a herramientas externas mediante APIs privadas.
+The extension can only instruct the agent. It cannot force external tools
+through private APIs.
 
-### Git no crea commits
+### Git Does Not Create Commits
 
-Comprueba que Git esté instalado. La extensión configura una identidad local si es necesario, pero permite continuar sin integración Git cuando Git no está disponible.
+Check that Git is installed. The extension configures a local identity when
+needed, but allows work to continue without Git integration when Git is not
+available.
 
-## 19. Checklist final para el autor
+## 19. Final Author Checklist
 
-Antes de distribuir una actividad:
+Before distributing an activity:
 
-- [ ] El identificador de actividad es estable.
-- [ ] La versión fue actualizada.
-- [ ] El título y la descripción son claros.
-- [ ] Todas las tareas tienen identificadores únicos.
-- [ ] Cada tarea tiene un documento Markdown.
-- [ ] La teoría cubre los conceptos necesarios.
-- [ ] El starter no contiene la solución.
-- [ ] El starter compila desde una carpeta limpia.
-- [ ] `agent/instructions.md` limita correctamente a los agentes.
-- [ ] No hay secretos ni datos personales.
-- [ ] El ZIP tiene la estructura esperada.
-- [ ] La importación fue probada con Git nuevo.
-- [ ] La importación fue probada con un repositorio existente.
-- [ ] Se pudo iniciar y terminar una tarea.
-- [ ] Se generaron eventos y metadata.
-- [ ] Se pudo exportar una entrega.
+- [ ] The activity identifier is stable.
+- [ ] The version was updated.
+- [ ] The title and description are clear.
+- [ ] All tasks have unique identifiers.
+- [ ] Each task has a Markdown document.
+- [ ] Theory covers the required concepts.
+- [ ] The starter does not contain the solution.
+- [ ] The starter builds from a clean directory.
+- [ ] `agent/instructions.md` correctly limits agents.
+- [ ] There are no secrets or personal data.
+- [ ] The ZIP has the expected structure.
+- [ ] Import was tested with a new Git repository.
+- [ ] Import was tested with an existing repository.
+- [ ] A task could be started and finished.
+- [ ] Events and metadata were generated.
+- [ ] A submission could be exported.
 
-## 20. Actividad de referencia
+## 20. Reference Activity
 
-La implementación de referencia está en:
+The reference implementation is:
 
 [examples/poo-basico-01](../VSC4EducationStudents/examples/poo-basico-01)
 
-Conviene copiarla como punto de partida y reemplazar:
+It is a good starting point. Copy it and replace:
 
-- `manifest.json`
-- El contenido de `theory/`
-- El contenido de `tasks/`
-- `agent/instructions.md`
-- El proyecto de `starter/proyecto-base/`
+- `manifest.json`;
+- the contents of `theory/`;
+- the contents of `tasks/`;
+- `agent/instructions.md`;
+- the project in `starter/proyecto-base/`.
 
-Mantén la estructura de carpetas hasta que exista una versión formal y compartida del metamodelo.
+Keep the folder structure until a formal shared metamodel version exists.

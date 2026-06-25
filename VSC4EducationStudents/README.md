@@ -1,17 +1,21 @@
 # Learning Activity Tracker - Student
 
-Extensión de Visual Studio Code para cargar prácticas de programación, gestionar tareas, registrar evidencias locales, automatizar commits Git y generar contexto basado en archivos para asistentes de IA.
+Visual Studio Code extension for loading programming practices, managing tasks,
+recording local evidence, automating Git commits, and generating file-based
+context for AI assistants.
 
-No utiliza APIs privadas de Codex, Claude ni Copilot. La integración se realiza mediante `AGENTS.md` y los archivos de contexto almacenados en `.vsc4education/`.
+It does not use private APIs from Codex, Claude, or Copilot. Integration happens
+through `AGENTS.md` and context files stored in `.vsc4education/`.
 
-`AGENTS.md` se sincroniza con las instrucciones canónicas de la actividad. Mientras la extensión está activa, cualquier modificación o eliminación se revierte automáticamente.
+`AGENTS.md` is synchronized with the canonical activity instructions. While the
+extension is active, any modification or deletion is automatically reverted.
 
-## Desarrollo
+## Development
 
-Requisitos:
+Requirements:
 
-- Node.js 22 o compatible con el runtime actual de VS Code.
-- Git opcional.
+- Node.js 22 or a version compatible with the current VS Code runtime.
+- Git, optional.
 - Visual Studio Code.
 
 ```powershell
@@ -19,40 +23,46 @@ npm install
 npm run compile
 ```
 
-Pulsa `F5` y usa la Command Palette en la ventana Extension Development Host.
+Press `F5` and use the Command Palette in the Extension Development Host window.
 
-## Prueba rápida
+## Quick Test
 
-Genera el ZIP de ejemplo:
+Generate the example ZIP:
 
 ```powershell
 npm run example:zip
 ```
 
-Después:
+Then:
 
-1. Ejecuta `Learning Activity: Load Activity from ZIP`.
-2. Selecciona `examples/poo-basico-01.zip`.
-3. Selecciona una carpeta vacía como proyecto de trabajo.
-4. Registra nombre, apellido e identificador institucional.
-5. Abre `Learning Activity: Open Student Panel`.
-6. Empieza una tarea, edita y guarda archivos.
-7. Termina la tarea y revisa tu contribución y el historial Git.
-8. Ejecuta `Learning Activity: Export Submission`.
+1. Run `Learning Activity: Load Activity from ZIP`.
+2. Select `examples/poo-basico-01.zip`.
+3. Select an empty folder as the working project.
+4. Register first name, last name, and institutional identifier.
+5. Open `Learning Activity: Open Student Panel`.
+6. Start a task, edit files, and save them.
+7. Finish the task and review your contribution and Git history.
+8. Run `Learning Activity: Export Submission`.
 
-La exportación registra el evento correspondiente y crea un checkpoint Git final inmediatamente antes de generar el ZIP.
+Export records the corresponding event and creates a final Git checkpoint
+immediately before generating the ZIP.
 
-## Escenarios Git
+## Git Scenarios
 
-La carga y reapertura de actividades distingue estos casos:
+Activity loading and reopening distinguish these cases:
 
-1. **La carpeta no contiene un repositorio:** la extensión ejecuta `git init` y crea `Initial activity state`.
-2. **La carpeta ya contiene un repositorio con historial:** se conserva el historial y se crea `Checkpoint: Activity loaded`.
-3. **Se abre una actividad ya instalada y versionada:** la extensión detecta `.vsc4education/activity-manifest.json`, recupera la contribución local y registra una nueva sesión sin crear otro commit de carga.
+1. **The folder does not contain a repository:** the extension runs `git init`
+   and creates `Initial activity state`.
+2. **The folder already contains a repository with history:** history is
+   preserved and `Checkpoint: Activity loaded` is created.
+3. **An already installed and versioned activity is opened:** the extension
+   detects `.vsc4education/activity-manifest.json`, recovers the local
+   contribution, and records a new session without creating another load commit.
 
-Un repositorio normal que no contenga una actividad no se modifica automáticamente. Para instalar una actividad allí debe ejecutarse el comando de carga.
+A normal repository that does not contain an activity is not modified
+automatically. To install an activity there, the load command must be run.
 
-## Comandos
+## Commands
 
 - `Learning Activity: Load Activity from ZIP`
 - `Learning Activity: Load Activity from URL`
@@ -62,22 +72,23 @@ Un repositorio normal que no contenga una actividad no se modifica automáticame
 - `Learning Activity: Finish Task`
 - `Learning Activity: Export Submission`
 
-## Configuración
+## Configuration
 
-- `learningActivity.heartbeatIntervalSeconds`: intervalo de heartbeat, 30 segundos por defecto.
-- `learningActivity.autoOpenPanelAfterLoad`: abre el panel tras importar.
-- `learningActivity.enableGitIntegration`: activa commits automáticos.
-- `learningActivity.trackTextChanges`: registra metadatos de ediciones.
-- `learningActivity.trackTerminalOpen`: registra apertura de terminales.
+- `learningActivity.heartbeatIntervalSeconds`: heartbeat interval, 30 seconds by
+  default.
+- `learningActivity.autoOpenPanelAfterLoad`: opens the panel after import.
+- `learningActivity.enableGitIntegration`: enables automatic commits.
+- `learningActivity.trackTextChanges`: records edit metadata.
+- `learningActivity.trackTerminalOpen`: records integrated terminal openings.
 
-## Estructura del proyecto importado
+## Imported Project Structure
 
-El proyecto del estudiante queda en el root:
+The student project lives at the root:
 
-- `src/` y el resto del starter.
-- `AGENTS.md`, con las restricciones pedagógicas para agentes de IA.
+- `src/` and the rest of the starter.
+- `AGENTS.md`, with pedagogical restrictions for AI agents.
 
-El paquete académico común queda aislado en:
+The shared academic package is isolated in:
 
 - `.vsc4education/manifest.json`
 - `.vsc4education/theory/`
@@ -89,42 +100,49 @@ El paquete académico común queda aislado en:
 - `.vsc4education/activity-manifest.json`
 - `.vsc4education/activity-configuration.json`
 
-`activity-configuration.json` indica si Git está deshabilitado y si el repositorio fue creado por la extensión o ya existía.
+`activity-configuration.json` indicates whether Git is disabled and whether the
+repository was created by the extension or already existed.
 
-Cada estudiante dispone de un espacio independiente:
+Each student has an independent space:
 
 ```text
 .vsc4education/contributions/<studentId>/
-├── profile.json
-├── state.json
-├── events.jsonl
-├── agent-interactions.jsonl
-├── AGENTS.generated.md
-├── current-task.json
-└── task-metadata/
+|-- profile.json
+|-- state.json
+|-- events.jsonl
+|-- agent-interactions.jsonl
+|-- AGENTS.generated.md
+|-- current-task.json
+`-- task-metadata/
 ```
 
-La identidad activa se guarda en `workspaceState`, no en un marcador compartido del repositorio. Una instalación de VS Code queda vinculada a un único estudiante para ese workspace.
+The active identity is stored in `workspaceState`, not in a shared repository
+marker. A VS Code installation is bound to one student for that workspace.
 
-## Interacciones con agentes
+## Agent Interactions
 
-La extensión añade a las instrucciones de la actividad un contrato para registrar la conversación en `.vsc4education/contributions/<studentId>/agent-interactions.jsonl`.
+The extension appends a contract to the activity instructions asking agents to
+record the conversation in
+`.vsc4education/contributions/<studentId>/agent-interactions.jsonl`.
 
-Cada línea tiene uno de estos formatos:
+Each line has one of these formats:
 
 ```json
-{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"Mensaje"}
-{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"copilot","message":"Respuesta"}
+{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"Message"}
+{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"copilot","message":"Response"}
 ```
 
-Para entradas del agente, `agent` debe ser `chatGPT`, `claude` o `copilot`. Este registro depende de que el agente respete las instrucciones; la extensión no lee conversaciones mediante APIs privadas.
+For agent entries, `agent` must be `chatGPT`, `claude`, or `copilot`. This log
+depends on the agent following the instructions; the extension does not read
+conversations through private APIs.
 
-Para crear una actividad desde cero, consulta la [guía completa de autoría](../docs/activity-authoring-guide.md).
+To create an activity from scratch, see the
+[complete activity authoring guide](../docs/activity-authoring-guide.md).
 
-Documentación especializada:
+Specialized documentation:
 
-- [Documentación central](../docs/README.md)
-- [Documentación general y especificación de extensiones](../docs/project-and-extensions-spec.md)
-- [Formato de actividad](../docs/activity-format.md)
-- [Eventos y evidencias](../docs/events.md)
-- [Seguridad y limitaciones](../docs/security-limitations.md)
+- [Central documentation](../docs/README.md)
+- [General documentation and extension specification](../docs/project-and-extensions-spec.md)
+- [Activity format](../docs/activity-format.md)
+- [Events and evidence](../docs/events.md)
+- [Security and limitations](../docs/security-limitations.md)
