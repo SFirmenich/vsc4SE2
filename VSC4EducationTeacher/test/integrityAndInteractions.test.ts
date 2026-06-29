@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import { promises as fs } from "fs";
 import * as path from "path";
+import { AgencyMetricsService } from "../src/services/AgencyMetricsService";
 import { IntegrityService } from "../src/services/IntegrityService";
 import { SubmissionReviewService } from "../src/services/SubmissionReviewService";
 import { canonicalJson } from "../src/utils/json";
@@ -121,5 +122,97 @@ describe("Integrity and agent interactions", () => {
       (summary.agency as { level: string }).level,
       "media"
     );
+  });
+
+  it("calculates grouped agency metrics from student events", () => {
+    const metrics = new AgencyMetricsService().calculate(
+      {
+        studentId: "student-1",
+        events: [
+          {
+            timestamp: "2026-01-01T10:00:00Z",
+            event: "task_started",
+            taskId: "task",
+            previousHash: null,
+            hash: "one"
+          },
+          {
+            timestamp: "2026-01-01T10:01:00Z",
+            event: "active_editor_changed",
+            taskId: "task",
+            data: { file: "src/Animal.ts" },
+            previousHash: "one",
+            hash: "two"
+          },
+          {
+            timestamp: "2026-01-01T10:02:00Z",
+            event: "file_changed",
+            taskId: "task",
+            data: {
+              file: "src/Animal.ts",
+              changeCount: 2,
+              lines: [{ start: 2, end: 4 }]
+            },
+            previousHash: "two",
+            hash: "three"
+          },
+          {
+            timestamp: "2026-01-01T10:03:00Z",
+            event: "file_saved",
+            taskId: "task",
+            data: { file: "src/Animal.ts" },
+            previousHash: "three",
+            hash: "four"
+          },
+          {
+            timestamp: "2026-01-01T10:04:00Z",
+            event: "file_created",
+            taskId: "task",
+            data: { file: "tests/animal.test.ts" },
+            previousHash: "four",
+            hash: "five"
+          },
+          {
+            timestamp: "2026-01-01T10:05:00Z",
+            event: "file_changed",
+            data: { file: ".vsc4education/state.json", changeCount: 1 },
+            previousHash: "five",
+            hash: "six"
+          },
+          {
+            timestamp: "2026-01-01T10:06:00Z",
+            event: "task_finished",
+            taskId: "task",
+            previousHash: "six",
+            hash: "seven"
+          },
+          {
+            timestamp: "2026-01-01T10:07:00Z",
+            event: "submission_exported",
+            previousHash: "seven",
+            hash: "eight"
+          }
+        ],
+        eventParseErrors: [],
+        agentInteractions: [],
+        interactionErrors: []
+      },
+      {
+        id: "activity",
+        title: "Activity",
+        tasks: [{ id: "task", title: "Task", file: "src/Animal.ts" }]
+      }
+    );
+
+    const metric = (id: number) =>
+      metrics.groups.flatMap((group) => group.metrics).find((item) => item.id === id);
+
+    assert.strictEqual(metrics.groups.length > 5, true);
+    assert.strictEqual(metric(9)?.value, 3);
+    assert.strictEqual(metric(12)?.value, 100);
+    assert.strictEqual(metric(13)?.value, 3);
+    assert.strictEqual(metric(20)?.value, 2);
+    assert.strictEqual(metric(43)?.value, 1);
+    assert.strictEqual(metric(48)?.value, "continua");
   });
 });
