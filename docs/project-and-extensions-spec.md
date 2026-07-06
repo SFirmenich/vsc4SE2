@@ -2,14 +2,17 @@
 
 This document defines the overall vision for **VSCode4Education** as a learning
 activity system for programming, and establishes the main requirements for its
-two extensions:
+two extensions and companion repository application:
 
 - **Learning Activity Tracker - Student**, the student extension implemented in
   this repository.
 - **Learning Activity Tracker - Teacher**, the teacher extension for creating,
   validating, and reviewing activities and submissions.
+- **VSCode4Education Repository**, a local Django, React, and Electron
+  application for storing activity packages and student submissions, extracting
+  metadata, and comparing process evidence across course groups.
 
-The central idea is that both extensions operate on the same contract: a clear,
+The central idea is that all components operate on the same contract: a clear,
 versioned, portable activity structure that is stable enough for one tool to
 produce packages and another to consume them without relying on implicit
 conventions.
@@ -34,6 +37,11 @@ The expected flow is:
 7. The student exports a submission.
 8. The teacher extension imports the submission and reviews code, evolution,
    and evidence.
+
+The repository application can participate in the same flow by importing the
+teacher activity ZIPs and student submission ZIPs. It stores the original
+archives and derives searchable metadata and metrics, but it does not replace
+the portable ZIP contract or become the source of truth for the format.
 
 The system's value depends on the activity package being the shared source of
 truth. For that reason, the format must be documented, versioned, and validated.
@@ -327,9 +335,31 @@ It must allow feedback associated with evidence:
 - rubric or evaluation criteria;
 - report export as Markdown, JSON, or PDF.
 
-## 5. Contract Between Extensions
+## 5. Repository Application Requirements
 
-Both extensions must share these rules:
+`VSC4EducationRepository` is a local companion application for cataloging
+courses, course groups, activity versions, and student submissions.
+
+It must:
+
+- import the same activity ZIPs produced by the teacher extension;
+- import the same submission ZIPs produced by the student extension;
+- preserve the original ZIPs and calculate checksums for deduplication;
+- extract activity, task, student, event, task-state, Git-presence, and agent
+  interaction summaries;
+- associate activities and submissions with courses and course groups;
+- expose aggregate metrics and per-submission comparison views;
+- treat missing optional evidence as warnings or missing data;
+- reject unsafe archive entries and corrupt required JSON with clear errors;
+- avoid executing student code or installing student dependencies.
+
+Repository import is a consumer of the shared file contract. Any format change
+must be checked against its activity and submission import services in addition
+to the teacher and student extensions.
+
+## 6. Contract Between Components
+
+All components must share these rules:
 
 - The activity package is the canonical source before import.
 - `.vsc4education/activity-manifest.json` is the canonical source after import.
@@ -341,8 +371,10 @@ Both extensions must share these rules:
 - Agent conversations are JSON Lines separate from events.
 - Local evidence is review-oriented and advisory, not invulnerable.
 - Incompatible format changes must increase a schema version.
+- Repository database rows, metrics, and extracted summaries are derived views
+  of the imported ZIPs, not replacements for the portable artifacts.
 
-## 6. Format Versioning
+## 7. Format Versioning
 
 The MVP does not include an explicit schema-version field. To let both
 extensions evolve safely, a future version should introduce one:
@@ -364,8 +396,9 @@ Proposed policy:
 - The teacher extension must declare which schema version it produces.
 - The student extension must declare which schema versions it consumes.
 - The teacher extension must warn when a submission uses an unsupported version.
+- The repository application must declare which schema versions it imports.
 
-## 7. Minimum Compatibility Criteria
+## 8. Minimum Compatibility Criteria
 
 An activity is compatible with the current student extension if:
 
@@ -388,24 +421,35 @@ A submission is reviewable by the teacher extension if:
 - missing Git or agent conversations are treated as missing data, not as fatal
   errors.
 
-## 8. Related Documents
+An activity is importable by the repository application if it meets the activity
+compatibility criteria and includes a non-empty `version`.
+
+A submission is importable by the repository application if it meets the
+submission reviewability criteria and the referenced activity `id` and
+`version` match an imported `ActivityVersion`, unless the import explicitly
+selects an activity version.
+
+## 9. Related Documents
 
 - [Activity format](activity-format.md)
 - [Complete activity authoring guide](activity-authoring-guide.md)
 - [Event model](events.md)
+- [Repository application](repository.md)
 - [Security, privacy, and limitations](security-limitations.md)
 - [Documentation index](README.md)
 
-## 9. Executive Summary
+## 10. Executive Summary
 
-The project should be understood as a two-extension ecosystem around a versioned
-activity.
+The project should be understood as an ecosystem around a versioned activity.
 
 The teacher extension produces activities and reviews submissions. The student
-extension consumes activities, supports work, and generates evidence. The bridge
-between them must not be the UI or internal implementation, but a documented
-file structure: `manifest.json`, academic folders, starter project, agent
-instructions, `.vsc4education/`, contributions, events, and metadata.
+extension consumes activities, supports work, and generates evidence. The
+repository application stores compatible activity and submission ZIPs and
+derives metrics for course-level review. The bridge between components must not
+be the UI or internal implementation, but a documented file structure:
+`manifest.json`, academic folders, starter project, agent instructions,
+`.vsc4education/`, contributions, events, and metadata.
 
-As long as that contract remains clear and versioned, both extensions can evolve
-separately without breaking the full pedagogical workflow.
+As long as that contract remains clear and versioned, the extensions and
+repository application can evolve separately without breaking the full
+pedagogical workflow.

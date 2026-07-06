@@ -30,3 +30,9 @@ system or a forensic solution.
 
 High-stakes evaluation scenarios require external verification, institutional
 policies, and controlled remote storage.
+
+`VSC4EducationRepository` inherits the same limitations when it imports
+activity and submission ZIPs. It may store original archives, student
+identifiers, event summaries, agent interaction counts, and Git history
+included in submissions. Repository metrics and comparisons are review aids, not
+proof of authorship or misconduct.

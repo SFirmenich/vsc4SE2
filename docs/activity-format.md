@@ -112,3 +112,13 @@ local contribution.
 
 The `signatures/manifest.sig` file is preserved, but the MVP does not implement
 cryptographic validation.
+
+## Repository Import
+
+`VSC4EducationRepository` imports this same activity ZIP format. It stores the
+original archive, reads `manifest.json`, extracts activity and task metadata,
+and associates the activity version with courses or groups.
+
+Repository import requires `manifest.version` in addition to the base `id`,
+`title`, and task requirements, because activity versions are the unit used to
+match later submissions and compute comparisons.
