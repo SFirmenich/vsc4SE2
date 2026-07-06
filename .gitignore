@@ -1,0 +1,9 @@
+*.pyc
+*.toc
+localpycs/
+dist/
+*.sqlite3
+electron/
+build/
+*.err.log
+*.out.log
