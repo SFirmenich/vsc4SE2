@@ -32,10 +32,9 @@ format change.
 
 ## Compatibility Contract
 
-The shared contract is file-based. Do not treat either extension's UI or internal
-implementation, or the repository application's database, as the source of
-truth. The source of truth is the portable activity/submission structure
-documented in:
+The shared contract is file-based. Do not treat any component's UI, internal
+implementation, or the repository application's database as the source of truth.
+The source of truth is the portable activity/submission structure documented in:
 
 - `docs/project-and-extensions-spec.md`
 - `docs/activity-format.md`
