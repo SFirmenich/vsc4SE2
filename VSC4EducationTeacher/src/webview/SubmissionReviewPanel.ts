@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
+import { AgencyMetricsService } from "../services/AgencyMetricsService";
 import { FeedbackService } from "../services/FeedbackService";
 import { GitReviewService } from "../services/GitReviewService";
 import { IntegrityService } from "../services/IntegrityService";
@@ -55,6 +56,7 @@ export class SubmissionReviewPanel {
     private readonly extensionUri: vscode.Uri,
     private readonly review = new SubmissionReviewService(),
     private readonly integrity = new IntegrityService(),
+    private readonly agencyMetrics = new AgencyMetricsService(),
     private readonly git = new GitReviewService(),
     private readonly feedback = new FeedbackService()
   ) {
@@ -94,6 +96,9 @@ export class SubmissionReviewPanel {
         rubric,
         summaries: this.submission.contributions.map((item) =>
           this.review.summarize(item)
+        ),
+        agencyMetrics: this.submission.contributions.map((item) =>
+          this.agencyMetrics.calculate(item, this.submission.manifest)
         ),
         integrity,
         commits

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { StudentAgencyMetrics } from "../types/AgencyMetrics";
 import { ImportedSubmission } from "../types/Submission";
 import { Rubric } from "../types/Rubric";
 import { escapeHtml, webviewDocument } from "./webviewUtils";
@@ -7,6 +8,7 @@ export interface SubmissionReviewModel {
   submission: ImportedSubmission;
   rubric?: Rubric;
   summaries: Record<string, unknown>[];
+  agencyMetrics: StudentAgencyMetrics[];
   integrity: Record<string, unknown>;
   commits: unknown[];
 }
@@ -14,6 +16,7 @@ export interface SubmissionReviewModel {
 const tabs = [
   ["activity", "Activity"],
   ["students", "Report"],
+  ["agency-metrics", "Agency metrics"],
   ["timeline", "Evidence"],
   ["git", "Git"],
   ["agents", "Agent"],
@@ -50,6 +53,7 @@ export function submissionReviewHtml(
   </div>
   <section id="activity"></section>
   <section id="students" class="active"></section>
+  <section id="agency-metrics"></section>
   <section id="timeline"></section>
   <section id="git"></section>
   <section id="agents"></section>
@@ -74,6 +78,7 @@ const helpText = {
   agentUse: 'Agent use counts recorded conversation turns. Compare student prompts with agent responses, then review the messages to judge whether the agent supported learning.',
   agencySignals: 'Agency signals are positive indicators derived from the event log, such as task starts, sustained edits, completion and dialog with the agent.',
   reviewFlags: 'Review flags are prompts for closer inspection. They are not accusations; they point to patterns such as little editing after agent use or long gaps.',
+  agencyMetrics: 'Agency metrics are calculated from the student events.jsonl file and grouped by observable agency dimension. They are review signals, not an automatic grade or authorship proof.',
   activityChart: 'This chart groups timestamped events by hour. It helps identify when the student worked and whether work was concentrated or spread out.',
   linesChart: 'This chart shows the files with the most unique touched lines. It helps the teacher see where the student actually edited the submission.',
   agentChart: 'This chart compares recorded student messages and agent responses. A balanced or unbalanced ratio needs interpretation alongside the actual conversation.',
@@ -105,6 +110,7 @@ function renderStudent() {
   const events = item.events.filter((event) => (!task || event.taskId === task) && (!eventTypeFilter || String(getEventType(event)).toLowerCase().includes(eventTypeFilter)) && (!file || String(getEventFile(event)).toLowerCase().includes(file)));
   byId('students').innerHTML = renderTeacherReport(summary);
   drawD3Report(summary);
+  byId('agency-metrics').innerHTML = renderAgencyMetrics(model.agencyMetrics.find((value) => value.studentId === selectedStudent));
   byId('timeline').innerHTML = renderEvidenceTimeline(events);
   byId('git').innerHTML = \`\${sectionTitle('Git repository', helpText.gitCard)}<p>Detected: \${model.submission.hasGit ? 'yes' : 'no'}</p>\` + model.commits.map((commit) => \`<div class="card">\${cardTitleHtml(\`<code>\${esc(commit.hash?.slice(0, 10))}</code> \${esc(commit.message)}\`, helpText.gitCard)}<span class="muted">\${esc(commit.author)} - \${esc(commit.timestamp)}</span><br><button data-commit="\${esc(commit.hash)}">Show changed files</button></div>\`).join('');
   byId('agents').innerHTML = \`\${sectionTitle('Agent conversations', helpText.agentCard)}<p class="muted">Completeness depends on the agent and student tooling following the recording instructions.</p>\` + item.agentInteractions.map((interaction) => \`<div class="card">\${cardTitle(\`\${interaction.actor}\${interaction.agent ? ' - ' + interaction.agent : ''}\`, helpText.agentCard)}<span class="muted">\${esc(interaction.timestamp)}</span><p>\${esc(interaction.message)}</p></div>\`).join('') + (item.interactionErrors.length ? \`<pre class="warning">\${pretty(item.interactionErrors)}</pre>\` : '');
@@ -154,6 +160,48 @@ function renderTeacherReport(summary) {
         <div id="agent-chart" class="chart"></div>
       </div>
     </div>\`;
+}
+function renderAgencyMetrics(metrics) {
+  if (!metrics?.groups?.length) return \`\${sectionTitle('Agency metrics', helpText.agencyMetrics)}<p>No metrics available for this contribution.</p>\`;
+  const totals = metrics.groups.reduce((acc, group) => {
+    group.metrics.forEach((metric) => {
+      acc.total += 1;
+      if (metric.priority) acc.priority += 1;
+      acc[metric.reliability] = (acc[metric.reliability] ?? 0) + 1;
+    });
+    return acc;
+  }, { total: 0, priority: 0, direct: 0, estimated: 0, limited: 0 });
+  return \`
+    \${sectionTitle('Agency metrics', helpText.agencyMetrics)}
+    <p class="muted">Calculated from the imported event log for \${esc(metrics.studentId)}. Prioritized metrics are marked for first-pass review.</p>
+    <div class="grid">
+      \${metricCard('Metrics', esc(totals.total), \`\${esc(totals.priority)} prioritized\`, helpText.agencyMetrics)}
+      \${metricCard('Direct', esc(totals.direct), 'computed directly from events', helpText.agencyMetrics)}
+      \${metricCard('Estimated', esc(totals.estimated), 'uses event-derived heuristics', helpText.agencyMetrics)}
+      \${metricCard('Limited', esc(totals.limited), 'needs extra context to read strongly', helpText.agencyMetrics)}
+    </div>
+    \${metrics.groups.map(renderMetricGroup).join('')}\`;
+}
+function renderMetricGroup(group) {
+  return \`<div class="card agency-group">
+    \${cardTitle(group.dimension, helpText.agencyMetrics)}
+    <table>
+      <thead><tr><th>N</th><th>Metric</th><th>Value</th><th>Evidence</th><th>How to read it</th></tr></thead>
+      <tbody>\${group.metrics.map(renderAgencyMetric).join('')}</tbody>
+    </table>
+  </div>\`;
+}
+function renderAgencyMetric(metric) {
+  const badge = metric.priority ? '<span class="badge">Priority</span>' : '';
+  const reliability = \`<span class="reliability \${esc(metric.reliability)}">\${esc(metric.reliability)}</span>\`;
+  const value = \`\${esc(metric.value)}\${metric.unit ? ' ' + esc(metric.unit) : ''}\`;
+  return \`<tr>
+    <td><code>\${esc(metric.id)}</code></td>
+    <td><strong>\${esc(metric.name)}</strong> \${badge}<br><span class="muted">\${reliability}</span></td>
+    <td><strong>\${value}</strong></td>
+    <td><span class="muted">\${esc(metric.detail)}</span><br><small>\${esc(metric.evidenceCount)} source events/signals</small></td>
+    <td>\${esc(metric.interpretation)}</td>
+  </tr>\`;
 }
 function metricCard(label, value, detail, help) {
   return \`<div class="card metric"><span class="muted metric-label">\${label}\${helpIcon(help)}</span><strong>\${value}</strong><small>\${detail}</small></div>\`;

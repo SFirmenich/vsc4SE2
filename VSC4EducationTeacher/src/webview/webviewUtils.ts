@@ -63,6 +63,14 @@ export function webviewDocument(
     .chart text { font-family: var(--vscode-font-family); font-size: 11px; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .row > * { width: auto; }
+    .badge, .reliability { display: inline-flex; align-items: center; width: fit-content; border: 1px solid var(--vscode-panel-border); padding: 1px 6px; font-size: 11px; line-height: 1.5; }
+    .badge { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
+    .reliability.direct { color: var(--vscode-charts-green); }
+    .reliability.estimated { color: var(--vscode-charts-yellow); }
+    .reliability.limited { color: var(--vscode-editorWarning-foreground); }
+    .agency-group table { table-layout: fixed; }
+    .agency-group th:nth-child(1), .agency-group td:nth-child(1) { width: 44px; }
+    .agency-group th:nth-child(3), .agency-group td:nth-child(3) { width: 120px; }
     .muted { color: var(--vscode-descriptionForeground); }
     .error { color: var(--vscode-errorForeground); }
     .warning { color: var(--vscode-editorWarning-foreground); }
