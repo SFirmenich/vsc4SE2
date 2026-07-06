@@ -107,6 +107,82 @@ export interface SubmissionDetail extends Submission {
   originalZipUrl: string;
 }
 
+export interface SubmissionReviewSummary {
+  studentId: string;
+  tasksStarted: number;
+  tasksCompleted: number;
+  saves: number;
+  commits: number;
+  filesModified: number;
+  sourceFilesModified: number;
+  lineTouchCount: number;
+  uniqueLinesTouched: number;
+  fileChangeEvents: number;
+  editBursts: number;
+  activeMinutes: number;
+  heartbeatGaps: number;
+  agentInteractions: number;
+  studentAgentMessages: number;
+  agentResponses: number;
+  activityByHour: { hour: string; count: number }[];
+  linesByFile: { file: string; lines: number }[];
+  agency: {
+    score: number;
+    level: string;
+    positives: string[];
+    concerns: string[];
+  };
+}
+
+export interface AgencyMetric {
+  id: number;
+  priority: boolean;
+  name: string;
+  value: string | number;
+  unit?: string | null;
+  detail: string;
+  interpretation: string;
+  evidenceCount: number;
+  reliability: "direct" | "estimated" | "limited";
+}
+
+export interface AgencyMetricGroup {
+  dimension: string;
+  metrics: AgencyMetric[];
+}
+
+export interface SubmissionReview {
+  submissionId: number;
+  studentId: string;
+  contributionId: string;
+  activityManifest: Record<string, unknown>;
+  activityConfiguration: Record<string, unknown>;
+  profile: Record<string, unknown>;
+  state: Record<string, unknown>;
+  summary: SubmissionReviewSummary;
+  agencyMetrics: {
+    studentId: string;
+    groups: AgencyMetricGroup[];
+  };
+  integrity: {
+    status: "valid" | "invalid" | "incomplete" | "not_available";
+    checkedEntries: number;
+    firstInvalidLine?: number;
+    message: string;
+  };
+  events: Record<string, unknown>[];
+  eventParseErrors: { line: number; reason: string }[];
+  agentInteractions: {
+    timestamp: string;
+    actor: "student" | "agent";
+    agent?: string | null;
+    message: string;
+    sessionId?: string | null;
+    taskId?: string | null;
+  }[];
+  agentInteractionErrors: string[];
+}
+
 export interface Metrics {
   submissions: number;
   uniqueStudents: number;

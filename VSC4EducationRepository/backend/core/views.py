@@ -20,6 +20,7 @@ from core.services.activity_import import ActivityZipImportService
 from core.services.metrics import ActivityMetricsService, CourseGroupMetricsService
 from core.services.safe_zip import ZipValidationError
 from core.services.submission_import import SubmissionZipImportService
+from core.services.submission_review import SubmissionReviewService
 
 
 def _owner(request):
@@ -176,6 +177,13 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     def warnings(self, request, pk=None):
         serializer = ImportWarningSerializer(self.get_object().warnings.all(), many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def review(self, request, pk=None):
+        try:
+            return Response(SubmissionReviewService().build(self.get_object()))
+        except ZipValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def import_activity_zip(request):

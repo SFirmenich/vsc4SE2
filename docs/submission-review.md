@@ -15,3 +15,9 @@ project. Export produces a ZIP containing those review JSON files.
 original archives, associate them with courses and groups, and compare aggregate
 metrics across students. That repository workflow complements teacher review;
 it does not change the submission format and does not execute student code.
+
+Repository also exposes a submission detail review view derived from the stored
+original ZIP. It includes a principal summary, recorded agent conversations,
+agency metrics, and event hash-chain integrity indicators. These views reuse the
+portable submission evidence and remain review aids; they are not automatic
+grades or tamper-proof authorship proofs.

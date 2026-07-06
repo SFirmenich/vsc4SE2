@@ -1,4 +1,5 @@
 import json
+import hashlib
 import zipfile
 from io import BytesIO
 
@@ -32,6 +33,20 @@ def manifest(version="1.0.0"):
             {"id": "behavior", "title": "Comportamiento", "file": "tasks/behavior.md"},
         ],
     }
+
+
+def hashed_events(rows):
+    previous_hash = None
+    result = []
+    for row in rows:
+        event = {**row, "previousHash": previous_hash}
+        event_hash = hashlib.sha256(
+            f"{previous_hash or ''}{json.dumps(event, sort_keys=True, separators=(',', ':'), ensure_ascii=False)}".encode("utf-8")
+        ).hexdigest()
+        event["hash"] = event_hash
+        previous_hash = event_hash
+        result.append(event)
+    return result
 
 
 def activity_zip(version="1.0.0", container=False):
@@ -85,6 +100,42 @@ def submission_zip(with_git=False, with_agent=True, invalid_jsonl=False):
     if with_git:
         entries[".git/HEAD"] = "ref: refs/heads/main"
     return zip_upload("submission.zip", entries)
+
+
+def review_submission_zip(tampered=False):
+    events = hashed_events(
+        [
+            {"timestamp": "2026-06-11T10:00:00Z", "event": "task_started", "taskId": "encapsulation"},
+            {
+                "timestamp": "2026-06-11T10:03:00Z",
+                "event": "file_changed",
+                "taskId": "encapsulation",
+                "data": {"file": "src/Animal.ts", "changeCount": 2, "lines": [{"start": 1, "end": 3}]},
+            },
+            {"timestamp": "2026-06-11T10:05:00Z", "event": "file_saved", "taskId": "encapsulation", "data": {"file": "src/Animal.ts"}},
+            {"timestamp": "2026-06-11T10:10:00Z", "event": "task_finished", "taskId": "encapsulation"},
+            {"timestamp": "2026-06-11T10:11:00Z", "event": "submission_exported"},
+        ]
+    )
+    if tampered:
+        events[1]["data"]["changeCount"] = 99
+    return zip_upload(
+        "review-submission.zip",
+        {
+            ".vsc4education/activity-manifest.json": manifest(),
+            ".vsc4education/activity-configuration.json": {"loadedAt": "2026-06-11T09:00:00Z"},
+            ".vsc4education/contributions/ana-001/profile.json": {"firstName": "Ana", "lastName": "Garcia"},
+            ".vsc4education/contributions/ana-001/state.json": {"tasks": {"encapsulation": {"status": "completed"}}},
+            ".vsc4education/contributions/ana-001/events.jsonl": "\n".join(json.dumps(event) for event in events),
+            ".vsc4education/contributions/ana-001/agent-interactions.jsonl": "\n".join(
+                [
+                    json.dumps({"timestamp": "2026-06-11T10:01:00Z", "actor": "student", "message": "Ayuda", "taskId": "encapsulation"}),
+                    json.dumps({"timestamp": "2026-06-11T10:02:00Z", "actor": "agent", "agent": "chatGPT", "message": "Piensa en atributos privados", "taskId": "encapsulation"}),
+                ]
+            ),
+            "src/Animal.ts": "export class Animal {}",
+        },
+    )
 
 
 class ImportServicesTests(TestCase):
@@ -179,3 +230,28 @@ class ImportServicesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["id"], activity_version.id)
         self.assertEqual(response.json()[0]["courseGroups"][0]["id"], group.id)
+
+    def test_submission_review_endpoint_returns_teacher_like_sections(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version)
+
+        response = Client().get(f"/api/submissions/{submission.id}/review/")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["integrity"]["status"], "valid")
+        self.assertEqual(data["summary"]["filesModified"], 1)
+        self.assertEqual(data["summary"]["agentInteractions"], 2)
+        self.assertEqual(data["agentInteractions"][0]["actor"], "student")
+        self.assertTrue(data["agencyMetrics"]["groups"])
+        metric_names = [metric["name"] for group in data["agencyMetrics"]["groups"] for metric in group["metrics"]]
+        self.assertIn("Integridad de la cadena hash", metric_names)
+
+    def test_submission_review_endpoint_detects_hash_mismatch(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        submission = SubmissionZipImportService().import_zip(review_submission_zip(tampered=True), activity_version)
+
+        response = Client().get(f"/api/submissions/{submission.id}/review/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["integrity"]["status"], "invalid")

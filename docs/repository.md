@@ -17,6 +17,7 @@ The repository application helps teachers keep a local catalog of:
 - original activity ZIP files;
 - imported student submission ZIP files;
 - extracted process evidence summaries;
+- teacher-style submission review views derived from the original ZIP;
 - aggregate metrics and comparisons across submissions.
 
 It stores the original ZIP files and extracts normalized metadata for search,
@@ -119,6 +120,16 @@ Submission import:
 - stores the original submission ZIP;
 - records event, task, Git, agent, and warning summaries.
 
+Submission review:
+
+- reads the stored original submission ZIP on demand;
+- exposes a principal review summary, full recorded agent interactions,
+  agency metrics, raw event drill-down, and event hash-chain integrity;
+- treats missing optional evidence, such as agent interactions, as missing data
+  or warnings instead of changing the submission contract;
+- does not execute student code, install dependencies, or mutate imported ZIP
+  contents.
+
 Corrupt required JSON, unreadable required JSONL, invalid paths, and unsafe
 archive entries should produce clear import errors. Invalid lines in optional
 or evidence-oriented JSONL files may be recorded as warnings when the rest of
@@ -134,6 +145,7 @@ POST /api/submissions/import-zip/
 POST /api/activity-versions/{id}/submissions/import-zip/
 GET  /api/activity-versions/{id}/metrics/
 GET  /api/activity-versions/{id}/comparison/
+GET  /api/submissions/{id}/review/
 ```
 
 Teacher-integration endpoints:

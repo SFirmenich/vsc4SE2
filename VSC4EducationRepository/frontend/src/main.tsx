@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ArrowLeft, BookOpen, FileArchive, GraduationCap, Plus, RefreshCw, Upload, UserRound } from "lucide-react";
+import { Activity, ArrowLeft, Bot, BookOpen, FileArchive, GraduationCap, Plus, RefreshCw, ShieldCheck, Upload, UserRound } from "lucide-react";
 import { getJson, postJson, uploadZip } from "./api";
 import type {
   ActivityVersion,
@@ -10,6 +10,7 @@ import type {
   Metrics,
   Submission,
   SubmissionDetail,
+  SubmissionReview,
 } from "./types";
 import "./styles.css";
 
@@ -24,6 +25,7 @@ function App() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [activityDetail, setActivityDetail] = useState<ActivityVersionDetail | null>(null);
   const [submissionDetail, setSubmissionDetail] = useState<SubmissionDetail | null>(null);
+  const [submissionReview, setSubmissionReview] = useState<SubmissionReview | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityVersion | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -50,6 +52,7 @@ function App() {
     setActivityDetail(null);
     setSelectedSubmission(null);
     setSubmissionDetail(null);
+    setSubmissionReview(null);
     setActivities([]);
     setView("course");
     setAddPanel(null);
@@ -77,6 +80,7 @@ function App() {
     setSelectedActivity(activity);
     setSelectedSubmission(null);
     setSubmissionDetail(null);
+    setSubmissionReview(null);
     const [detail, nextSubmissions, nextMetrics] = await Promise.all([
       getJson<ActivityVersionDetail>(`/activity-versions/${activity.id}/`),
       getJson<Submission[]>(`/activity-versions/${activity.id}/submissions/${selectedCourse ? `?courseId=${selectedCourse.id}` : ""}`),
@@ -91,8 +95,12 @@ function App() {
 
   async function openSubmission(submission: Submission) {
     setSelectedSubmission(submission);
-    const detail = await getJson<SubmissionDetail>(`/submissions/${submission.id}/`);
+    const [detail, review] = await Promise.all([
+      getJson<SubmissionDetail>(`/submissions/${submission.id}/`),
+      getJson<SubmissionReview>(`/submissions/${submission.id}/review/`),
+    ]);
     setSubmissionDetail(detail);
+    setSubmissionReview(review);
     setView("submission");
     setAddPanel(null);
   }
@@ -220,7 +228,7 @@ function App() {
         )}
 
         {view === "submission" && submissionDetail && (
-          <SubmissionView submission={submissionDetail} />
+          <SubmissionView submission={submissionDetail} review={submissionReview} />
         )}
       </section>
     </main>
@@ -372,8 +380,21 @@ function ActivityView(props: {
   );
 }
 
-function SubmissionView(props: { submission: SubmissionDetail }) {
+function SubmissionView(props: { submission: SubmissionDetail; review: SubmissionReview | null }) {
   const submission = props.submission;
+  const review = props.review;
+  const [tab, setTab] = useState<"main" | "agents" | "metrics" | "integrity">("main");
+  const [agentFilter, setAgentFilter] = useState("");
+  const [eventFilter, setEventFilter] = useState("");
+  const filteredInteractions = (review?.agentInteractions ?? []).filter((interaction) => {
+    const query = agentFilter.toLowerCase();
+    return !query || [interaction.actor, interaction.agent, interaction.taskId, interaction.sessionId, interaction.message].some((value) => String(value ?? "").toLowerCase().includes(query));
+  });
+  const filteredEvents = (review?.events ?? []).filter((event) => {
+    const query = eventFilter.toLowerCase();
+    return !query || JSON.stringify(event).toLowerCase().includes(query);
+  });
+
   return (
     <>
       <SectionHeader icon={<UserRound size={20} />} title={submission.student.display_name || submission.student.institutional_id} />
@@ -381,58 +402,183 @@ function SubmissionView(props: { submission: SubmissionDetail }) {
         <div className="metrics">
           <Metric label="Eventos" value={submission.event_count} />
           <Metric label="Interacciones agente" value={submission.agent_interaction_count} />
-          <Metric label="Git" value={submission.has_git ? "Sí" : "No"} />
+          <Metric label="Git" value={submission.has_git ? "Si" : "No"} />
           <Metric label="Warnings" value={submission.warning_count} />
         </div>
+        {review && (
+          <div className="metrics">
+            <Metric label="Agencia" value={`${review.summary.agency.level} (${review.summary.agency.score}/6)`} />
+            <Metric label="Lineas unicas" value={review.summary.uniqueLinesTouched} />
+            <Metric label="Tiempo activo" value={`${review.summary.activeMinutes} min`} />
+            <Metric label="Integridad" value={integrityLabel(review.integrity.status)} />
+          </div>
+        )}
       </section>
 
-      <div className="twoColumns">
-        <section className="tablePanel">
-          <h2>Tareas</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Tarea</th>
-                <th>Estado</th>
-                <th>Duración</th>
-                <th>Guardados</th>
-                <th>Archivos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {submission.task_states.map((task) => (
-                <tr key={task.id}>
-                  <td>{task.task_id}</td>
-                  <td>{task.status || "Sin estado"}</td>
-                  <td>{task.duration_seconds ? `${Math.round(task.duration_seconds / 60)} min` : "-"}</td>
-                  <td>{task.save_count}</td>
-                  <td>{task.modified_files_count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+      <nav className="tabs" aria-label="Entrega">
+        <button className={tab === "main" ? "active" : ""} onClick={() => setTab("main")}><Activity size={16} /> Principal</button>
+        <button className={tab === "agents" ? "active" : ""} onClick={() => setTab("agents")}><Bot size={16} /> Uso de agentes</button>
+        <button className={tab === "metrics" ? "active" : ""} onClick={() => setTab("metrics")}><Upload size={16} /> Metricas</button>
+        <button className={tab === "integrity" ? "active" : ""} onClick={() => setTab("integrity")}><ShieldCheck size={16} /> Integridad</button>
+      </nav>
 
+      {tab === "main" && (
+        <>
+          {review && (
+            <div className="twoColumns">
+              <section className="tablePanel">
+                <h2>Senales de agencia</h2>
+                {review.summary.agency.positives.length ? (
+                  <ul className="signalList">{review.summary.agency.positives.map((item) => <li key={item}>{item}</li>)}</ul>
+                ) : <p>No hay senales positivas calculadas.</p>}
+              </section>
+              <section className="tablePanel">
+                <h2>Indicadores para revisar</h2>
+                {review.summary.agency.concerns.length ? (
+                  <ul className="signalList warningText">{review.summary.agency.concerns.map((item) => <li key={item}>{item}</li>)}</ul>
+                ) : <p>No hay alertas inmediatas.</p>}
+              </section>
+            </div>
+          )}
+          <div className="twoColumns">
+            <section className="tablePanel">
+              <h2>Tareas</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tarea</th>
+                    <th>Estado</th>
+                    <th>Duracion</th>
+                    <th>Guardados</th>
+                    <th>Archivos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submission.task_states.map((task) => (
+                    <tr key={task.id}>
+                      <td>{task.task_id}</td>
+                      <td>{task.status || "Sin estado"}</td>
+                      <td>{task.duration_seconds ? `${Math.round(task.duration_seconds / 60)} min` : "-"}</td>
+                      <td>{task.save_count}</td>
+                      <td>{task.modified_files_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="tablePanel">
+              <h2>Eventos</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submission.event_summaries.map((event) => (
+                    <tr key={event.event_type}>
+                      <td>{event.event_type}</td>
+                      <td>{event.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          </div>
+        </>
+      )}
+
+      {tab === "agents" && (
         <section className="tablePanel">
-          <h2>Eventos</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Cantidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {submission.event_summaries.map((event) => (
-                <tr key={event.event_type}>
-                  <td>{event.event_type}</td>
-                  <td>{event.count}</td>
-                </tr>
+          <div className="panelHeader">
+            <h2><Bot size={18} /> Conversaciones con agentes</h2>
+            <input value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} placeholder="Filtrar por actor, agente, tarea o texto" />
+          </div>
+          {filteredInteractions.length ? (
+            <div className="conversationList">
+              {filteredInteractions.map((interaction, index) => (
+                <article className={`messageItem ${interaction.actor}`} key={`${interaction.timestamp}-${index}`}>
+                  <div>
+                    <strong>{interaction.actor === "student" ? "Estudiante" : interaction.agent || "Agente"}</strong>
+                    <span>{interaction.timestamp}{interaction.taskId ? ` - ${interaction.taskId}` : ""}</span>
+                  </div>
+                  <p>{interaction.message}</p>
+                </article>
               ))}
-            </tbody>
-          </table>
+            </div>
+          ) : <EmptyState text="No hay conversaciones de agente registradas para esta entrega." />}
+          {(review?.agentInteractionErrors.length ?? 0) > 0 && (
+            <div className="warningBlock">
+              <strong>Problemas de lectura</strong>
+              {review?.agentInteractionErrors.map((error) => <span key={error}>{error}</span>)}
+            </div>
+          )}
         </section>
-      </div>
+      )}
+
+      {tab === "metrics" && (
+        <section className="tablePanel">
+          <h2>Metricas de agencia</h2>
+          {review ? review.agencyMetrics.groups.map((group) => (
+            <div className="metricGroup" key={group.dimension}>
+              <h3>{group.dimension}</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>N</th>
+                    <th>Metrica</th>
+                    <th>Valor</th>
+                    <th>Evidencia</th>
+                    <th>Lectura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.metrics.map((metric) => (
+                    <tr key={metric.id}>
+                      <td><code>{metric.id}</code></td>
+                      <td><strong>{metric.name}</strong>{metric.priority && <span className="badge">Prioritaria</span>}<br /><small className={`reliability ${metric.reliability}`}>{metric.reliability}</small></td>
+                      <td><strong>{metric.value}{metric.unit ? ` ${metric.unit}` : ""}</strong></td>
+                      <td>{metric.detail}<br /><small>{metric.evidenceCount} eventos/senales</small></td>
+                      <td>{metric.interpretation}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )) : <EmptyState text="No se pudieron cargar las metricas profundas." />}
+        </section>
+      )}
+
+      {tab === "integrity" && (
+        <div className="twoColumns">
+          <section className={`tablePanel integrityPanel ${review?.integrity.status ?? "not_available"}`}>
+            <h2><ShieldCheck size={18} /> Cadena hash</h2>
+            <div className="integrityStatus">
+              <strong>{integrityLabel(review?.integrity.status ?? "not_available")}</strong>
+              <span>{review?.integrity.message ?? "No hay datos de integridad disponibles."}</span>
+            </div>
+            <table>
+              <tbody>
+                <tr><th>Entradas verificadas</th><td>{review?.integrity.checkedEntries ?? 0}</td></tr>
+                <tr><th>Primera linea invalida</th><td>{review?.integrity.firstInvalidLine ?? "-"}</td></tr>
+                <tr><th>Lineas JSONL invalidas</th><td>{review?.eventParseErrors.length ?? 0}</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section className="tablePanel">
+            <div className="panelHeader">
+              <h2>Eventos crudos</h2>
+              <input value={eventFilter} onChange={(event) => setEventFilter(event.target.value)} placeholder="Filtrar eventos" />
+            </div>
+            <div className="eventList">
+              {filteredEvents.slice(0, 80).map((event, index) => <pre key={index}>{JSON.stringify(event, null, 2)}</pre>)}
+            </div>
+            {filteredEvents.length > 80 && <p>Mostrando los primeros 80 eventos filtrados.</p>}
+          </section>
+        </div>
+      )}
 
       {submission.warnings.length > 0 && (
         <section className="tablePanel warningPanel">
@@ -447,6 +593,13 @@ function SubmissionView(props: { submission: SubmissionDetail }) {
       )}
     </>
   );
+}
+
+function integrityLabel(status: string) {
+  if (status === "valid") return "Valida";
+  if (status === "invalid") return "Invalida";
+  if (status === "incomplete") return "Incompleta";
+  return "No disponible";
 }
 
 function SectionHeader(props: { icon: React.ReactNode; title: string; actionLabel?: string; onAction?: () => void }) {
