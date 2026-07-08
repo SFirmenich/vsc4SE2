@@ -20,6 +20,8 @@ interface CreateActivityPayload {
   firstTaskTitle: string;
 }
 
+type LegacyImportKind = "practice" | "theory";
+
 export class TeacherPanel {
   private static current: TeacherPanel | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -116,6 +118,7 @@ export class TeacherPanel {
     type: string;
     path?: string;
     kind?: "task" | "theory" | "rubric";
+    importKind?: LegacyImportKind;
     taskFile?: string;
     activity?: CreateActivityPayload;
   }): Promise<void> {
@@ -129,6 +132,9 @@ export class TeacherPanel {
           break;
         case "createFile":
           if (message.kind) await this.createFile(message.kind);
+          break;
+        case "importLegacyMaterial":
+          if (message.importKind) await this.importLegacyMaterial(message.importKind);
           break;
         case "addTask":
           await this.addNextTask();
@@ -248,6 +254,44 @@ export class TeacherPanel {
     await fs.writeFile(target, `# ${name}\n`, "utf8");
     await this.openFile(relativePath);
     await this.refresh();
+  }
+
+  private async importLegacyMaterial(kind: LegacyImportKind): Promise<void> {
+    const selection = await vscode.window.showOpenDialog({
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      openLabel: kind === "practice" ? "Import legacy practice" : "Import theory material"
+    });
+    const source = selection?.[0]?.fsPath;
+    if (!source) return;
+
+    const importsRoot = resolveInside(this.root, path.join("imports", kind));
+    await fs.mkdir(importsRoot, { recursive: true });
+    const destination = await this.nextAvailableImportPath(
+      importsRoot,
+      path.basename(source)
+    );
+    await fs.copyFile(source, destination);
+    const relativeDestination = path.relative(this.root, destination);
+    void vscode.window.showInformationMessage(
+      `Imported ${path.basename(source)} to ${relativeDestination}`
+    );
+    await this.refresh();
+  }
+
+  private async nextAvailableImportPath(
+    directory: string,
+    filename: string
+  ): Promise<string> {
+    const parsed = path.parse(filename);
+    let candidate = path.join(directory, filename);
+    let suffix = 1;
+    while (await pathExists(candidate)) {
+      candidate = path.join(directory, `${parsed.name}-${suffix}${parsed.ext}`);
+      suffix += 1;
+    }
+    return candidate;
   }
 
   private async addNextTask(): Promise<void> {
