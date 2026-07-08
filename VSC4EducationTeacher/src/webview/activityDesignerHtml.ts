@@ -23,7 +23,7 @@ export function activityDesignerHtml(
     ["theory", "Theory"],
     ["starter", "Starter project"],
     ["agent", "Agent instructions"],
-    ["rubric", "Rubric"],
+    ["rubric", "Legacy rubric"],
     ["validation", "Validation"],
     ["export", "Export"]
   ];
@@ -54,7 +54,7 @@ export function activityDesignerHtml(
   <section id="theory"><h2>Theory</h2><p>Add Markdown files under <code>theory/</code>. Refer to them from task descriptions or agent instructions as needed.</p><button data-command="revealPath" data-path="theory">Reveal theory folder</button></section>
   <section id="starter"><h2>Starter project</h2><p>Files under <code>starter/</code> are copied into the student's <code>src/</code> folder.</p><button data-command="revealPath" data-path="starter">Reveal starter folder</button></section>
   <section id="agent"><h2>Agent instructions</h2><textarea id="instructions" style="min-height:360px"></textarea><p><button id="save-instructions">Save instructions</button></p></section>
-  <section id="rubric"><h2>Rubric</h2><p class="muted">Edit the rubric as JSON. Criteria IDs must be unique, task references valid, weights non-negative, and levels ordered.</p><textarea id="rubric-json" style="min-height:420px"></textarea><p><button id="save-rubric">Save rubric</button></p></section>
+  <section id="rubric"><h2>Legacy rubric</h2><p class="muted">New activities use assessment/rubrics/&lt;taskId&gt;.yml and assessment/solutions/&lt;taskId&gt;.md. This JSON editor is kept only for legacy rubrics/main.json files.</p><textarea id="rubric-json" style="min-height:420px"></textarea><p><button id="save-rubric">Save legacy rubric</button></p></section>
   <section id="validation"><h2>Validation</h2><button id="run-validation">Run validation</button><div id="validation-results"></div></section>
   <section id="export"><h2>Export</h2><p>Export creates a student-compatible ZIP after successful validation. SHA-256 hashes are local evidence and are not presented as a digital signature.</p><button id="run-export">Export package</button></section>
 </main>`;

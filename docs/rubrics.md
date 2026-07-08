@@ -1,9 +1,24 @@
 # Rubrics
 
-The main rubric is stored at `rubrics/main.json`. Criteria support an ID,
-title, description, weight, related task IDs, and ordered numeric levels.
+The current teacher assessment contract is task-oriented and stored under:
 
-Validation checks unique valid IDs, existing task references, non-negative
-weights, a total weight of 100, and non-empty strictly increasing levels.
-The 100-point total is currently a warning so authors can save incomplete
-drafts, while structurally invalid criteria block activity export.
+```text
+assessment/
+|-- rubrics/
+`-- solutions/
+```
+
+Each task declared in `manifest.tasks[*].id` must have a private YAML rubric at
+`assessment/rubrics/<taskId>.yml` and an official solution at
+`assessment/solutions/<taskId>.md`. The sum of all task rubric `maxScore` values
+must be 100.
+
+Rubric YAML criteria are private-only. Public acceptance criteria remain in
+`manifest.tasks[*].acceptanceCriteria`.
+
+See [Assessment rubric YAML](assessment-rubrics.md) for the complete format and
+examples.
+
+Legacy activities may still contain `rubrics/main.json`. The teacher extension
+can validate that file for backward compatibility, but new activities should use
+the per-task assessment structure.

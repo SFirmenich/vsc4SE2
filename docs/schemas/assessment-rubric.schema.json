@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsc4education.local/schemas/assessment-rubric.schema.json",
+  "title": "VSCode4Education Assessment Rubric",
+  "description": "Private per-task teacher assessment rubric for assessment/rubrics/<taskId>.yml.",
+  "type": "object",
+  "required": [
+    "maxScore",
+    "requiresTeacherReview",
+    "criteria",
+    "agency"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "taskId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "description": "Optional task ID. When present, it must match the manifest task ID and file name."
+    },
+    "maxScore": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Maximum score for this task. All task maxScore values across the activity must total 100."
+    },
+    "requiresTeacherReview": {
+      "type": "boolean",
+      "description": "Whether the teacher must review or confirm the proposed score."
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Private scoring criteria for this task.",
+      "items": {
+        "$ref": "#/$defs/criterion"
+      }
+    },
+    "agency": {
+      "$ref": "#/$defs/agency"
+    }
+  },
+  "$defs": {
+    "criterion": {
+      "type": "object",
+      "required": [
+        "id",
+        "maxScore",
+        "allowsPartialCredit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "maxScore": {
+          "type": "number",
+          "minimum": 0
+        },
+        "allowsPartialCredit": {
+          "type": "boolean",
+          "description": "If true, intermediate scores are allowed. If false, the criterion is all-or-nothing."
+        }
+      }
+    },
+    "agency": {
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "none",
+            "weighted",
+            "modifier",
+            "cap",
+            "bonus"
+          ]
+        },
+        "maxScore": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Points reserved for agency when mode is weighted."
+        },
+        "maxAdjustment": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum absolute score adjustment for modifier or bonus modes."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agencyRule"
+          }
+        }
+      }
+    },
+    "agencyRule": {
+      "type": "object",
+      "required": [
+        "metric",
+        "when"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "type": "string",
+          "examples": [
+            "observableAgency.score"
+          ]
+        },
+        "when": {
+          "type": "string",
+          "description": "Simple condition over the metric, such as \">= 80\" or \"< 40\"."
+        },
+        "reason": {
+          "type": "string"
+        },
+        "adjustment": {
+          "type": "number"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cap": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

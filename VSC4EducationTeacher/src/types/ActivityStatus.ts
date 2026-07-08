@@ -4,7 +4,7 @@ import { ValidationResult } from "./Validation";
 
 export interface ActivityFileStatus {
   path: string;
-  kind: "manifest" | "task" | "theory" | "agent" | "rubric" | "starter";
+  kind: "manifest" | "task" | "theory" | "agent" | "rubric" | "assessment" | "starter";
   exists: boolean;
   referenced?: boolean;
   size?: number;

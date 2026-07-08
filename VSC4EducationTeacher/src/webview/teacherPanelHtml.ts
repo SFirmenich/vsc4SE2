@@ -168,7 +168,8 @@ function renderActivityReady(status) {
       <div class="row">
         \${openButton('manifest.json', 'Edit manifest.json')}
         \${openButton('agent/instructions.md', 'Edit agent instructions')}
-        \${status.files.some((file) => file.path === 'rubrics/main.json' && file.exists) ? openButton('rubrics/main.json', 'Edit rubric') : '<button data-create-file="rubric">Create rubric</button>'}
+        <button data-create-file="rubric">Open assessment rubric</button>
+        <button data-reveal="assessment" class="secondary">Reveal assessment folder</button>
       </div>
       \${invalidManifest ? '<p class="error">The manifest cannot be parsed. Open it, correct the JSON, and save it; this panel will refresh automatically.</p>' : ''}
     </div>
@@ -179,6 +180,10 @@ function renderActivityReady(status) {
         <strong>\${esc(task.title)}</strong> <code>\${esc(task.id)}</code>
         <p class="muted">Dependencies: \${esc(task.dependencies.join(', ') || 'none')}</p>
         \${task.file ? (task.fileExists ? openButton(task.file, 'Edit task Markdown') : \`<span class="error">Missing \${esc(task.file)}</span>\`) : '<span class="warning">No Markdown file assigned</span>'}
+        <div class="row">
+          \${openButton(\`assessment/rubrics/\${task.id}.yml\`, 'Edit private rubric')}
+          \${openButton(\`assessment/solutions/\${task.id}.md\`, 'Edit official solution')}
+        </div>
       </div>\`).join('') || '<p class="muted">No registered tasks found.</p>'}</div>
     \${status.discoveredTasks.length ? \`
       <h3>Discovered task files</h3>

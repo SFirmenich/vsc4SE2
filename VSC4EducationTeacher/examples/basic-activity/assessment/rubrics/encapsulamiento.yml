@@ -1,0 +1,25 @@
+taskId: encapsulamiento
+maxScore: 100
+requiresTeacherReview: true
+
+criteria:
+  - id: encapsulation
+    title: Encapsulamiento correcto
+    maxScore: 50
+    allowsPartialCredit: true
+    description: Protege el estado y evita modificaciones directas externas.
+
+  - id: invariants
+    title: Conserva invariantes
+    maxScore: 30
+    allowsPartialCredit: true
+    description: Impide estados invalidos y mantiene reglas del dominio.
+
+  - id: explanation
+    title: Justificacion
+    maxScore: 20
+    allowsPartialCredit: true
+    description: Explica decisiones de encapsulamiento con evidencia del codigo.
+
+agency:
+  mode: none

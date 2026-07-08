@@ -51,8 +51,7 @@ export class ActivityStatusService {
         "agent/instructions.md",
         "agent",
         true
-      ),
-      await this.fileStatus(root, "rubrics/main.json", "rubric", true)
+      )
     ];
     const tasks = [];
     for (const task of manifest?.tasks ?? []) {
@@ -72,6 +71,10 @@ export class ActivityStatusService {
           await this.fileStatus(root, task.file, "task", true)
         );
       }
+      files.push(
+        await this.fileStatus(root, `assessment/rubrics/${task.id}.yml`, "assessment", true),
+        await this.fileStatus(root, `assessment/solutions/${task.id}.md`, "assessment", true)
+      );
     }
 
     const referenced = new Set(files.map((file) => file.path));
@@ -84,6 +87,8 @@ export class ActivityStatusService {
     for (const [directory, kind] of [
       ["tasks", "task"],
       ["theory", "theory"],
+      ["assessment", "assessment"],
+      ["rubrics", "rubric"],
       ["starter", "starter"]
     ] as const) {
       const directoryFiles =

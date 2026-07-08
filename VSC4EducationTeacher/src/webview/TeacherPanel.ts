@@ -13,7 +13,7 @@ import { SubmissionReviewService } from "../services/SubmissionReviewService";
 import { ActivityManifest } from "../types/ActivityManifest";
 import { SubmissionFeedback } from "../types/Feedback";
 import { Rubric } from "../types/Rubric";
-import { pathExists, readJson, writeJson } from "../utils/fs";
+import { pathExists, readJson } from "../utils/fs";
 import { resolveInside } from "../utils/paths";
 import { VALID_ID } from "../utils/validation";
 import { SubmissionReviewModel } from "./submissionReviewHtml";
@@ -490,6 +490,7 @@ export class TeacherPanel {
       `# ${activity.firstTaskTitle}\n`,
       "utf8"
     );
+    await this.projects.ensureAssessmentFiles(root, manifest);
     await this.refresh();
     void vscode.window.showInformationMessage("Activity initialized");
   }
@@ -505,10 +506,11 @@ export class TeacherPanel {
   private async createFile(kind: "task" | "theory" | "rubric"): Promise<void> {
     const root = this.requireActivityRoot();
     if (kind === "rubric") {
-      const rubric: Rubric = { id: "main-rubric", title: "Main rubric", criteria: [] };
-      const target = path.join(root, "rubrics", "main.json");
-      await writeJson(target, rubric);
-      await this.openFile("rubrics/main.json");
+      const status = await this.statusService.inspect(root);
+      if (!status.manifest) throw new Error("Fix manifest.json before creating assessment rubrics");
+      await this.projects.ensureAssessmentFiles(root, status.manifest);
+      const firstTask = status.manifest.tasks[0];
+      await this.openFile(`assessment/rubrics/${firstTask.id}.yml`);
       await this.refresh();
       return;
     }
@@ -616,6 +618,7 @@ Create or update the canonical activity files from that material while preservin
       expectedEvidence: ["source_changes", "task_events", "git_commits"]
     });
     await this.projects.save(root, status.manifest);
+    await this.projects.ensureAssessmentFiles(root, status.manifest);
     await this.openFile(relativePath);
     await this.refresh();
   }
@@ -640,6 +643,7 @@ Create or update the canonical activity files from that material while preservin
       expectedEvidence: ["source_changes", "task_events", "git_commits"]
     });
     await this.projects.save(root, status.manifest);
+    await this.projects.ensureAssessmentFiles(root, status.manifest);
     await this.refresh();
   }
 

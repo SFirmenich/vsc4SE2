@@ -36,6 +36,8 @@ describe("ZIP export and submission import", () => {
     assert.ok(names.includes("signatures/hashes.json"));
     assert.ok(!names.includes("AGENTS.md"));
     assert.ok(!names.some((name) => name.startsWith("imports/")));
+    assert.ok(!names.some((name) => name.startsWith("assessment/")));
+    assert.ok(!names.some((name) => name.startsWith("rubrics/")));
   });
 
   it("blocks path traversal before resolving extraction targets", () => {

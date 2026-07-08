@@ -48,11 +48,14 @@ describe("Workspace activity status", () => {
 
     assert.ok(await fs.stat(path.join(root, "imports", "theory")));
     assert.ok(await fs.stat(path.join(root, "imports", "practice")));
+    assert.ok(await fs.stat(path.join(root, "resources", "assessment-rubric.schema.json")));
     const agents = await fs.readFile(path.join(root, "AGENTS.md"), "utf8");
     assert.ok(agents.includes("imports/theory"));
     assert.ok(agents.includes("imports/practice"));
     assert.ok(agents.includes("tasks/"));
     assert.ok(agents.includes("theory/"));
+    assert.ok(agents.includes("resources/assessment-rubric.schema.json"));
+    assert.ok(agents.includes("assessment/rubrics/<taskId>.yml"));
   });
 
   it("keeps the dashboard available for malformed manifest JSON", async () => {

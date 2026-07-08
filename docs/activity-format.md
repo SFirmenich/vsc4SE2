@@ -85,6 +85,28 @@ active.
 The extension appends the technical contract required to record agent
 interactions in JSONL format.
 
+## Teacher-Only Assessment Material
+
+Teacher source projects and teacher packages may contain private assessment
+material:
+
+```text
+assessment/
+|-- rubrics/
+|   `-- <taskId>.yml
+`-- solutions/
+    `-- <taskId>.md
+resources/
+`-- assessment-rubric.schema.json
+```
+
+For each manifest task ID, the teacher package should include one matching YAML
+rubric and one matching official solution. This material is excluded from the
+student activity ZIP. Public task acceptance criteria remain in
+`manifest.tasks[*].acceptanceCriteria`.
+
+See [Assessment rubric YAML](assessment-rubrics.md) for the YAML contract.
+
 ## Identity And Contributions
 
 Before starting a task, the student must provide first name, last name, and an
