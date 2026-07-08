@@ -5,7 +5,7 @@ import { openReviewPanelCommand } from "./commands/openReviewPanelCommand";
 import { openTeacherPanelCommand } from "./commands/openTeacherPanelCommand";
 
 export function activate(context: vscode.ExtensionContext): void {
-  const teacherPanel = openTeacherPanelCommand();
+  const teacherPanel = openTeacherPanelCommand(context);
   const commands: Array<[string, () => Promise<void>]> = [
     ["teacherActivity.openPanel", teacherPanel],
     ["teacherActivity.create", teacherPanel],

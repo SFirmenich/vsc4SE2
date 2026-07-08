@@ -13,33 +13,14 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:teacherActivity.openPanel",
-    "onCommand:teacherActivity.create",
-    "onCommand:teacherActivity.open",
-    "onCommand:teacherActivity.validate",
-    "onCommand:teacherActivity.export",
-    "onCommand:teacherSubmission.import",
-    "onCommand:teacherSubmission.openReview",
-    "onCommand:teacherSubmission.exportFeedback"
+    "onCommand:teacherActivity.openPanel"
   ],
   "main": "./out/src/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "teacherActivity.openPanel",
-        "title": "Learning Activity Teacher: Open Teacher Panel"
-      },
-      {
-        "command": "teacherSubmission.import",
-        "title": "Learning Activity Teacher: Import Student Submission"
-      },
-      {
-        "command": "teacherSubmission.openReview",
-        "title": "Learning Activity Teacher: Open Submission Review"
-      },
-      {
-        "command": "teacherSubmission.exportFeedback",
-        "title": "Learning Activity Teacher: Export Feedback"
+        "title": "Learning Activity Teacher: Open Teach Panel"
       }
     ]
   },
