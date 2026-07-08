@@ -43,6 +43,8 @@ The directories serve different purposes:
 
 - `tasks/`: task statements.
 - `theory/`: supporting theoretical material.
+- `imports/theory/` and `imports/practice/`: local source material used while
+  adapting previous activities into the canonical files.
 - `starter/proyecto-base/`: initial project received by the student.
 - `agent/`: pedagogical instructions for AI agents.
 - `rubrics/`: evaluation criteria.
@@ -57,6 +59,13 @@ different tools to understand its structure.
 The teacher extension works on a directory opened in VS Code. That directory is
 the activity source of truth: files are edited as normal files and the teacher
 panel interprets them to show activity state.
+
+New activity projects also include a root `AGENTS.md` for authoring support.
+It describes the project structure and tells coding agents how to use
+`imports/` as source material when the teacher asks to update `tasks/`,
+`theory/`, or other canonical activity files. The root `AGENTS.md` and
+`imports/` are local authoring aids and are excluded from the exported student
+activity ZIP.
 
 The main command is:
 

@@ -5,7 +5,10 @@
       "name": "Run Learning Activity Tracker - Teacher",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensions-dir=${env:USERPROFILE}/.vscode/extensions"
+      ],
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
       "preLaunchTask": "npm: compile"
     }

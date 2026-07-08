@@ -30,6 +30,8 @@ export class ActivityPackageService {
         const relative = path.relative(activityRoot, file).replace(/\\/g, "/");
         if (
           relative === "signatures/hashes.json" ||
+          relative === "AGENTS.md" ||
+          relative.startsWith("imports/") ||
           relative.startsWith(".git/") ||
           relative.startsWith("node_modules/")
         ) {
@@ -43,6 +45,11 @@ export class ActivityPackageService {
         files: hashes
       });
     }
-    await this.zip.createFromDirectory(activityRoot, destination);
+    await this.zip.createFromDirectory(
+      activityRoot,
+      destination,
+      new Set(["node_modules", ".git", "dist", "out"]),
+      new Set(["imports", "AGENTS.md"])
+    );
   }
 }

@@ -18,11 +18,18 @@ describe("ZIP export and submission import", () => {
       tasks: [{ id: "task", title: "Task", file: "tasks/task.md" }]
     });
     await fs.writeFile(path.join(root, "tasks", "task.md"), "# Task");
+    await fs.writeFile(path.join(root, "imports", "theory", "legacy.pdf"), "PDF");
+    await fs.writeFile(
+      path.join(root, "imports", "practice", "legacy.docx"),
+      "DOCX"
+    );
     const destination = path.join(parent, "activity.zip");
     await new ActivityPackageService().export(root, destination);
     const names = new AdmZip(destination).getEntries().map((entry) => entry.entryName);
     assert.ok(names.includes("manifest.json"));
     assert.ok(names.includes("signatures/hashes.json"));
+    assert.ok(!names.includes("AGENTS.md"));
+    assert.ok(!names.some((name) => name.startsWith("imports/")));
   });
 
   it("blocks path traversal before resolving extraction targets", () => {

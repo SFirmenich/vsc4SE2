@@ -9,6 +9,9 @@ submissions compatible with **Learning Activity Tracker - Student**.
 - Use one Teacher Panel to inspect project state, validate, and export.
 - Edit manifests, tasks, theory, rubrics, agent instructions, and starter code
   with the normal VS Code file editors.
+- Use local `imports/theory` and `imports/practice` folders plus the generated
+  root `AGENTS.md` to help agents port previous course material into the
+  activity structure.
 - Validate manifests, references, cycles, paths, rubrics, and package contents.
 - Export student-compatible ZIP packages with optional SHA-256 file hashes.
 - Safely import student ZIP submissions into a teacher-selected inspection
