@@ -1,7 +1,9 @@
 import { randomBytes } from 'crypto';
+import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { LearningActivityService } from '../services/LearningActivityService';
+import { LEARNING_DIRECTORY } from '../utils/paths';
 import { getStudentPanelHtml } from './html';
 
 export class StudentPanel {
@@ -68,11 +70,47 @@ export class StudentPanel {
 			case 'finishTask':
 				await vscode.commands.executeCommand('learningActivity.finishTask', message.taskId);
 				break;
+			case 'openTaskFile':
+				await this.openTaskFile(message.taskId);
+				break;
 			case 'exportSubmission':
 				await vscode.commands.executeCommand('learningActivity.exportSubmission');
 				break;
 		}
 		await this.refresh();
+	}
+
+	private async openTaskFile(taskId: string | undefined): Promise<void> {
+		if (!taskId) {
+			throw new Error('No se indicó la tarea.');
+		}
+		const snapshot = await this.activityService.getSnapshot();
+		if (!snapshot) {
+			throw new Error('No hay una actividad cargada.');
+		}
+		const task = snapshot.manifest.tasks.find(item => item.id === taskId);
+		if (!task) {
+			throw new Error(`La tarea "${taskId}" no existe.`);
+		}
+		if (!task.file) {
+			throw new Error(`La tarea "${taskId}" no tiene un enunciado Markdown asociado.`);
+		}
+		if (path.isAbsolute(task.file)) {
+			throw new Error(`El enunciado de la tarea "${taskId}" no usa una ruta relativa válida.`);
+		}
+		const activityRoot = path.resolve(snapshot.root, LEARNING_DIRECTORY);
+		const target = path.resolve(activityRoot, task.file);
+		const relative = path.relative(activityRoot, target);
+		if (relative.startsWith('..') || path.isAbsolute(relative)) {
+			throw new Error(`El enunciado de la tarea "${taskId}" apunta fuera de la actividad.`);
+		}
+		const uri = vscode.Uri.file(target);
+		try {
+			await vscode.workspace.fs.stat(uri);
+		} catch {
+			throw new Error(`No se encontró el enunciado de la tarea "${taskId}".`);
+		}
+		await vscode.commands.executeCommand('markdown.showPreview', uri);
 	}
 
 	private dispose(): void {
