@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Activity, ArrowLeft, Bot, BookOpen, FileArchive, GraduationCap, Plus, RefreshCw, ShieldCheck, Upload, UserRound } from "lucide-react";
+import * as d3 from "d3";
+import { Activity, ArrowLeft, BarChart3, Bot, BookOpen, FileArchive, GraduationCap, Plus, RefreshCw, ShieldCheck, Upload, UserRound, X } from "lucide-react";
 import { getJson, getListJson, postJson, uploadZip } from "./api";
 import type {
   ActivityVersion,
   ActivityVersionDetail,
   ActivityReviewDashboard,
+  ActivitySubmissionAnalysis,
   Course,
   CourseGroup,
   Metrics,
   Submission,
+  SubmissionAnalysisRow,
   SubmissionDetail,
   SubmissionReview,
 } from "./types";
@@ -222,6 +225,7 @@ function App() {
             groups={selectedCourseGroups}
             submissions={submissions}
             metrics={metrics}
+            scopeQuery={selectedCourse ? `?courseId=${selectedCourse.id}` : ""}
             addPanel={addPanel}
             onAdd={() => setAddPanel(addPanel === "submission" ? null : "submission")}
             onUpload={(file, groupId) => importSubmission(file, groupId).catch((error) => setMessage(errorMessage(error)))}
@@ -317,16 +321,20 @@ function ActivityView(props: {
   groups: CourseGroup[];
   submissions: Submission[];
   metrics: Metrics | null;
+  scopeQuery: string;
   addPanel: string | null;
   onAdd: () => void;
   onUpload: (file: File, groupId: string) => void;
   onOpen: (submission: Submission) => void;
 }) {
   const activity = props.activity;
-  const [tab, setTab] = useState<"submissions" | "dashboard">("submissions");
+  const [tab, setTab] = useState<"submissions" | "analysis" | "dashboard">("submissions");
   const [dashboard, setDashboard] = useState<ActivityReviewDashboard | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
+  const [analysis, setAnalysis] = useState<ActivitySubmissionAnalysis | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
 
   async function openDashboard() {
     setTab("dashboard");
@@ -341,6 +349,22 @@ function ActivityView(props: {
       setDashboardError(errorMessage(error));
     } finally {
       setDashboardLoading(false);
+    }
+  }
+
+  async function openAnalysis() {
+    setTab("analysis");
+    if (analysis || analysisLoading) {
+      return;
+    }
+    setAnalysisLoading(true);
+    setAnalysisError("");
+    try {
+      setAnalysis(await getJson<ActivitySubmissionAnalysis>(`/activity-versions/${props.fallbackActivity.id}/submission-analysis/${props.scopeQuery}`));
+    } catch (error) {
+      setAnalysisError(errorMessage(error));
+    } finally {
+      setAnalysisLoading(false);
     }
   }
 
@@ -369,6 +393,7 @@ function ActivityView(props: {
 
       <nav className="tabs" aria-label="Actividad">
         <button className={tab === "submissions" ? "active" : ""} onClick={() => setTab("submissions")}><Upload size={16} /> Entregas</button>
+        <button className={tab === "analysis" ? "active" : ""} onClick={openAnalysis}><BarChart3 size={16} /> Analisis de entregas</button>
         <button className={tab === "dashboard" ? "active" : ""} onClick={openDashboard}><Activity size={16} /> Dashboard</button>
       </nav>
 
@@ -424,8 +449,270 @@ function ActivityView(props: {
       {tab === "dashboard" && (
         <ActivityDashboardView dashboard={dashboard} loading={dashboardLoading} error={dashboardError} />
       )}
+
+      {tab === "analysis" && (
+        <SubmissionAnalysisView analysis={analysis} loading={analysisLoading} error={analysisError} />
+      )}
     </>
   );
+}
+
+type AnalysisChartKind = "bar" | "dot" | "category";
+
+type AnalysisPoint = {
+  id: number;
+  label: string;
+  value: number | string;
+};
+
+type AnalysisMetricSeries = {
+  key: string;
+  title: string;
+  unit?: string | null;
+  dimension: string;
+  kind: AnalysisChartKind;
+  points: AnalysisPoint[];
+};
+
+const SUMMARY_ANALYSIS_METRICS: { key: string; title: string; unit?: string; kind?: AnalysisChartKind }[] = [
+  { key: "activeMinutes", title: "Tiempo activo", unit: "min" },
+  { key: "uniqueLinesTouched", title: "Lineas unicas modificadas" },
+  { key: "filesModified", title: "Archivos modificados" },
+  { key: "fileChangeEvents", title: "Eventos de cambio de archivo" },
+  { key: "saves", title: "Guardados" },
+  { key: "tasksStarted", title: "Tareas iniciadas" },
+  { key: "tasksCompleted", title: "Tareas completadas" },
+  { key: "agentInteractions", title: "Interacciones con agente" },
+  { key: "studentAgentMessages", title: "Mensajes del estudiante al agente" },
+  { key: "agentResponses", title: "Respuestas del agente" },
+  { key: "commits", title: "Commits" },
+  { key: "heartbeatGaps", title: "Cortes de heartbeat" },
+  { key: "agencyScore", title: "Puntaje de agencia", kind: "dot" },
+];
+
+function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | null; loading: boolean; error: string }) {
+  const [selectedMetric, setSelectedMetric] = useState<AnalysisMetricSeries | null>(null);
+  const metrics = useMemo(() => buildAnalysisMetrics(props.analysis?.submissions ?? []), [props.analysis]);
+
+  if (props.loading) {
+    return <EmptyState text="Calculando analisis de entregas..." />;
+  }
+  if (props.error) {
+    return <section className="tablePanel warningPanel"><h2>No se pudo cargar el analisis</h2><p>{props.error}</p></section>;
+  }
+  if (!props.analysis) {
+    return <EmptyState text="Abri el tab Analisis de entregas para calcular las metricas por entrega." />;
+  }
+  if (!metrics.length) {
+    return <EmptyState text="No hay metricas suficientes para graficar." />;
+  }
+
+  return (
+    <>
+      <section className="detailPanel">
+        <div className="metrics">
+          <Metric label="Entregas analizadas" value={`${props.analysis.reviewedSubmissionCount}/${props.analysis.submissionCount}`} />
+          <Metric label="Graficos" value={metrics.length} />
+          <Metric label="Metricas prioritarias" value={metrics.filter((metric) => metric.dimension.includes("Prioritarias")).length} />
+          <Metric label="Advertencias" value={props.analysis.warnings.length} />
+        </div>
+      </section>
+
+      <section className="analysisGrid" aria-label="Analisis de entregas">
+        {metrics.map((metric) => (
+          <button className="analysisCard" key={metric.key} onClick={() => setSelectedMetric(metric)}>
+            <strong>{metric.title}</strong>
+            <small>{metric.dimension}</small>
+            <AnalysisChart metric={metric} size="mini" />
+          </button>
+        ))}
+      </section>
+
+      {props.analysis.warnings.length > 0 && (
+        <section className="tablePanel warningPanel">
+          <h2>Entregas sin analisis completo</h2>
+          {props.analysis.warnings.map((warning) => (
+            <div className="warningItem" key={`${warning.submissionId}-${warning.code}`}>
+              <strong>{warning.studentId} - {warning.code}</strong>
+              <span>{warning.message}</span>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {selectedMetric && (
+        <div className="dialogOverlay" role="presentation" onClick={() => setSelectedMetric(null)}>
+          <dialog className="chartDialog" open aria-labelledby="chartDialogTitle" onClick={(event) => event.stopPropagation()}>
+            <div className="dialogHeader">
+              <div>
+                <h2 id="chartDialogTitle">{selectedMetric.title}</h2>
+                <p>{selectedMetric.dimension}{selectedMetric.unit ? ` - ${selectedMetric.unit}` : ""}</p>
+              </div>
+              <button className="iconButton" onClick={() => setSelectedMetric(null)} title="Cerrar">
+                <X size={17} />
+              </button>
+            </div>
+            <AnalysisChart metric={selectedMetric} size="large" />
+          </dialog>
+        </div>
+      )}
+    </>
+  );
+}
+
+function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeries[] {
+  const result: AnalysisMetricSeries[] = [];
+  for (const metric of SUMMARY_ANALYSIS_METRICS) {
+    const points = rows
+      .map((row) => ({
+        id: row.submissionId,
+        label: row.studentName || row.studentId,
+        value: row.summary[metric.key],
+      }))
+      .filter((point): point is AnalysisPoint => typeof point.value === "number" && Number.isFinite(point.value));
+    if (points.length) {
+      result.push({
+        key: `summary:${metric.key}`,
+        title: metric.title,
+        unit: metric.unit,
+        dimension: "Resumen observable",
+        kind: metric.kind ?? inferNumericChartKind(metric.title, metric.unit),
+        points,
+      });
+    }
+  }
+
+  result.push(
+    categoricalMetric("integrityStatus", "Integridad", "Control de entrega", rows.map((row) => ({ id: row.submissionId, label: row.studentName || row.studentId, value: integrityLabel(row.integrityStatus) }))),
+    categoricalMetric("agencyLevel", "Nivel de agencia", "Agencia", rows.map((row) => ({ id: row.submissionId, label: row.studentName || row.studentId, value: row.agencyLevel }))),
+  );
+
+  const grouped = new Map<string, AnalysisMetricSeries>();
+  for (const row of rows) {
+    for (const group of row.agencyMetrics) {
+      for (const metric of group.metrics) {
+        const key = `agency:${metric.id}:${metric.name}`;
+        const entry = grouped.get(key) ?? {
+          key,
+          title: metric.name,
+          unit: metric.unit,
+          dimension: `${metric.priority ? "Prioritarias - " : ""}${group.dimension}`,
+          kind: typeof metric.value === "number" ? inferNumericChartKind(metric.name, metric.unit) : "category",
+          points: [],
+        };
+        if (typeof metric.value === "number" || typeof metric.value === "string") {
+          entry.points.push({
+            id: row.submissionId,
+            label: row.studentName || row.studentId,
+            value: metric.value,
+          });
+        }
+        grouped.set(key, entry);
+      }
+    }
+  }
+
+  return [...result, ...Array.from(grouped.values()).filter((metric) => metric.points.length > 0)];
+}
+
+function categoricalMetric(key: string, title: string, dimension: string, points: AnalysisPoint[]): AnalysisMetricSeries {
+  return { key, title, dimension, kind: "category", points };
+}
+
+function inferNumericChartKind(name: string, unit?: string | null): AnalysisChartKind {
+  const normalized = `${name} ${unit ?? ""}`.toLowerCase();
+  if (normalized.includes("%") || normalized.includes("ratio") || normalized.includes("proporcion") || normalized.includes("indice") || normalized.includes("score") || normalized.includes("puntaje")) {
+    return "dot";
+  }
+  return "bar";
+}
+
+function AnalysisChart(props: { metric: AnalysisMetricSeries; size: "mini" | "large" }) {
+  const width = props.size === "large" ? 1120 : 260;
+  const height = props.size === "large" ? 520 : 132;
+  if (props.metric.kind === "category") {
+    return <CategoryChart metric={props.metric} width={width} height={height} detailed={props.size === "large"} />;
+  }
+  return <NumericChart metric={props.metric} width={width} height={height} detailed={props.size === "large"} />;
+}
+
+function NumericChart(props: { metric: AnalysisMetricSeries; width: number; height: number; detailed: boolean }) {
+  const margin = props.detailed ? { top: 24, right: 26, bottom: 92, left: 62 } : { top: 12, right: 8, bottom: 12, left: 8 };
+  const values = props.metric.points.filter((point): point is AnalysisPoint & { value: number } => typeof point.value === "number" && Number.isFinite(point.value));
+  const domainMax = d3.max(values, (point) => point.value) ?? 1;
+  const x = d3.scaleBand<string>()
+    .domain(values.map((point) => String(point.id)))
+    .range([margin.left, props.width - margin.right])
+    .padding(values.length > 80 ? 0.05 : 0.18);
+  const y = d3.scaleLinear()
+    .domain([Math.min(0, d3.min(values, (point) => point.value) ?? 0), domainMax || 1])
+    .nice()
+    .range([props.height - margin.bottom, margin.top]);
+  const ticks = y.ticks(props.detailed ? 6 : 3);
+
+  return (
+    <svg className="analysisChart" viewBox={`0 0 ${props.width} ${props.height}`} role="img" aria-label={props.metric.title}>
+      {props.detailed && ticks.map((tick) => (
+        <g key={tick}>
+          <line x1={margin.left} x2={props.width - margin.right} y1={y(tick)} y2={y(tick)} className="chartGridLine" />
+          <text x={margin.left - 10} y={y(tick)} className="chartAxisText" textAnchor="end" dominantBaseline="middle">{formatStat(tick)}</text>
+        </g>
+      ))}
+      {props.metric.kind === "dot" ? values.map((point) => (
+        <circle key={point.id} cx={(x(String(point.id)) ?? 0) + x.bandwidth() / 2} cy={y(point.value)} r={props.detailed ? 5 : 2.8} className="chartDot">
+          <title>{point.label}: {formatStat(point.value, props.metric.unit ?? "")}</title>
+        </circle>
+      )) : values.map((point) => {
+        const barX = x(String(point.id)) ?? 0;
+        const barY = y(Math.max(0, point.value));
+        const barHeight = Math.abs(y(point.value) - y(0));
+        return (
+          <rect key={point.id} x={barX} y={barY} width={Math.max(1, x.bandwidth())} height={Math.max(1, barHeight)} className="chartBar">
+            <title>{point.label}: {formatStat(point.value, props.metric.unit ?? "")}</title>
+          </rect>
+        );
+      })}
+      {props.detailed && values.filter((_, index) => shouldShowXAxisLabel(index, values.length)).map((point) => (
+        <text key={point.id} x={(x(String(point.id)) ?? 0) + x.bandwidth() / 2} y={props.height - margin.bottom + 18} className="chartAxisText" textAnchor="end" transform={`rotate(-35 ${(x(String(point.id)) ?? 0) + x.bandwidth() / 2} ${props.height - margin.bottom + 18})`}>
+          {point.label}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+function CategoryChart(props: { metric: AnalysisMetricSeries; width: number; height: number; detailed: boolean }) {
+  const margin = props.detailed ? { top: 24, right: 30, bottom: 76, left: 160 } : { top: 12, right: 8, bottom: 12, left: 8 };
+  const counts = Array.from(d3.rollup(props.metric.points, (items) => items.length, (point) => String(point.value)), ([label, count]) => ({ label, count }))
+    .sort((left, right) => d3.descending(left.count, right.count));
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(counts, (item) => item.count) ?? 1])
+    .nice()
+    .range([margin.left, props.width - margin.right]);
+  const y = d3.scaleBand<string>()
+    .domain(counts.map((item) => item.label))
+    .range([margin.top, props.height - margin.bottom])
+    .padding(0.22);
+
+  return (
+    <svg className="analysisChart" viewBox={`0 0 ${props.width} ${props.height}`} role="img" aria-label={props.metric.title}>
+      {counts.map((item) => (
+        <g key={item.label}>
+          {props.detailed && <text x={margin.left - 10} y={(y(item.label) ?? 0) + y.bandwidth() / 2} className="chartAxisText" textAnchor="end" dominantBaseline="middle">{item.label}</text>}
+          <rect x={margin.left} y={y(item.label)} width={Math.max(1, x(item.count) - margin.left)} height={Math.max(1, y.bandwidth())} className="chartBar alt">
+            <title>{item.label}: {item.count}</title>
+          </rect>
+          {props.detailed && <text x={x(item.count) + 8} y={(y(item.label) ?? 0) + y.bandwidth() / 2} className="chartAxisText" dominantBaseline="middle">{item.count}</text>}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function shouldShowXAxisLabel(index: number, count: number) {
+  if (count <= 24) return true;
+  if (count <= 80) return index % 4 === 0;
+  return index % 10 === 0;
 }
 
 function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | null; loading: boolean; error: string }) {

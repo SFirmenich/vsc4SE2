@@ -27,9 +27,7 @@ SUMMARY_NUMERIC_KEYS = [
 
 class ActivityReviewDashboardService:
     def build(self, activity_version: ActivityVersion) -> dict:
-        submissions = list(
-            activity_version.submissions.select_related("student", "course_group").all()
-        )
+        submissions = self._submissions(activity_version)
         reviews = []
         warnings = []
         review_service = SubmissionReviewService()
@@ -59,6 +57,87 @@ class ActivityReviewDashboardService:
             "metricGroups": self._metric_group_stats(reviews),
             "warnings": warnings,
         }
+
+    def build_analysis(self, activity_version: ActivityVersion, course_id=None, course_group_id=None) -> dict:
+        submissions = self._submissions(activity_version, course_id=course_id, course_group_id=course_group_id)
+        review_service = SubmissionReviewService()
+        rows = []
+        warnings = []
+
+        for submission in submissions:
+            try:
+                review = review_service.build(submission)
+            except (OSError, ZipValidationError, ValueError) as exc:
+                warnings.append(
+                    {
+                        "submissionId": submission.id,
+                        "studentId": submission.student.institutional_id,
+                        "code": "review_unavailable",
+                        "message": str(exc),
+                    }
+                )
+                continue
+
+            rows.append(
+                {
+                    "submissionId": submission.id,
+                    "studentId": submission.student.institutional_id,
+                    "studentName": str(submission.student),
+                    "courseGroup": submission.course_group.name if submission.course_group else None,
+                    "importedAt": submission.imported_at.isoformat(),
+                    "summary": self._summary_values(review),
+                    "agencyMetrics": self._metric_values(review),
+                    "integrityStatus": review["integrity"].get("status", "not_available"),
+                    "agencyLevel": review["summary"].get("agency", {}).get("level", "unknown"),
+                    "agencyScore": review["summary"].get("agency", {}).get("score"),
+                }
+            )
+
+        return {
+            "activityVersionId": activity_version.id,
+            "submissionCount": len(submissions),
+            "reviewedSubmissionCount": len(rows),
+            "submissions": rows,
+            "warnings": warnings,
+        }
+
+    def _submissions(self, activity_version: ActivityVersion, course_id=None, course_group_id=None):
+        submissions = activity_version.submissions.select_related("student", "course_group").all()
+        if course_id:
+            submissions = submissions.filter(course_group__course_id=course_id)
+        if course_group_id:
+            submissions = submissions.filter(course_group_id=course_group_id)
+        return list(submissions)
+
+    def _summary_values(self, review: dict) -> dict:
+        values = {
+            key: review["summary"].get(key)
+            for key in SUMMARY_NUMERIC_KEYS
+        }
+        values["agencyScore"] = review["summary"].get("agency", {}).get("score")
+        return values
+
+    def _metric_values(self, review: dict) -> list[dict]:
+        output = []
+        for group in review["agencyMetrics"].get("groups", []):
+            output.append(
+                {
+                    "dimension": group.get("dimension", "Sin dimension"),
+                    "metrics": [
+                        {
+                            "id": metric.get("id"),
+                            "name": metric.get("name", ""),
+                            "unit": metric.get("unit"),
+                            "priority": bool(metric.get("priority")),
+                            "reliability": metric.get("reliability", "limited"),
+                            "value": metric.get("value"),
+                        }
+                        for metric in group.get("metrics", [])
+                        if isinstance(metric.get("id"), int)
+                    ],
+                }
+            )
+        return output
 
     def _summary_stats(self, reviews: list[dict]) -> dict:
         return {

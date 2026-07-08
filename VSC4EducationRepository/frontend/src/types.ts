@@ -238,6 +238,46 @@ export interface ActivityReviewDashboard {
   }[];
 }
 
+export interface SubmissionAnalysisMetricValue {
+  id: number;
+  name: string;
+  unit?: string | null;
+  priority: boolean;
+  reliability: "direct" | "estimated" | "limited";
+  value: string | number;
+}
+
+export interface SubmissionAnalysisMetricGroup {
+  dimension: string;
+  metrics: SubmissionAnalysisMetricValue[];
+}
+
+export interface SubmissionAnalysisRow {
+  submissionId: number;
+  studentId: string;
+  studentName: string;
+  courseGroup: string | null;
+  importedAt: string;
+  summary: Record<string, number | string | null>;
+  agencyMetrics: SubmissionAnalysisMetricGroup[];
+  integrityStatus: "valid" | "invalid" | "incomplete" | "not_available";
+  agencyLevel: string;
+  agencyScore: number | null;
+}
+
+export interface ActivitySubmissionAnalysis {
+  activityVersionId: number;
+  submissionCount: number;
+  reviewedSubmissionCount: number;
+  submissions: SubmissionAnalysisRow[];
+  warnings: {
+    submissionId: number;
+    studentId: string;
+    code: string;
+    message: string;
+  }[];
+}
+
 export interface Metrics {
   submissions: number;
   uniqueStudents: number;

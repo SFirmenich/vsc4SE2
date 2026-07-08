@@ -537,6 +537,117 @@ tbody tr {
   padding: 10px;
 }
 
+.analysisGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  margin-bottom: 18px;
+}
+
+.analysisCard {
+  background: #ffffff;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 202px;
+  padding: 14px;
+  text-align: left;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.analysisCard:hover {
+  border-color: #92aca9;
+  box-shadow: 0 8px 22px rgba(24, 32, 43, 0.08);
+  transform: translateY(-1px);
+}
+
+.analysisCard strong {
+  font-size: 14px;
+  line-height: 1.25;
+  min-height: 36px;
+  white-space: normal;
+}
+
+.analysisCard small {
+  color: #64748b;
+  font-size: 11px;
+  min-height: 28px;
+  white-space: normal;
+}
+
+.analysisChart {
+  background: #f8fafb;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  display: block;
+  min-height: 132px;
+  width: 100%;
+}
+
+.chartBar {
+  fill: #28706d;
+}
+
+.chartBar.alt {
+  fill: #4b6f9f;
+}
+
+.chartDot {
+  fill: #8a5a2b;
+  opacity: 0.82;
+}
+
+.chartGridLine {
+  stroke: #dde5ee;
+  stroke-width: 1;
+}
+
+.chartAxisText {
+  fill: #536276;
+  font-size: 12px;
+}
+
+.dialogOverlay {
+  align-items: center;
+  background: rgba(24, 32, 43, 0.58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 20;
+}
+
+.chartDialog {
+  background: #ffffff;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(24, 32, 43, 0.26);
+  color: #18202b;
+  height: 80vh;
+  margin: 0;
+  max-height: 80vh;
+  max-width: 80vw;
+  padding: 18px;
+  width: 80vw;
+}
+
+.dialogHeader {
+  align-items: flex-start;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.chartDialog .analysisChart {
+  height: calc(80vh - 116px);
+  min-height: 0;
+}
+
 .emptyState {
   align-items: center;
   background: #ffffff;
@@ -580,5 +691,16 @@ tbody tr {
 
   .itemMeta {
     align-items: flex-start;
+  }
+
+  .chartDialog {
+    height: 86vh;
+    max-height: 86vh;
+    max-width: 94vw;
+    width: 94vw;
+  }
+
+  .chartDialog .analysisChart {
+    height: calc(86vh - 126px);
   }
 }

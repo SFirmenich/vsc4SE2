@@ -288,3 +288,16 @@ class ImportServicesTests(TestCase):
         self.assertEqual(data["integrity"]["valid"], 1)
         self.assertEqual(data["integrity"]["invalid"], 1)
         self.assertTrue(data["metricGroups"])
+
+    def test_submission_analysis_returns_values_by_submission(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version)
+
+        response = Client().get(f"/api/activity-versions/{activity_version.id}/submission-analysis/")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["reviewedSubmissionCount"], 1)
+        self.assertEqual(data["submissions"][0]["submissionId"], submission.id)
+        self.assertEqual(data["submissions"][0]["summary"]["activeMinutes"], 11)
+        self.assertTrue(data["submissions"][0]["agencyMetrics"])

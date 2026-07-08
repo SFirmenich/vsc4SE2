@@ -143,6 +143,14 @@ class ActivityVersionViewSet(viewsets.ReadOnlyModelViewSet):
     def review_dashboard(self, request, pk=None):
         return Response(ActivityReviewDashboardService().build(self.get_object()))
 
+    @action(detail=True, methods=["get"], url_path="submission-analysis")
+    def submission_analysis(self, request, pk=None):
+        return Response(ActivityReviewDashboardService().build_analysis(
+            self.get_object(),
+            course_id=request.query_params.get("courseId"),
+            course_group_id=request.query_params.get("courseGroupId"),
+        ))
+
 
 class StudentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Student.objects.all()
