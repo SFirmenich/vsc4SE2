@@ -5,6 +5,7 @@ import { getJson, postJson, uploadZip } from "./api";
 import type {
   ActivityVersion,
   ActivityVersionDetail,
+  ActivityReviewDashboard,
   Course,
   CourseGroup,
   Metrics,
@@ -321,6 +322,27 @@ function ActivityView(props: {
   onOpen: (submission: Submission) => void;
 }) {
   const activity = props.activity;
+  const [tab, setTab] = useState<"submissions" | "dashboard">("submissions");
+  const [dashboard, setDashboard] = useState<ActivityReviewDashboard | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState("");
+
+  async function openDashboard() {
+    setTab("dashboard");
+    if (dashboard || dashboardLoading) {
+      return;
+    }
+    setDashboardLoading(true);
+    setDashboardError("");
+    try {
+      setDashboard(await getJson<ActivityReviewDashboard>(`/activity-versions/${props.fallbackActivity.id}/review-dashboard/`));
+    } catch (error) {
+      setDashboardError(errorMessage(error));
+    } finally {
+      setDashboardLoading(false);
+    }
+  }
+
   return (
     <>
       <SectionHeader icon={<FileArchive size={20} />} title={activity?.title ?? props.fallbackActivity.title} actionLabel="Agregar entrega" onAction={props.onAdd} />
@@ -344,40 +366,218 @@ function ActivityView(props: {
         ) : null}
       </section>
 
-      {props.addPanel === "submission" && <ZipUploadPanel label="ZIP de entrega" groups={props.groups} onUpload={props.onUpload} />}
+      <nav className="tabs" aria-label="Actividad">
+        <button className={tab === "submissions" ? "active" : ""} onClick={() => setTab("submissions")}><Upload size={16} /> Entregas</button>
+        <button className={tab === "dashboard" ? "active" : ""} onClick={openDashboard}><Activity size={16} /> Dashboard</button>
+      </nav>
 
-      <section className="tablePanel">
-        <h2><Upload size={18} /> Entregas</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Estudiante</th>
-              <th>Comisión</th>
-              <th>Eventos</th>
-              <th>Agente</th>
-              <th>Git</th>
-              <th>Warnings</th>
-              <th>Importada</th>
-            </tr>
-          </thead>
-          <tbody>
-            {props.submissions.map((submission) => (
-              <tr key={submission.id} onClick={() => props.onOpen(submission)}>
-                <td>{submission.student.display_name || submission.student.institutional_id}</td>
-                <td>{submission.courseGroup?.name ?? "Sin comisión"}</td>
-                <td>{submission.event_count}</td>
-                <td>{submission.agent_interaction_count}</td>
-                <td>{submission.has_git ? "Sí" : "No"}</td>
-                <td>{submission.warning_count}</td>
-                <td>{new Date(submission.imported_at).toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {props.submissions.length === 0 && <EmptyState text="Todavía no hay entregas para esta actividad." />}
-      </section>
+      {tab === "submissions" && (
+        <>
+          {props.addPanel === "submission" && <ZipUploadPanel label="ZIP de entrega" groups={props.groups} onUpload={props.onUpload} />}
+          <section className="tablePanel">
+            <h2><Upload size={18} /> Entregas</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Estudiante</th>
+                  <th>Comision</th>
+                  <th>Eventos</th>
+                  <th>Agente</th>
+                  <th>Git</th>
+                  <th>Warnings</th>
+                  <th>Importada</th>
+                </tr>
+              </thead>
+              <tbody>
+                {props.submissions.map((submission) => (
+                  <tr key={submission.id} onClick={() => props.onOpen(submission)}>
+                    <td>{submission.student.display_name || submission.student.institutional_id}</td>
+                    <td>{submission.courseGroup?.name ?? "Sin comision"}</td>
+                    <td>{submission.event_count}</td>
+                    <td>{submission.agent_interaction_count}</td>
+                    <td>{submission.has_git ? "Si" : "No"}</td>
+                    <td>{submission.warning_count}</td>
+                    <td>{new Date(submission.imported_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {props.submissions.length === 0 && <EmptyState text="Todavia no hay entregas para esta actividad." />}
+          </section>
+        </>
+      )}
+
+      {tab === "dashboard" && (
+        <ActivityDashboardView dashboard={dashboard} loading={dashboardLoading} error={dashboardError} />
+      )}
     </>
   );
+}
+
+function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | null; loading: boolean; error: string }) {
+  const dashboard = props.dashboard;
+  if (props.loading) {
+    return <EmptyState text="Calculando dashboard de entregas..." />;
+  }
+  if (props.error) {
+    return <section className="tablePanel warningPanel"><h2>No se pudo cargar el dashboard</h2><p>{props.error}</p></section>;
+  }
+  if (!dashboard) {
+    return <EmptyState text="Abri el tab Dashboard para calcular las metricas agregadas." />;
+  }
+
+  return (
+    <>
+      <section className="detailPanel">
+        <div className="metrics">
+          <Metric label="Entregas revisadas" value={`${dashboard.reviewedSubmissionCount}/${dashboard.submissionCount}`} />
+          <Metric label="Estudiantes" value={dashboard.studentCount} />
+          <Metric label="Agencia promedio" value={formatStat(dashboard.agency.score.avg)} />
+          <Metric label="Con agentes" value={`${Math.round(dashboard.agentUse.withAgentInteractionsRatio * 100)}%`} />
+        </div>
+        <div className="metrics">
+          <Metric label="Tiempo activo mediano" value={`${formatStat(dashboard.summary.activeMinutes?.median)} min`} />
+          <Metric label="Lineas unicas medianas" value={formatStat(dashboard.summary.uniqueLinesTouched?.median)} />
+          <Metric label="Archivos modificados mediana" value={formatStat(dashboard.summary.filesModified?.median)} />
+          <Metric label="Integridad valida" value={dashboard.integrity.valid ?? 0} />
+        </div>
+      </section>
+
+      <div className="twoColumns">
+        <section className="tablePanel">
+          <h2>Distribucion de agencia</h2>
+          <DistributionTable values={dashboard.agency.levels} />
+        </section>
+        <section className="tablePanel">
+          <h2>Integridad</h2>
+          <DistributionTable values={dashboard.integrity} />
+        </section>
+      </div>
+
+      <section className="tablePanel">
+        <h2>Resumen agregado</h2>
+        <StatsTable
+          rows={[
+            ["Tiempo activo", dashboard.summary.activeMinutes, "min"],
+            ["Lineas unicas", dashboard.summary.uniqueLinesTouched, ""],
+            ["Archivos modificados", dashboard.summary.filesModified, ""],
+            ["Cambios de archivo", dashboard.summary.fileChangeEvents, ""],
+            ["Interacciones con agente", dashboard.summary.agentInteractions, ""],
+            ["Mensajes estudiante", dashboard.agentUse.studentMessages, ""],
+            ["Respuestas agente", dashboard.agentUse.agentResponses, ""],
+          ]}
+        />
+      </section>
+
+      <section className="tablePanel">
+        <h2>Metricas por dimension</h2>
+        {dashboard.metricGroups.map((group) => (
+          <div className="metricGroup" key={group.dimension}>
+            <h3>{group.dimension}</h3>
+            <StatsTable rows={group.metrics.map((metric) => [metric.name, metric.stats, metric.unit ?? "", metric])} />
+          </div>
+        ))}
+      </section>
+
+      {(dashboard.agency.topPositives.length > 0 || dashboard.agency.topConcerns.length > 0) && (
+        <div className="twoColumns">
+          <section className="tablePanel">
+            <h2>Senales frecuentes</h2>
+            <CountList values={dashboard.agency.topPositives} />
+          </section>
+          <section className="tablePanel">
+            <h2>Indicadores frecuentes para revisar</h2>
+            <CountList values={dashboard.agency.topConcerns} />
+          </section>
+        </div>
+      )}
+
+      {dashboard.warnings.length > 0 && (
+        <section className="tablePanel warningPanel">
+          <h2>Entregas sin dashboard completo</h2>
+          {dashboard.warnings.map((warning) => (
+            <div className="warningItem" key={`${warning.submissionId}-${warning.code}`}>
+              <strong>{warning.studentId} - {warning.code}</strong>
+              <span>{warning.message}</span>
+            </div>
+          ))}
+        </section>
+      )}
+    </>
+  );
+}
+
+function StatsTable(props: { rows: [string, ActivityReviewDashboard["summary"][string] | undefined, string, { valueCounts?: Record<string, number>; nonNumericCount?: number }?][] }) {
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Metrica</th>
+          <th>Prom.</th>
+          <th>Min</th>
+          <th>P25</th>
+          <th>Mediana</th>
+          <th>P75</th>
+          <th>P90</th>
+          <th>Max</th>
+          <th>N</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.rows.map(([label, stats, unit, extra]) => (
+          <tr key={label}>
+            <td>
+              <strong>{label}</strong>
+              {extra?.nonNumericCount ? <small className="mutedInline"> {formatCounts(extra.valueCounts ?? {})}</small> : null}
+            </td>
+            <td>{formatStat(stats?.avg, unit)}</td>
+            <td>{formatStat(stats?.min, unit)}</td>
+            <td>{formatStat(stats?.p25, unit)}</td>
+            <td>{formatStat(stats?.median, unit)}</td>
+            <td>{formatStat(stats?.p75, unit)}</td>
+            <td>{formatStat(stats?.p90, unit)}</td>
+            <td>{formatStat(stats?.max, unit)}</td>
+            <td>{stats?.count ?? 0}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function DistributionTable(props: { values: Record<string, number> }) {
+  const entries = Object.entries(props.values);
+  if (!entries.length) {
+    return <p>Sin datos.</p>;
+  }
+  return (
+    <table>
+      <tbody>
+        {entries.map(([label, count]) => (
+          <tr key={label}><td>{distributionLabel(label)}</td><td>{count}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function CountList(props: { values: { label: string; count: number }[] }) {
+  if (!props.values.length) {
+    return <p>Sin datos.</p>;
+  }
+  return <ul className="signalList">{props.values.map((item) => <li key={item.label}>{item.label}: {item.count}</li>)}</ul>;
+}
+
+function formatStat(value: number | undefined, unit = "") {
+  if (value === undefined) {
+    return "-";
+  }
+  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(2);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+function formatCounts(values: Record<string, number>) {
+  return Object.entries(values).map(([label, count]) => `${label}: ${count}`).join(", ");
 }
 
 function SubmissionView(props: { submission: SubmissionDetail; review: SubmissionReview | null }) {
@@ -600,6 +800,10 @@ function integrityLabel(status: string) {
   if (status === "invalid") return "Invalida";
   if (status === "incomplete") return "Incompleta";
   return "No disponible";
+}
+
+function distributionLabel(value: string) {
+  return ["valid", "invalid", "incomplete", "not_available"].includes(value) ? integrityLabel(value) : value;
 }
 
 function SectionHeader(props: { icon: React.ReactNode; title: string; actionLabel?: string; onAction?: () => void }) {

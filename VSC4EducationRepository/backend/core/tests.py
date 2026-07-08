@@ -255,3 +255,20 @@ class ImportServicesTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["integrity"]["status"], "invalid")
+
+    def test_activity_review_dashboard_aggregates_submission_reviews(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        SubmissionZipImportService().import_zip(review_submission_zip(), activity_version)
+        SubmissionZipImportService().import_zip(review_submission_zip(tampered=True), activity_version)
+
+        response = Client().get(f"/api/activity-versions/{activity_version.id}/review-dashboard/")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["submissionCount"], 2)
+        self.assertEqual(data["reviewedSubmissionCount"], 2)
+        self.assertEqual(data["summary"]["agentInteractions"]["avg"], 2)
+        self.assertEqual(data["summary"]["uniqueLinesTouched"]["min"], 3)
+        self.assertEqual(data["integrity"]["valid"], 1)
+        self.assertEqual(data["integrity"]["invalid"], 1)
+        self.assertTrue(data["metricGroups"])

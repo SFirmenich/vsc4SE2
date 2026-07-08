@@ -183,6 +183,60 @@ export interface SubmissionReview {
   agentInteractionErrors: string[];
 }
 
+export interface StatsSummary {
+  count: number;
+  avg: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
+export interface ActivityDashboardMetric {
+  id: number;
+  name: string;
+  unit?: string | null;
+  priority: boolean;
+  reliability: "direct" | "estimated" | "limited";
+  stats: StatsSummary;
+  valueCounts: Record<string, number>;
+  nonNumericCount: number;
+}
+
+export interface ActivityReviewDashboard {
+  activityVersionId: number;
+  submissionCount: number;
+  reviewedSubmissionCount: number;
+  studentCount: number;
+  summary: Record<string, StatsSummary>;
+  agency: {
+    score: StatsSummary;
+    levels: Record<string, number>;
+    topPositives: { label: string; count: number }[];
+    topConcerns: { label: string; count: number }[];
+  };
+  integrity: Record<string, number>;
+  agentUse: {
+    withAgentInteractions: number;
+    withAgentInteractionsRatio: number;
+    studentMessages: StatsSummary;
+    agentResponses: StatsSummary;
+    totalInteractions: StatsSummary;
+  };
+  metricGroups: {
+    dimension: string;
+    metrics: ActivityDashboardMetric[];
+  }[];
+  warnings: {
+    submissionId: number;
+    studentId: string;
+    code: string;
+    message: string;
+  }[];
+}
+
 export interface Metrics {
   submissions: number;
   uniqueStudents: number;

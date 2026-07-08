@@ -17,6 +17,7 @@ from core.serializers import (
     ZipImportSerializer,
 )
 from core.services.activity_import import ActivityZipImportService
+from core.services.activity_review_dashboard import ActivityReviewDashboardService
 from core.services.metrics import ActivityMetricsService, CourseGroupMetricsService
 from core.services.safe_zip import ZipValidationError
 from core.services.submission_import import SubmissionZipImportService
@@ -133,6 +134,10 @@ class ActivityVersionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["get"])
     def comparison(self, request, pk=None):
         return Response(ActivityMetricsService().comparison(self.get_object()))
+
+    @action(detail=True, methods=["get"], url_path="review-dashboard")
+    def review_dashboard(self, request, pk=None):
+        return Response(ActivityReviewDashboardService().build(self.get_object()))
 
 
 class StudentViewSet(viewsets.ReadOnlyModelViewSet):

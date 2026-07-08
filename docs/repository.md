@@ -18,6 +18,8 @@ The repository application helps teachers keep a local catalog of:
 - imported student submission ZIP files;
 - extracted process evidence summaries;
 - teacher-style submission review views derived from the original ZIP;
+- activity-level dashboards that aggregate those review metrics across
+  submissions;
 - aggregate metrics and comparisons across submissions.
 
 It stores the original ZIP files and extracts normalized metadata for search,
@@ -130,6 +132,15 @@ Submission review:
 - does not execute student code, install dependencies, or mutate imported ZIP
   contents.
 
+Activity review dashboards:
+
+- aggregate the same per-submission review signals for every submission in an
+  activity version;
+- report averages, percentiles, minimums, maximums, distributions, and warnings
+  for submissions that cannot be reviewed;
+- remain derived views over the original submitted ZIPs, not additions to the
+  portable package format.
+
 Corrupt required JSON, unreadable required JSONL, invalid paths, and unsafe
 archive entries should produce clear import errors. Invalid lines in optional
 or evidence-oriented JSONL files may be recorded as warnings when the rest of
@@ -145,6 +156,7 @@ POST /api/submissions/import-zip/
 POST /api/activity-versions/{id}/submissions/import-zip/
 GET  /api/activity-versions/{id}/metrics/
 GET  /api/activity-versions/{id}/comparison/
+GET  /api/activity-versions/{id}/review-dashboard/
 GET  /api/submissions/{id}/review/
 ```
 
