@@ -138,9 +138,10 @@ export class SubmissionReviewService {
     const sourceFiles = Array.from(files).filter((file) =>
       /\.(ts|tsx|js|jsx|py|java|cs|cpp|c|h|html|css|json|md)$/i.test(file)
     );
+    const completedTasks = this.completedTaskCount(contribution.events);
     const agencySignals = this.agencySignals({
       tasksStarted: eventTypes.filter((type) => type === "task_started").length,
-      tasksCompleted: eventTypes.filter((type) => type === "task_completed").length,
+      tasksCompleted: completedTasks,
       fileChangeEvents,
       filesModified: sourceFiles.length || files.size,
       uniqueLinesTouched: touchedLines.size,
@@ -152,7 +153,7 @@ export class SubmissionReviewService {
     return {
       studentId: contribution.studentId,
       tasksStarted: eventTypes.filter((type) => type === "task_started").length,
-      tasksCompleted: eventTypes.filter((type) => type === "task_completed").length,
+      tasksCompleted: completedTasks,
       saves: eventTypes.filter((type) => type === "file_saved").length,
       commits: eventTypes.filter((type) => type === "git_commit").length,
       filesModified: files.size,
@@ -186,6 +187,23 @@ export class SubmissionReviewService {
       : typeof event.event === "string"
         ? event.event
         : undefined;
+  }
+
+  private completedTaskCount(events: LearningEvent[]): number {
+    const completedTaskIds = new Set<string>();
+    let eventsWithoutTaskId = 0;
+    for (const event of events) {
+      const type = this.eventType(event);
+      if (type !== "task_finished" && type !== "task_completed") {
+        continue;
+      }
+      if (typeof event.taskId === "string" && event.taskId) {
+        completedTaskIds.add(event.taskId);
+      } else {
+        eventsWithoutTaskId += 1;
+      }
+    }
+    return completedTaskIds.size + eventsWithoutTaskId;
   }
 
   private eventFile(event: LearningEvent): string | undefined {

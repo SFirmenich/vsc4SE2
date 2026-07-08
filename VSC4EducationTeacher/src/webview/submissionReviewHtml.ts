@@ -129,6 +129,7 @@ function renderTeacherReport(summary) {
     <p class="muted">Quick signals for review. These support teacher judgement; they are not an automatic grade.</p>
     <div class="grid">
       \${metricCard('Agency', esc(agency.level ?? 'unknown'), \`\${esc(agency.score ?? 0)}/6 evidence score\`, helpText.agency)}
+      \${metricCard('Completed tasks', \`\${esc(summary?.tasksCompleted ?? 0)}/\${esc(model.submission.manifest.tasks?.length ?? 0)}\`, 'finished tasks in this activity', helpText.agency)}
       \${metricCard('Lines touched', esc(summary?.uniqueLinesTouched ?? 0), \`\${esc(summary?.lineTouchCount ?? 0)} total line touches\`, helpText.linesTouched)}
       \${metricCard('Files', esc(summary?.filesModified ?? 0), \`\${esc(summary?.sourceFilesModified ?? 0)} source-like files\`, helpText.files)}
       \${metricCard('Active time', minutes(summary?.activeMinutes), 'minutes excluding long gaps', helpText.activeTime)}

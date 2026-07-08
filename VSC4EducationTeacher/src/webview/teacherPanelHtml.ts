@@ -44,6 +44,8 @@ const pretty = (value) => esc(JSON.stringify(value, null, 2));
 const post = (type, data = {}) => vscode.postMessage({ type, ...data });
 const getEventType = (event) => event.type ?? event.event ?? 'event';
 const getEventFile = (event) => event.file ?? event.data?.file ?? '-';
+let activeReviewTab = 'activity-tab';
+let activeSubmissionTab = 'report';
 
 function setSubtitle() {
   subtitle.textContent = model.mode === 'activity'
@@ -82,7 +84,10 @@ function actionButtonFromEvent(event) {
 }
 function runAction(action) {
   if (action === 'import-review-activity') post('importReviewActivity');
-  if (action === 'import-review-submission') post('importReviewSubmission');
+  if (action === 'import-review-submission') {
+    activeReviewTab = 'submissions-tab';
+    post('importReviewSubmission');
+  }
   if (action === 'export-student') post('exportStudent');
   if (action === 'export-teacher') post('exportTeacher');
 }
@@ -206,19 +211,26 @@ function renderReviewMode() {
     return;
   }
   const review = model.review;
+  const reviewTab = activeReviewTab === 'submissions-tab' ? 'submissions-tab' : 'activity-tab';
   app.innerHTML = \`
     <div class="row" style="justify-content:space-between">
       <div><h1>Submissions Review</h1><p class="muted">\${esc(review.status.root)}</p></div>
       <div class="row"><button id="open-review" class="secondary">Change workspace</button><button id="refresh" class="secondary">Refresh</button></div>
     </div>
     <nav><button class="secondary review-tab" data-tab="activity-tab">Learning activity</button><button class="secondary review-tab" data-tab="submissions-tab">Submissions</button></nav>
-    <section id="activity-tab" class="active">\${renderReviewActivity(review)}</section>
-    <section id="submissions-tab">\${renderReviewSubmissions(review)}</section>\`;
+    <section id="activity-tab" class="\${reviewTab === 'activity-tab' ? 'active' : ''}">\${renderReviewActivity(review)}</section>
+    <section id="submissions-tab" class="\${reviewTab === 'submissions-tab' ? 'active' : ''}">\${renderReviewSubmissions(review)}</section>\`;
   document.getElementById('open-review').addEventListener('click', () => post('openReviewWorkspace'));
   document.getElementById('refresh').addEventListener('click', () => post('refresh'));
-  document.querySelectorAll('.review-tab').forEach((button) => button.addEventListener('click', () => document.querySelectorAll('section').forEach((section) => section.classList.toggle('active', section.id === button.dataset.tab))));
+  document.querySelectorAll('.review-tab').forEach((button) => button.addEventListener('click', () => {
+    activeReviewTab = button.dataset.tab;
+    document.querySelectorAll('#app > section').forEach((section) => section.classList.toggle('active', section.id === activeReviewTab));
+  }));
   const select = document.getElementById('submission-select');
-  if (select) select.addEventListener('change', () => post('selectSubmission', { submissionRoot: select.value }));
+  if (select) select.addEventListener('change', () => {
+    activeReviewTab = 'submissions-tab';
+    post('selectSubmission', { submissionRoot: select.value });
+  });
   bindActionButtons();
   bindSubmissionReview();
 }
@@ -251,6 +263,8 @@ function renderReviewSubmissions(review) {
 function renderSubmissionDashboard(reviewModel) {
   if (!reviewModel) return '<p class="muted">Select a submission to calculate the review dashboard.</p>';
   const firstStudent = reviewModel.submission.contributions[0]?.studentId ?? '';
+  const submissionTabs = ['report','agency-metrics','evidence','git','agents','integrity','rubric','feedback'];
+  const submissionTab = submissionTabs.includes(activeSubmissionTab) ? activeSubmissionTab : 'report';
   return \`
     <div id="review-dashboard" data-student="\${esc(firstStudent)}">
       <nav>
@@ -269,14 +283,14 @@ function renderSubmissionDashboard(reviewModel) {
         <div><label for="event-filter">Event type</label><input id="event-filter" placeholder="e.g. file_changed"></div>
         <div><label for="file-filter">File</label><input id="file-filter" placeholder="path fragment"></div>
       </div>
-      <section id="report" class="active"></section>
-      <section id="agency-metrics"></section>
-      <section id="evidence"></section>
-      <section id="git"></section>
-      <section id="agents"></section>
-      <section id="integrity"></section>
-      <section id="rubric"></section>
-      <section id="feedback"></section>
+      <section id="report" class="\${submissionTab === 'report' ? 'active' : ''}"></section>
+      <section id="agency-metrics" class="\${submissionTab === 'agency-metrics' ? 'active' : ''}"></section>
+      <section id="evidence" class="\${submissionTab === 'evidence' ? 'active' : ''}"></section>
+      <section id="git" class="\${submissionTab === 'git' ? 'active' : ''}"></section>
+      <section id="agents" class="\${submissionTab === 'agents' ? 'active' : ''}"></section>
+      <section id="integrity" class="\${submissionTab === 'integrity' ? 'active' : ''}"></section>
+      <section id="rubric" class="\${submissionTab === 'rubric' ? 'active' : ''}"></section>
+      <section id="feedback" class="\${submissionTab === 'feedback' ? 'active' : ''}"></section>
     </div>\`;
 }
 function bindSubmissionReview() {
@@ -299,6 +313,7 @@ function bindSubmissionReview() {
       <p class="muted">Signals support teacher judgement; they are not an automatic grade.</p>
       <div class="grid">
         \${metric('Agency', agency.level ?? 'unknown')}
+        \${metric('Completed tasks', \`\${summary?.tasksCompleted ?? 0}/\${reviewModel.submission.manifest.tasks?.length ?? 0}\`)}
         \${metric('Lines touched', summary?.uniqueLinesTouched ?? 0)}
         \${metric('Files modified', summary?.filesModified ?? 0)}
         \${metric('Active minutes', summary?.activeMinutes ?? 0)}
@@ -371,7 +386,10 @@ function bindSubmissionReview() {
       return \`<div class="card"><strong>\${esc(event.timestamp ?? 'No timestamp')} - \${esc(getEventType(event))}</strong><br><span class="muted">Task: \${esc(event.taskId ?? '-')} - File: \${esc(getEventFile(event))}</span><pre>\${pretty(details)}</pre></div>\`;
     }).join('');
   }
-  document.querySelectorAll('.submission-tab').forEach((button) => button.addEventListener('click', () => document.querySelectorAll('#review-dashboard > section').forEach((section) => section.classList.toggle('active', section.id === button.dataset.tab))));
+  document.querySelectorAll('.submission-tab').forEach((button) => button.addEventListener('click', () => {
+    activeSubmissionTab = button.dataset.tab;
+    document.querySelectorAll('#review-dashboard > section').forEach((section) => section.classList.toggle('active', section.id === activeSubmissionTab));
+  }));
   byId('student').addEventListener('change', () => { selectedStudent = byId('student').value; renderStudent(); });
   ['task-filter','event-filter','file-filter'].forEach((id) => byId(id).addEventListener('input', renderStudent));
   renderStudent();
