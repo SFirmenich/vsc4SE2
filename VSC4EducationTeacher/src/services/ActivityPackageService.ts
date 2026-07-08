@@ -52,4 +52,23 @@ export class ActivityPackageService {
       new Set(["imports", "AGENTS.md"])
     );
   }
+
+  async exportTeacherPackage(
+    activityRoot: string,
+    destination: string
+  ): Promise<void> {
+    const result = await this.validation.validate(activityRoot);
+    if (!result.valid) {
+      throw new Error(
+        `Activity has validation errors: ${result.errors
+          .map((issue) => issue.message)
+          .join("; ")}`
+      );
+    }
+    await this.zip.createFromDirectory(
+      activityRoot,
+      destination,
+      new Set(["node_modules", ".git", "dist", "out"])
+    );
+  }
 }

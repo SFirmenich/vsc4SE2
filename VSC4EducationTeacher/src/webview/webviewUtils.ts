@@ -39,6 +39,9 @@ export function webviewDocument(
     button { border: 1px solid var(--vscode-button-border, transparent); color: var(--vscode-button-foreground); background: var(--vscode-button-background); padding: 7px 12px; cursor: pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
     button.secondary { color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); }
+    button.mode-card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 86px; padding: 14px 16px; text-align: left; white-space: normal; }
+    button.mode-card strong { display: block; font-size: 15px; line-height: 1.25; }
+    button.mode-card span { display: block; color: var(--vscode-button-foreground); font-size: 12px; font-weight: 400; line-height: 1.35; opacity: 0.82; }
     input, textarea, select { box-sizing: border-box; width: 100%; padding: 7px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); }
     textarea { min-height: 90px; resize: vertical; font-family: var(--vscode-editor-font-family); }
     label { display: block; margin: 10px 0 4px; font-weight: 600; }
@@ -56,6 +59,7 @@ export function webviewDocument(
     .info-tooltip:hover [role="tooltip"], .info-tooltip:focus [role="tooltip"] { display: block; }
     .bars { display: grid; gap: 8px; }
     .bar-row { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 8px; }
+    .agency-bars .bar-row { grid-template-columns: minmax(140px, 0.45fr) 1fr 62px; }
     .bar-track { height: 10px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); }
     .bar-track span { display: block; height: 100%; background: var(--vscode-progressBar-background); }
     .chart { min-height: 150px; width: 100%; overflow: hidden; }
