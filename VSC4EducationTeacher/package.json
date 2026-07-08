@@ -13,14 +13,20 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:teacherActivity.openPanel"
+    "onCommand:teacherActivity.openPanel",
+    "onCommand:teacherActivity.openCreationMode",
+    "onCommand:teacherActivity.openRevisionMode"
   ],
   "main": "./out/src/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "teacherActivity.openPanel",
-        "title": "Learning Activity Teacher: Open Teach Panel"
+        "command": "teacherActivity.openCreationMode",
+        "title": "VSC4Education: Open creation mode"
+      },
+      {
+        "command": "teacherActivity.openRevisionMode",
+        "title": "VSC4Education: Open revision mode"
       }
     ]
   },

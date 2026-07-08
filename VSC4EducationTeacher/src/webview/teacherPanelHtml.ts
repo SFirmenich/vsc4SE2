@@ -6,6 +6,7 @@ import { SubmissionReviewModel } from "./submissionReviewHtml";
 
 export interface TeacherPanelModel {
   mode?: "activity" | "review";
+  fixedMode?: "activity" | "review";
   activityRoot?: string;
   activity?: ActivityStatus;
   review?: {
@@ -25,13 +26,16 @@ export function teacherPanelHtml(
   const d3Uri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "node_modules", "d3", "dist", "d3.min.js")
   );
-  const body = `<header>
-  <strong>Teach Panel</strong>
-  <div class="muted" id="subtitle">${escapeHtml(subtitle(model))}</div>
-  <nav>
+  const navigation = model.fixedMode
+    ? ""
+    : `<nav>
     <button class="secondary mode" data-mode="activity">Activity Creation</button>
     <button class="secondary mode" data-mode="review">Submissions Review</button>
-  </nav>
+  </nav>`;
+  const body = `<header>
+  <strong>${escapeHtml(title(model))}</strong>
+  <div class="muted" id="subtitle">${escapeHtml(subtitle(model))}</div>
+  ${navigation}
 </header>
 <main id="app"></main>`;
   const script = `
@@ -420,4 +424,10 @@ function subtitle(model: TeacherPanelModel): string {
     return model.review?.status.root ?? "Choose a review workspace";
   }
   return "Choose a mode";
+}
+
+function title(model: TeacherPanelModel): string {
+  if (model.fixedMode === "activity") return "Activity Creation";
+  if (model.fixedMode === "review") return "Submission Review";
+  return "Teach Panel";
 }

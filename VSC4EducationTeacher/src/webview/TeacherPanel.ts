@@ -33,6 +33,7 @@ type PanelMode = "activity" | "review";
 
 export class TeacherPanel {
   private static current: TeacherPanel | undefined;
+  private static currentByMode: Partial<Record<PanelMode, TeacherPanel>> = {};
   private readonly disposables: vscode.Disposable[] = [];
   private refreshTimer: NodeJS.Timeout | undefined;
   private mode: PanelMode | undefined;
@@ -40,15 +41,20 @@ export class TeacherPanel {
   private reviewRoot: string | undefined;
   private selectedSubmissionRoot: string | undefined;
 
-  static async show(context: vscode.ExtensionContext): Promise<void> {
-    if (this.current) {
-      this.current.panel.reveal(vscode.ViewColumn.One);
-      await this.current.refresh(true);
+  static async show(
+    context: vscode.ExtensionContext,
+    initialMode?: PanelMode
+  ): Promise<void> {
+    const existing = initialMode ? this.currentByMode[initialMode] : this.current;
+    if (existing) {
+      existing.panel.reveal(vscode.ViewColumn.One);
+      await existing.refresh(true);
       return;
     }
+    const panelMode = initialMode;
     const panel = vscode.window.createWebviewPanel(
-      "learningActivityTeachPanel",
-      "Teach Panel",
+      panelMode ? `learningActivityTeacher${this.modeTitle(panelMode)}` : "learningActivityTeachPanel",
+      panelMode ? this.panelTitle(panelMode) : "Teach Panel",
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -56,22 +62,44 @@ export class TeacherPanel {
         localResourceRoots: [context.extensionUri]
       }
     );
-    this.current = new TeacherPanel(
+    const instance = new TeacherPanel(
       panel,
       context.extensionUri,
-      context.globalStorageUri.fsPath
+      context.globalStorageUri.fsPath,
+      panelMode
     );
+    instance.mode = panelMode;
+    if (panelMode) {
+      this.currentByMode[panelMode] = instance;
+    } else {
+      this.current = instance;
+    }
     panel.onDidDispose(() => {
-      this.current?.dispose();
-      this.current = undefined;
+      instance.dispose();
+      if (panelMode) {
+        if (this.currentByMode[panelMode] === instance) {
+          this.currentByMode[panelMode] = undefined;
+        }
+      } else if (this.current === instance) {
+        this.current = undefined;
+      }
     });
-    await this.current.refresh(true);
+    await instance.refresh(true);
+  }
+
+  private static modeTitle(mode: PanelMode): string {
+    return mode === "activity" ? "Creation" : "Revision";
+  }
+
+  private static panelTitle(mode: PanelMode): string {
+    return mode === "activity" ? "Activity Creation" : "Submission Review";
   }
 
   private constructor(
     private readonly panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
     private readonly storageRoot: string,
+    private readonly fixedMode?: PanelMode,
     private readonly projects = new ActivityProjectService(),
     private readonly statusService = new ActivityStatusService(),
     private readonly packages = new ActivityPackageService(),
@@ -136,7 +164,7 @@ export class TeacherPanel {
   }
 
   private async model(): Promise<TeacherPanelModel> {
-    const model: TeacherPanelModel = { mode: this.mode };
+    const model: TeacherPanelModel = { mode: this.mode, fixedMode: this.fixedMode };
     if (this.mode === "activity" && this.activityRoot) {
       model.activity = await this.statusService.inspect(this.activityRoot);
       model.activityRoot = this.activityRoot;
@@ -211,6 +239,7 @@ export class TeacherPanel {
     try {
       switch (message.type) {
         case "selectMode":
+          if (this.fixedMode) break;
           this.mode = message.mode;
           await this.refresh();
           break;
