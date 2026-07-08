@@ -761,6 +761,19 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
         </section>
       </div>
 
+      {(dashboard.agency.topPositives.length > 0 || dashboard.agency.topConcerns.length > 0) && (
+        <div className="twoColumns">
+          <section className="tablePanel">
+            <h2>Senales frecuentes</h2>
+            <CountList values={dashboard.agency.topPositives} />
+          </section>
+          <section className="tablePanel">
+            <h2>Indicadores frecuentes para revisar</h2>
+            <CountList values={dashboard.agency.topConcerns} />
+          </section>
+        </div>
+      )}
+
       <section className="tablePanel">
         <h2>Resumen agregado</h2>
         <StatsTable
@@ -785,19 +798,6 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
           </div>
         ))}
       </section>
-
-      {(dashboard.agency.topPositives.length > 0 || dashboard.agency.topConcerns.length > 0) && (
-        <div className="twoColumns">
-          <section className="tablePanel">
-            <h2>Senales frecuentes</h2>
-            <CountList values={dashboard.agency.topPositives} />
-          </section>
-          <section className="tablePanel">
-            <h2>Indicadores frecuentes para revisar</h2>
-            <CountList values={dashboard.agency.topConcerns} />
-          </section>
-        </div>
-      )}
 
       {dashboard.warnings.length > 0 && (
         <section className="tablePanel warningPanel">
