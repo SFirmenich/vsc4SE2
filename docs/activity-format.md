@@ -97,13 +97,18 @@ assessment/
 `-- solutions/
     `-- <taskId>.md
 resources/
-`-- assessment-rubric.schema.json
+|-- assessment-rubric.schema.json
+|-- auto-grading-prompt.md
+`-- overall-review-template.md
 ```
 
 For each manifest task ID, the teacher package should include one matching YAML
 rubric and one matching official solution. This material is excluded from the
 student activity ZIP. Public task acceptance criteria remain in
 `manifest.tasks[*].acceptanceCriteria`.
+
+`resources/` contains reusable teacher-side schemas and review templates. It is
+included in teacher package ZIPs and excluded from student activity ZIPs.
 
 See [Assessment rubric YAML](assessment-rubrics.md) for the YAML contract.
 

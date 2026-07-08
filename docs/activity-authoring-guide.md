@@ -70,13 +70,16 @@ assessment/
 `-- solutions/
     `-- <taskId>.md
 resources/
-`-- assessment-rubric.schema.json
+|-- assessment-rubric.schema.json
+|-- auto-grading-prompt.md
+`-- overall-review-template.md
 ```
 
 These files are not distributed to students. They are used by the teacher
 extension and teacher-side agents during review. The local schema in
 `resources/assessment-rubric.schema.json` supports editor validation and agent
-guidance. The YAML format is documented in
+guidance. The auto-grading prompt and overall-review template are reusable
+teacher-side review resources. The YAML format is documented in
 [Assessment rubric YAML](assessment-rubrics.md).
 
 Valid examples:

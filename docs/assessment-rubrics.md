@@ -35,6 +35,11 @@ New teacher activity projects also receive a local copy at:
 resources/assessment-rubric.schema.json
 ```
 
+The same `resources/` directory stores generic teacher-side review templates,
+including `auto-grading-prompt.md` and `overall-review-template.md`.
+`resources/` is included in teacher package ZIPs and excluded from student
+activity ZIPs.
+
 YAML does not have an XSD-equivalent schema language built into the format. The
 rubric YAML is parsed as structured data and validated with JSON Schema plus
 extra semantic checks performed by the teacher extension, such as score totals.

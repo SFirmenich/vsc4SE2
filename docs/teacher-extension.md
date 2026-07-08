@@ -44,10 +44,12 @@ assessment/
 `-- solutions/
     `-- <taskId>.md
 resources/
-`-- assessment-rubric.schema.json
+|-- assessment-rubric.schema.json
+|-- auto-grading-prompt.md
+`-- overall-review-template.md
 ```
 
-`assessment/` is excluded from the student activity ZIP.
+`assessment/` and `resources/` are excluded from the student activity ZIP.
 
 `manifest.json` describes the activity: identifier, title, description, version,
 type, and task list. Each task may have an associated Markdown file,
@@ -65,6 +67,10 @@ The directories serve different purposes:
 - `assessment/solutions/`: official solutions per task.
 - `resources/assessment-rubric.schema.json`: schema for authoring and validating
   rubric YAML.
+- `resources/auto-grading-prompt.md`: reusable prompt for teacher-side assisted
+  grading.
+- `resources/overall-review-template.md`: required Markdown structure for
+  proposed review output.
 - `rubrics/`: legacy evaluation criteria.
 - `signatures/`: hashes or other integrity metadata, without claiming a digital
   signature when no real signature exists.
