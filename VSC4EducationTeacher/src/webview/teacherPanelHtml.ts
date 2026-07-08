@@ -307,24 +307,26 @@ function bindSubmissionReview() {
     const item = contribution();
     if (!item) return;
     const summary = reviewModel.summaries.find((value) => value.studentId === selectedStudent);
+    const studentMetrics = reviewModel.agencyMetrics.find((value) => value.studentId === selectedStudent);
+    const observableAgency = studentMetrics?.observableAgency;
     const task = byId('task-filter').value;
     const eventTypeFilter = byId('event-filter').value.toLowerCase();
     const file = byId('file-filter').value.toLowerCase();
     const events = item.events.filter((event) => (!task || event.taskId === task) && (!eventTypeFilter || String(getEventType(event)).toLowerCase().includes(eventTypeFilter)) && (!file || String(getEventFile(event)).toLowerCase().includes(file)));
-    const agency = summary?.agency ?? {};
     byId('report').innerHTML = \`
       <h2>Teacher report</h2>
-      <p class="muted">Signals support teacher judgement; they are not an automatic grade.</p>
+      <p class="muted">Signals support teacher judgement; they are not an automatic grade or authorship proof.</p>
       <div class="grid">
-        \${metric('Agency', agency.level ?? 'unknown')}
+        \${metric('Observable agency', observableAgency ? \`\${observableAgency.level} - \${observableAgency.score}/100\` : 'unknown')}
+        \${metric('Confidence', observableAgency?.confidence ?? 'unknown')}
         \${metric('Completed tasks', \`\${summary?.tasksCompleted ?? 0}/\${reviewModel.submission.manifest.tasks?.length ?? 0}\`)}
         \${metric('Lines touched', summary?.uniqueLinesTouched ?? 0)}
         \${metric('Files modified', summary?.filesModified ?? 0)}
         \${metric('Active minutes', summary?.activeMinutes ?? 0)}
         \${metric('Agent messages', summary?.agentInteractions ?? 0)}
       </div>
-      <div class="grid"><div class="card"><h3>Agency signals</h3>\${signalList(agency.positives, 'No positive signals calculated.')}</div><div class="card"><h3>Review flags</h3>\${signalList(agency.concerns, 'No immediate flags.')}</div></div>\`;
-    byId('agency-metrics').innerHTML = renderAgencyMetrics(reviewModel.agencyMetrics.find((value) => value.studentId === selectedStudent));
+      \${renderObservableAgency(observableAgency)}\`;
+    byId('agency-metrics').innerHTML = renderAgencyMetrics(studentMetrics);
     byId('evidence').innerHTML = renderEvidenceTimeline(events);
     byId('git').innerHTML = \`<h2>Git repository</h2><p>Detected: \${reviewModel.submission.hasGit ? 'yes' : 'no'}</p>\` + reviewModel.commits.map((commit) => \`<div class="card"><strong><code>\${esc(commit.hash?.slice(0, 10))}</code> \${esc(commit.message)}</strong><br><span class="muted">\${esc(commit.author)} - \${esc(commit.timestamp)}</span><br><button data-commit="\${esc(commit.hash)}">Show changed files</button></div>\`).join('');
     byId('agents').innerHTML = \`<h2>Agent conversations</h2>\` + item.agentInteractions.map((interaction) => \`<div class="card"><strong>\${esc(interaction.actor)}\${interaction.agent ? ' - ' + esc(interaction.agent) : ''}</strong><br><span class="muted">\${esc(interaction.timestamp)}</span><p>\${esc(interaction.message)}</p></div>\`).join('') + (item.interactionErrors.length ? \`<pre class="warning">\${pretty(item.interactionErrors)}</pre>\` : '');
@@ -337,6 +339,23 @@ function bindSubmissionReview() {
   }
   function signalList(values, empty) {
     return Array.isArray(values) && values.length ? \`<ul>\${values.map((value) => \`<li>\${esc(value)}</li>\`).join('')}</ul>\` : \`<p class="muted">\${esc(empty)}</p>\`;
+  }
+  function renderObservableAgency(agency) {
+    if (!agency) return '<p class="muted">No observable agency assessment available.</p>';
+    return \`
+      <div class="card">
+        <h3>Agency dimensions</h3>
+        <div class="bars agency-bars">\${agency.dimensions.map((dimension) => \`
+          <div class="bar-row">
+            <code>\${esc(dimension.name)}</code>
+            <div class="bar-track"><span style="width:\${Math.max(4, Math.min(100, Number(dimension.score) || 0))}%"></span></div>
+            <small>\${esc(dimension.score)}/100</small>
+          </div>\`).join('')}</div>
+      </div>
+      <div class="grid">
+        <div class="card"><h3>Main strengths</h3>\${signalList(agency.strengths, 'No dimension is above the strength threshold.')}</div>
+        <div class="card"><h3>Review flags</h3>\${signalList(agency.flags, 'No immediate flags.')}</div>
+      </div>\`;
   }
   function renderAgencyMetrics(metrics) {
     if (!metrics?.groups?.length) return '<h2>Agency metrics</h2><p>No metrics available for this contribution.</p>';

@@ -15,7 +15,24 @@ export interface AgencyMetricGroup {
   metrics: AgencyMetric[];
 }
 
+export interface ObservableAgencyDimension {
+  name: string;
+  score: number;
+  weight: number;
+  evidence: string[];
+}
+
+export interface ObservableAgencyAssessment {
+  score: number;
+  level: "muy alta" | "alta" | "media" | "baja" | "insuficiente";
+  confidence: "alta" | "media" | "limitada";
+  dimensions: ObservableAgencyDimension[];
+  strengths: string[];
+  flags: string[];
+}
+
 export interface StudentAgencyMetrics {
   studentId: string;
   groups: AgencyMetricGroup[];
+  observableAgency: ObservableAgencyAssessment;
 }

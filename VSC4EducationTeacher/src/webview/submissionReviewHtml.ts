@@ -71,7 +71,7 @@ const getEventType = (event) => event.type ?? event.event ?? 'event';
 const getEventFile = (event) => event.file ?? event.data?.file ?? '-';
 const minutes = (value) => Number.isFinite(Number(value)) ? String(value) : '0';
 const helpText = {
-  agency: 'Agency is a heuristic signal about observable student ownership: task starts, edits, time, completion and dialog with the agent. It supports teacher judgement; it is not a grade.',
+  agency: 'Observable agency is a 0-100 composite signal built from grouped metrics: continuity, effective editing, relevance, process management, iteration, validation and contextual flags. It supports teacher judgement; it is not a grade or authorship proof.',
   linesTouched: 'Lines touched counts unique file-line positions changed by the student. The total line touches number may count repeated edits on the same line.',
   files: 'Files counts distinct files referenced by work events. Source-like files narrows that count to common code, markup, data and Markdown extensions.',
   activeTime: 'Active time estimates session duration from event timestamps, subtracting long idle gaps. It is approximate and depends on the student tracker recording events.',
@@ -108,9 +108,10 @@ function renderStudent() {
   const eventTypeFilter = byId('event-filter').value.toLowerCase();
   const file = byId('file-filter').value.toLowerCase();
   const events = item.events.filter((event) => (!task || event.taskId === task) && (!eventTypeFilter || String(getEventType(event)).toLowerCase().includes(eventTypeFilter)) && (!file || String(getEventFile(event)).toLowerCase().includes(file)));
-  byId('students').innerHTML = renderTeacherReport(summary);
+  const studentMetrics = model.agencyMetrics.find((value) => value.studentId === selectedStudent);
+  byId('students').innerHTML = renderTeacherReport(summary, studentMetrics?.observableAgency);
   drawD3Report(summary);
-  byId('agency-metrics').innerHTML = renderAgencyMetrics(model.agencyMetrics.find((value) => value.studentId === selectedStudent));
+  byId('agency-metrics').innerHTML = renderAgencyMetrics(studentMetrics);
   byId('timeline').innerHTML = renderEvidenceTimeline(events);
   byId('git').innerHTML = \`\${sectionTitle('Git repository', helpText.gitCard)}<p>Detected: \${model.submission.hasGit ? 'yes' : 'no'}</p>\` + model.commits.map((commit) => \`<div class="card">\${cardTitleHtml(\`<code>\${esc(commit.hash?.slice(0, 10))}</code> \${esc(commit.message)}\`, helpText.gitCard)}<span class="muted">\${esc(commit.author)} - \${esc(commit.timestamp)}</span><br><button data-commit="\${esc(commit.hash)}">Show changed files</button></div>\`).join('');
   byId('agents').innerHTML = \`\${sectionTitle('Agent conversations', helpText.agentCard)}<p class="muted">Completeness depends on the agent and student tooling following the recording instructions.</p>\` + item.agentInteractions.map((interaction) => \`<div class="card">\${cardTitle(\`\${interaction.actor}\${interaction.agent ? ' - ' + interaction.agent : ''}\`, helpText.agentCard)}<span class="muted">\${esc(interaction.timestamp)}</span><p>\${esc(interaction.message)}</p></div>\`).join('') + (item.interactionErrors.length ? \`<pre class="warning">\${pretty(item.interactionErrors)}</pre>\` : '');
@@ -121,14 +122,14 @@ function renderStudent() {
   byId('save-feedback').addEventListener('click', () => { try { vscode.postMessage({ type: 'saveFeedback', feedback: { submissionId: model.submission.id, studentId: selectedStudent, status: byId('feedback-status').value, updatedAt: new Date().toISOString(), generalComment: byId('general-comment').value, evaluations: JSON.parse(byId('evaluations').value) } }); } catch { vscode.postMessage({ type: 'error', message: 'Evaluation JSON is invalid' }); } });
   byId('export-feedback').addEventListener('click', () => vscode.postMessage({ type: 'exportFeedback' }));
 }
-function renderTeacherReport(summary) {
-  const agency = summary?.agency ?? {};
+function renderTeacherReport(summary, observableAgency) {
   const activity = Array.isArray(summary?.activityByHour) ? summary.activityByHour : [];
   return \`
     <h2>Teacher report</h2>
-    <p class="muted">Quick signals for review. These support teacher judgement; they are not an automatic grade.</p>
+    <p class="muted">Quick signals for review. These support teacher judgement; they are not an automatic grade or authorship proof.</p>
     <div class="grid">
-      \${metricCard('Agency', esc(agency.level ?? 'unknown'), \`\${esc(agency.score ?? 0)}/6 evidence score\`, helpText.agency)}
+      \${metricCard('Observable agency', esc(observableAgency ? observableAgency.level : 'unknown'), observableAgency ? \`\${esc(observableAgency.score)}/100\` : 'not available', helpText.agency)}
+      \${metricCard('Confidence', esc(observableAgency?.confidence ?? 'unknown'), 'assessment reliability', helpText.agency)}
       \${metricCard('Completed tasks', \`\${esc(summary?.tasksCompleted ?? 0)}/\${esc(model.submission.manifest.tasks?.length ?? 0)}\`, 'finished tasks in this activity', helpText.agency)}
       \${metricCard('Lines touched', esc(summary?.uniqueLinesTouched ?? 0), \`\${esc(summary?.lineTouchCount ?? 0)} total line touches\`, helpText.linesTouched)}
       \${metricCard('Files', esc(summary?.filesModified ?? 0), \`\${esc(summary?.sourceFilesModified ?? 0)} source-like files\`, helpText.files)}
@@ -136,16 +137,7 @@ function renderTeacherReport(summary) {
       \${metricCard('Edit rhythm', esc(summary?.editBursts ?? 0), \`\${esc(summary?.fileChangeEvents ?? 0)} file change events\`, editRhythmHelp(summary))}
       \${metricCard('Agent use', esc(summary?.agentInteractions ?? 0), \`\${esc(summary?.studentAgentMessages ?? 0)} student / \${esc(summary?.agentResponses ?? 0)} agent\`, helpText.agentUse)}
     </div>
-    <div class="grid">
-      <div class="card">
-        \${cardTitle('Agency signals', helpText.agencySignals)}
-        \${signalList(agency.positives, 'No positive signals calculated.')}
-      </div>
-      <div class="card">
-        \${cardTitle('Review flags', helpText.reviewFlags)}
-        \${signalList(agency.concerns, 'No immediate flags.')}
-      </div>
-    </div>
+    \${renderObservableAgency(observableAgency)}
     <div class="card">
       \${cardTitle('Interaction view', helpText.activityChart)}
       <div id="activity-chart" class="chart"></div>
@@ -160,6 +152,23 @@ function renderTeacherReport(summary) {
         \${cardTitle('Student / agent balance', helpText.agentChart)}
         <div id="agent-chart" class="chart"></div>
       </div>
+    </div>\`;
+}
+function renderObservableAgency(agency) {
+  if (!agency) return '<p class="muted">No observable agency assessment available.</p>';
+  return \`
+    <div class="card">
+      \${cardTitle('Agency dimensions', helpText.agencyMetrics)}
+      <div class="bars agency-bars">\${agency.dimensions.map((dimension) => \`
+        <div class="bar-row">
+          <code>\${esc(dimension.name)}</code>
+          <div class="bar-track"><span style="width:\${Math.max(4, Math.min(100, Number(dimension.score) || 0))}%"></span></div>
+          <small>\${esc(dimension.score)}/100</small>
+        </div>\`).join('')}</div>
+    </div>
+    <div class="grid">
+      <div class="card">\${cardTitle('Main strengths', helpText.agencySignals)}\${signalList(agency.strengths, 'No dimension is above the strength threshold.')}</div>
+      <div class="card">\${cardTitle('Review flags', helpText.reviewFlags)}\${signalList(agency.flags, 'No immediate flags.')}</div>
     </div>\`;
 }
 function renderAgencyMetrics(metrics) {

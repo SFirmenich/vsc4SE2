@@ -80,7 +80,8 @@ export class SubmissionReviewService {
 
     for (const event of contribution.events) {
       const file = this.eventFile(event);
-      if (file) {
+      const workFile = file && this.isWorkSourceFile(file);
+      if (workFile) {
         files.add(file);
       }
       const timestamp = Date.parse(String(event.timestamp ?? ""));
@@ -88,7 +89,7 @@ export class SubmissionReviewService {
         const hour = new Date(timestamp).toISOString().slice(11, 13);
         activityByHour.set(hour, (activityByHour.get(hour) ?? 0) + 1);
       }
-      if (this.eventType(event) === "file_changed") {
+      if (this.eventType(event) === "file_changed" && workFile) {
         fileChangeEvents += 1;
         if (
           Number.isFinite(timestamp) &&
@@ -99,6 +100,9 @@ export class SubmissionReviewService {
         previousEditTimestamp = timestamp;
       }
       const lineRanges = this.eventLineRanges(event);
+      if (!workFile) {
+        continue;
+      }
       for (const range of lineRanges) {
         const start = Math.min(range.start, range.end);
         const end = Math.max(range.start, range.end);
@@ -135,9 +139,7 @@ export class SubmissionReviewService {
     const agentMessages = contribution.agentInteractions.filter(
       (interaction) => interaction.actor === "agent"
     ).length;
-    const sourceFiles = Array.from(files).filter((file) =>
-      /\.(ts|tsx|js|jsx|py|java|cs|cpp|c|h|html|css|json|md)$/i.test(file)
-    );
+    const sourceFiles = Array.from(files);
     const completedTasks = this.completedTaskCount(contribution.events);
     const agencySignals = this.agencySignals({
       tasksStarted: eventTypes.filter((type) => type === "task_started").length,
@@ -208,9 +210,19 @@ export class SubmissionReviewService {
 
   private eventFile(event: LearningEvent): string | undefined {
     if (typeof event.file === "string") {
-      return event.file;
+      return this.normalizePath(event.file);
     }
-    return typeof event.data?.file === "string" ? event.data.file : undefined;
+    return typeof event.data?.file === "string"
+      ? this.normalizePath(event.data.file)
+      : undefined;
+  }
+
+  private isWorkSourceFile(file: string): boolean {
+    return this.normalizePath(file).startsWith("src/");
+  }
+
+  private normalizePath(file: string): string {
+    return file.replace(/\\/g, "/").replace(/^\.\//, "");
   }
 
   private eventLineRanges(event: LearningEvent): { start: number; end: number }[] {
