@@ -17,9 +17,11 @@ from core.serializers import (
     ZipImportSerializer,
 )
 from core.services.activity_import import ActivityZipImportService
+from core.services.activity_review_dashboard import ActivityReviewDashboardService
 from core.services.metrics import ActivityMetricsService, CourseGroupMetricsService
 from core.services.safe_zip import ZipValidationError
 from core.services.submission_import import SubmissionZipImportService
+from core.services.submission_review import SubmissionReviewService
 
 
 def _owner(request):
@@ -127,11 +129,27 @@ class ActivityVersionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["get"])
     def metrics(self, request, pk=None):
-        return Response(ActivityMetricsService().for_activity_version(self.get_object()))
+        return Response(ActivityMetricsService().for_activity_version(
+            self.get_object(),
+            course_id=request.query_params.get("courseId"),
+            course_group_id=request.query_params.get("courseGroupId"),
+        ))
 
     @action(detail=True, methods=["get"])
     def comparison(self, request, pk=None):
         return Response(ActivityMetricsService().comparison(self.get_object()))
+
+    @action(detail=True, methods=["get"], url_path="review-dashboard")
+    def review_dashboard(self, request, pk=None):
+        return Response(ActivityReviewDashboardService().build(self.get_object()))
+
+    @action(detail=True, methods=["get"], url_path="submission-analysis")
+    def submission_analysis(self, request, pk=None):
+        return Response(ActivityReviewDashboardService().build_analysis(
+            self.get_object(),
+            course_id=request.query_params.get("courseId"),
+            course_group_id=request.query_params.get("courseGroupId"),
+        ))
 
 
 class StudentViewSet(viewsets.ReadOnlyModelViewSet):
@@ -177,6 +195,13 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = ImportWarningSerializer(self.get_object().warnings.all(), many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"])
+    def review(self, request, pk=None):
+        try:
+            return Response(SubmissionReviewService().build(self.get_object()))
+        except ZipValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 def import_activity_zip(request):
     serializer = ZipImportSerializer(data=request.data)
@@ -194,7 +219,13 @@ def import_submission_zip(request, activity_version=None):
     serializer.is_valid(raise_exception=True)
     try:
         group = _course_group(serializer.validated_data.get("courseGroupId"))
-        submission = SubmissionZipImportService().import_zip(serializer.validated_data["zip"], activity_version=activity_version, course_group=group)
+        submission_name = serializer.validated_data.get("submissionName") or serializer.validated_data.get("name") or ""
+        submission = SubmissionZipImportService().import_zip(
+            serializer.validated_data["zip"],
+            activity_version=activity_version,
+            course_group=group,
+            name=submission_name,
+        )
     except ZipValidationError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(SubmissionDetailSerializer(submission, context={"request": request}).data, status=status.HTTP_201_CREATED)

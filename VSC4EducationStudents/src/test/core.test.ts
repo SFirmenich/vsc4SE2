@@ -3,6 +3,7 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import AdmZip from 'adm-zip';
 
 import { ActivityLoader } from '../services/ActivityLoader';
 import { ActivityStateService } from '../services/ActivityStateService';
@@ -184,6 +185,70 @@ suite('Learning Activity core', () => {
 		assert.ok(await fs.stat(learningPath(root, 'theory', 'teoria.md')));
 		assert.ok(await fs.stat(path.join(root, 'src', 'Animal.ts')));
 		await assert.rejects(fs.stat(learningPath(root, 'state.json')));
+	});
+
+	test('ActivityLoader copies direct starter contents into src', async () => {
+		const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'learning-direct-starter-'));
+		try {
+			const packageRoot = path.join(parent, 'activity');
+			const destination = path.join(parent, 'workspace');
+			const zipPath = path.join(parent, 'activity.zip');
+			await fs.mkdir(path.join(packageRoot, 'starter'), { recursive: true });
+			await fs.mkdir(path.join(packageRoot, 'agent'), { recursive: true });
+			await writeJson(path.join(packageRoot, 'manifest.json'), manifest);
+			await fs.writeFile(path.join(packageRoot, 'agent', 'instructions.md'), 'Guide.', 'utf8');
+			await fs.writeFile(path.join(packageRoot, 'starter', 'Animal.ts'), 'export class Animal {}\n', 'utf8');
+			await new ZipService().create(packageRoot, zipPath);
+
+			await new ActivityLoader(new ZipService()).load(zipPath, destination, false);
+
+			assert.ok(await fs.stat(path.join(destination, 'src', 'Animal.ts')));
+			assert.ok(await fs.stat(learningPath(destination, 'starter', 'Animal.ts')));
+			await assert.rejects(fs.stat(path.join(destination, 'Animal.ts')));
+		} finally {
+			await fs.rm(parent, { recursive: true, force: true });
+		}
+	});
+
+	test('ActivityLoader preserves empty starter subdirectories in src', async () => {
+		const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'learning-empty-starter-dir-'));
+		try {
+			const destination = path.join(parent, 'workspace');
+			const zipPath = path.join(parent, 'activity.zip');
+			const zip = new AdmZip();
+			zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest), 'utf8'));
+			zip.addFile('agent/', Buffer.alloc(0));
+			zip.addFile('agent/instructions.md', Buffer.from('Guide.', 'utf8'));
+			zip.addFile('starter/', Buffer.alloc(0));
+			zip.addFile('starter/assets/', Buffer.alloc(0));
+			zip.addFile('starter/assets/empty/', Buffer.alloc(0));
+			zip.writeZip(zipPath);
+
+			await new ActivityLoader(new ZipService()).load(zipPath, destination, false);
+
+			assert.ok((await fs.stat(path.join(destination, 'src', 'assets', 'empty'))).isDirectory());
+		} finally {
+			await fs.rm(parent, { recursive: true, force: true });
+		}
+	});
+
+	test('ActivityLoader always creates src even when starter is missing', async () => {
+		const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'learning-empty-starter-'));
+		try {
+			const packageRoot = path.join(parent, 'activity');
+			const destination = path.join(parent, 'workspace');
+			const zipPath = path.join(parent, 'activity.zip');
+			await fs.mkdir(path.join(packageRoot, 'agent'), { recursive: true });
+			await writeJson(path.join(packageRoot, 'manifest.json'), manifest);
+			await fs.writeFile(path.join(packageRoot, 'agent', 'instructions.md'), 'Guide.', 'utf8');
+			await new ZipService().create(packageRoot, zipPath);
+
+			await new ActivityLoader(new ZipService()).load(zipPath, destination, false);
+
+			assert.ok((await fs.stat(path.join(destination, 'src'))).isDirectory());
+		} finally {
+			await fs.rm(parent, { recursive: true, force: true });
+		}
 	});
 
 	test('loading into a directory without Git initializes the repository', async function () {

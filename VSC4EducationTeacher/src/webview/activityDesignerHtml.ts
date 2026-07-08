@@ -52,7 +52,7 @@ export function activityDesignerHtml(
   <section id="tasks"><h2>Tasks</h2><div id="task-list"></div><button id="add-task">Add task</button></section>
   <section id="dependencies"><h2>Dependencies</h2><p class="muted">Dependencies are edited as comma-separated task IDs. Validation detects missing references and cycles.</p><div id="dependency-list"></div></section>
   <section id="theory"><h2>Theory</h2><p>Add Markdown files under <code>theory/</code>. Refer to them from task descriptions or agent instructions as needed.</p><button data-command="revealPath" data-path="theory">Reveal theory folder</button></section>
-  <section id="starter"><h2>Starter project</h2><p>The student starter lives under <code>starter/proyecto-base/</code>.</p><button data-command="revealPath" data-path="starter/proyecto-base">Reveal starter folder</button></section>
+  <section id="starter"><h2>Starter project</h2><p>Files under <code>starter/</code> are copied into the student's <code>src/</code> folder.</p><button data-command="revealPath" data-path="starter">Reveal starter folder</button></section>
   <section id="agent"><h2>Agent instructions</h2><textarea id="instructions" style="min-height:360px"></textarea><p><button id="save-instructions">Save instructions</button></p></section>
   <section id="rubric"><h2>Rubric</h2><p class="muted">Edit the rubric as JSON. Criteria IDs must be unique, task references valid, weights non-negative, and levels ordered.</p><textarea id="rubric-json" style="min-height:420px"></textarea><p><button id="save-rubric">Save rubric</button></p></section>
   <section id="validation"><h2>Validation</h2><button id="run-validation">Run validation</button><div id="validation-results"></div></section>

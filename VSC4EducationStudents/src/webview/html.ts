@@ -29,12 +29,7 @@ export function getStudentPanelHtml(
 		h1 { margin: 0 0 8px; font-size: 24px; }
 		h2 { margin: 0; font-size: 17px; }
 		.muted { color: var(--vscode-descriptionForeground); }
-		.grid {
-			display: grid;
-			grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-			gap: 16px;
-			margin-top: 20px;
-		}
+		.grid { margin-top: 20px; }
 		.card {
 			padding: 16px;
 			border: 1px solid var(--vscode-panel-border);
@@ -65,16 +60,7 @@ export function getStudentPanelHtml(
 			background: var(--vscode-button-secondaryBackground);
 		}
 		button:disabled { opacity: .5; cursor: default; }
-		ul { padding-left: 20px; }
-		li { margin: 6px 0; }
-		pre {
-			white-space: pre-wrap;
-			word-break: break-word;
-			font-family: var(--vscode-editor-font-family);
-			font-size: 12px;
-		}
 		.empty { max-width: 600px; margin: 80px auto; text-align: center; }
-		@media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
 	</style>
 </head>
 <body>
@@ -137,15 +123,14 @@ export function getStudentPanelHtml(
 						</div>
 						\${task.description ? \`<p>\${escapeHtml(task.description)}</p>\` : ''}
 						<div class="actions">
-							<button data-command="startTask" data-task-id="\${escapeHtml(task.id)}" \${canStart ? '' : 'disabled'}>Empezar tarea</button>
+							<div class="actions">
+								<button data-command="startTask" data-task-id="\${escapeHtml(task.id)}" \${canStart ? '' : 'disabled'}>Empezar tarea</button>
+								\${task.file ? \`<button class="secondary" data-command="openTaskFile" data-task-id="\${escapeHtml(task.id)}">Ver enunciado</button>\` : ''}
+							</div>
 							<button data-command="finishTask" data-task-id="\${escapeHtml(task.id)}" \${canFinish ? '' : 'disabled'}>Terminar tarea</button>
 						</div>
 					</article>\`;
 			}).join('');
-
-			const events = snapshot.recentEvents.map(event =>
-				\`<li><strong>\${escapeHtml(event.event)}</strong> <span class="muted">\${escapeHtml(event.timestamp)}\${event.taskId ? \` · \${escapeHtml(event.taskId)}\` : ''}</span></li>\`
-			).join('');
 
 			app.innerHTML = \`
 				<header>
@@ -158,16 +143,6 @@ export function getStudentPanelHtml(
 				</header>
 				<div class="grid">
 					<main><div class="section-title"><h2>Tareas</h2></div>\${tasks}</main>
-					<aside>
-						<section class="card">
-							<h2>Repositorio Git</h2>
-							<pre>\${escapeHtml(snapshot.gitStatus)}</pre>
-						</section>
-						<section class="card task">
-							<h2>Eventos recientes</h2>
-							<ul>\${events || '<li class="muted">Sin eventos.</li>'}</ul>
-						</section>
-					</aside>
 				</div>\`;
 			bindActions();
 		}

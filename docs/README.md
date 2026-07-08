@@ -1,8 +1,9 @@
 # VSCode4Education Documentation
 
 This directory is the central documentation home for VSCode4Education. Keep the
-shared contract here so the teacher extension, the student extension, exported
-activities, and exported submissions stay compatible.
+shared contract here so the teacher extension, the student extension, the
+repository application, exported activities, and exported submissions stay
+compatible.
 
 ## System Contract
 
@@ -23,5 +24,5 @@ activities, and exported submissions stay compatible.
 
 - [Student extension overview](student-extension.md)
 - [Teacher extension overview](teacher-extension.md)
+- [Repository application](repository.md)
 - [Teacher security limitations](teacher-security-limitations.md)
-

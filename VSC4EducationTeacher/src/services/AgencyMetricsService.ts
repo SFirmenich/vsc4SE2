@@ -1,5 +1,11 @@
 import { ActivityManifest } from "../types/ActivityManifest";
-import { AgencyMetric, AgencyMetricGroup, StudentAgencyMetrics } from "../types/AgencyMetrics";
+import {
+  AgencyMetric,
+  AgencyMetricGroup,
+  ObservableAgencyAssessment,
+  ObservableAgencyDimension,
+  StudentAgencyMetrics
+} from "../types/AgencyMetrics";
 import { Contribution } from "../types/Contribution";
 import { LearningEvent } from "../types/LearningEvent";
 
@@ -39,6 +45,7 @@ const PROTECTED_PATTERNS = [
 const VARIANT_PATTERN = /(^|[._ -])(copy|copia|backup|old|v\d+|final|prueba|\d+)([._ -]|$)/i;
 const TEST_PATTERN = /(^|[\\/])(tests?|__tests__)[\\/]|(\.test|\.spec)\.[^.\\/]+$|(^|[\\/])test_[^\\/]+\.py$/i;
 const TEST_TASK_PATTERN = /(test|prueba|testing|validacion|validation)/i;
+const PROTECTED_EDIT_WINDOW_MS = 10 * 60 * 1000;
 
 export class AgencyMetricsService {
   calculate(contribution: Contribution, manifest: ActivityManifest): StudentAgencyMetrics {
@@ -46,20 +53,27 @@ export class AgencyMetricsService {
     const sorted = events
       .filter((event): event is EventView & { time: number } => Number.isFinite(event.time))
       .sort((a, b) => a.time - b.time);
-    const filesChanged = new Set(this.byType(events, "file_changed").map((event) => event.file).filter(Boolean) as string[]);
-    const filesSaved = new Set(this.byType(events, "file_saved").map((event) => event.file).filter(Boolean) as string[]);
-    const filesConsulted = new Set(this.byType(events, "active_editor_changed").map((event) => event.file).filter(Boolean) as string[]);
+    const workEvents = events.filter((event) => !event.file || this.isWorkSourceFile(event.file));
+    const workFileEvents = events.filter((event) => event.file && this.isWorkSourceFile(event.file));
+    const filesChanged = new Set(this.byType(workFileEvents, "file_changed").map((event) => event.file).filter(Boolean) as string[]);
+    const filesSaved = new Set(this.byType(workFileEvents, "file_saved").map((event) => event.file).filter(Boolean) as string[]);
+    const filesConsulted = new Set(this.byType(workFileEvents, "active_editor_changed").map((event) => event.file).filter(Boolean) as string[]);
     const expectedFiles = new Set(
-      (manifest.tasks ?? []).map((task) => task.file).filter((file): file is string => typeof file === "string")
+      (manifest.tasks ?? [])
+        .map((task) => task.file)
+        .filter((file): file is string => typeof file === "string")
+        .map((file) => this.normalizePath(file))
+        .filter((file) => this.isWorkSourceFile(file))
     );
-    const protectedEvents = events.filter((event) => event.file && this.isProtected(event.file));
+    const protectedEditSequences = this.protectedEditSequences(events);
+    const outsideSrcEvents = events.filter((event) => event.file && !this.isWorkSourceFile(event.file) && ACTION_EVENTS.has(event.type));
     const heartbeat = this.count(events, "heartbeat");
-    const actions = events.filter((event) => ACTION_EVENTS.has(event.type));
-    const fileChanges = this.byType(events, "file_changed");
+    const actions = workEvents.filter((event) => ACTION_EVENTS.has(event.type));
+    const fileChanges = this.byType(workFileEvents, "file_changed");
     const effectiveChanges = fileChanges.filter((event) => event.changeCount > 0 || event.lineCount > 0);
-    const saves = this.byType(events, "file_saved");
-    const created = this.byType(events, "file_created");
-    const deleted = this.byType(events, "file_deleted");
+    const saves = this.byType(workFileEvents, "file_saved");
+    const created = this.byType(workFileEvents, "file_created");
+    const deleted = this.byType(workFileEvents, "file_deleted");
     const exports = this.byType(events, "submission_exported").filter((event) => Number.isFinite(event.time));
     const taskStarts = events.filter((event) => event.type === "task_started" && event.taskId && Number.isFinite(event.time));
     const taskFinishes = events.filter((event) => this.isTaskFinished(event.type) && event.taskId && Number.isFinite(event.time));
@@ -81,19 +95,19 @@ export class AgencyMetricsService {
     const actionsByTask = this.countBy(actions, (event) => event.taskId ?? "outside task");
     const changesAfterFinish = this.changesAfterTaskFinish(fileChanges, taskFinishes);
     const offTaskAfterStart = this.offTaskAfterStart(events, taskStarts);
-    const changesAfterExport = this.afterLast(exports, events.filter((event) => ["file_changed", "file_saved", "file_created"].includes(event.type)));
+    const changesAfterExport = this.afterLast(exports, workFileEvents.filter((event) => ["file_changed", "file_saved", "file_created"].includes(event.type)));
     const massiveChanges = fileChanges.filter((event) => event.lineCount > 20 || event.changeCount > 20);
     const incrementalChanges = effectiveChanges.filter((event) => event.changeCount <= 1 && event.lineCount > 0 && event.lineCount <= 3);
     const readEditCycles = this.readEditCycles(events);
     const reopenCount = this.reopenModifiedFiles(events);
     const refinementBlocks = this.refinementBlocks(fileChanges);
-    const testActivity = events.filter((event) => event.file && TEST_PATTERN.test(event.file) && ACTION_EVENTS.has(event.type));
+    const testActivity = workFileEvents.filter((event) => event.file && TEST_PATTERN.test(event.file) && ACTION_EVENTS.has(event.type));
     const testingTaskActivity = events.filter((event) => event.taskId && TEST_TASK_PATTERN.test(event.taskId) && ACTION_EVENTS.has(event.type));
     const systemicEvents = events.filter(
       (event) =>
         event.type === "heartbeat" ||
         event.type === "agents_file_restored" ||
-        (event.file ? this.isProtected(event.file) : false) ||
+        protectedEditSequences.some((sequence) => sequence.change === event || sequence.opened === event) ||
         (event.type === "file_changed" && event.changeCount === 0 && event.lineCount === 0)
     );
     const hashDiscontinuities = this.hashDiscontinuities(contribution.events);
@@ -116,17 +130,17 @@ export class AgencyMetricsService {
         this.metric(4, true, "Ratio de actividad efectiva", this.ratio(actions.length, heartbeat), undefined, "Acciones observables divididas por heartbeat.", "Un valor alto sugiere interaccion activa frente a presencia pasiva.", actions.length, "direct")
       ]),
       this.group("Intensidad de edicion", [
-        this.metric(5, true, "Densidad de edicion", this.ratio(fileChanges.length, observableMinutes), "cambios/min", "Eventos file_changed por minuto observable.", "Densidades extremas requieren revisar si hubo pegado, formato automatico o bloqueo.", fileChanges.length, "estimated"),
-        this.metric(6, true, "Proporcion de cambios efectivos", this.percent(effectiveChanges.length, fileChanges.length), "%", "file_changed con changeCount o lineas sobre total file_changed.", "Distingue cambios materiales de ruido tecnico del editor.", effectiveChanges.length, "direct"),
-        this.metric(7, true, "Volumen total de cambios", changeVolume, undefined, "Suma de data.changeCount en file_changed.", "Volumen bruto; debe interpretarse junto con lineas y ritmo.", fileChanges.length, "direct"),
-        this.metric(8, false, "Lineas afectadas totales", totalLineTouches, undefined, "Suma de rangos data.lines.", "Aproxima alcance textual, contando repeticiones.", fileChanges.length, "direct"),
-        this.metric(9, true, "Lineas unicas modificadas", uniqueLineCount, undefined, "Lineas archivo:numero distintas en rangos de cambio.", "Evita contar varias visitas a la misma linea.", uniqueLineCount, "direct"),
-        this.metric(10, true, "Dispersion de lineas modificadas", this.round(this.average(this.lineDispersions(fileChanges))), "lineas", "Promedio por archivo de max(linea)-min(linea)+1.", "Indica si la edicion se reparte o queda localizada.", uniqueLineCount, "estimated")
+        this.metric(5, true, "Densidad de edicion en src", this.ratio(fileChanges.length, observableMinutes), "cambios/min", "Eventos file_changed bajo src/ por minuto observable.", "Densidades extremas requieren revisar si hubo pegado, formato automatico o bloqueo.", fileChanges.length, "estimated"),
+        this.metric(6, true, "Proporcion de cambios efectivos en src", this.percent(effectiveChanges.length, fileChanges.length), "%", "file_changed bajo src/ con changeCount o lineas sobre total file_changed en src/.", "Distingue cambios materiales de ruido tecnico del editor.", effectiveChanges.length, "direct"),
+        this.metric(7, true, "Volumen total de cambios en src", changeVolume, undefined, "Suma de data.changeCount en file_changed bajo src/.", "Volumen bruto; debe interpretarse junto con lineas y ritmo.", fileChanges.length, "direct"),
+        this.metric(8, false, "Lineas afectadas totales en src", totalLineTouches, undefined, "Suma de rangos data.lines en src/.", "Aproxima alcance textual, contando repeticiones.", fileChanges.length, "direct"),
+        this.metric(9, true, "Lineas unicas modificadas en src", uniqueLineCount, undefined, "Lineas archivo:numero distintas en rangos de cambio bajo src/.", "Evita contar varias visitas a la misma linea.", uniqueLineCount, "direct"),
+        this.metric(10, true, "Dispersion de lineas modificadas en src", this.round(this.average(this.lineDispersions(fileChanges))), "lineas", "Promedio por archivo bajo src/ de max(linea)-min(linea)+1.", "Indica si la edicion se reparte o queda localizada.", uniqueLineCount, "estimated")
       ]),
       this.group("Relevancia de la intervencion", [
         this.metric(11, false, "Concentracion de edicion por archivo", this.percent(topFileCount, fileChanges.length), "%", this.topFileDetail(fileChangeDistribution), "Muestra si el esfuerzo se concentra en un archivo dominante.", fileChanges.length, "direct"),
         this.metric(12, true, "Cobertura de archivos esperados", expectedFiles.size ? this.percent(expectedTouched.length, expectedFiles.size) : "n/d", expectedFiles.size ? "%" : undefined, expectedFiles.size ? `${expectedTouched.length}/${expectedFiles.size} archivos de tareas modificados.` : "El manifiesto no declara task.file para estimar cobertura.", "Una cobertura baja puede ser incompletitud o una estrategia alternativa valida.", expectedTouched.length, expectedFiles.size ? "direct" : "limited"),
-        this.metric(13, true, "Actividad en archivos no esperados o protegidos", protectedEvents.length + this.nonExpectedEvents(events, expectedFiles).length, undefined, "Acciones sobre rutas protegidas o fuera de task.file cuando existe esa lista.", "Indicador de revision contextual; no implica mala praxis automaticamente.", protectedEvents.length, expectedFiles.size ? "estimated" : "limited")
+        this.metric(13, true, "Actividad fuera de src o no esperada", outsideSrcEvents.length + this.nonExpectedEvents(workFileEvents, expectedFiles).length, undefined, "Acciones sobre rutas fuera de src/ o fuera de task.file cuando existe esa lista.", "Indicador de revision contextual; no suma como trabajo efectivo.", outsideSrcEvents.length, expectedFiles.size ? "estimated" : "limited")
       ]),
       this.group("Exploracion y toma de decisiones", [
         this.metric(14, true, "Numero de archivos creados", created.length, undefined, "count(file_created).", "Crear archivos puede indicar exploracion, estructuracion o pruebas alternativas.", created.length, "direct"),
@@ -178,7 +192,7 @@ export class AgencyMetricsService {
         this.metric(46, false, "Indice de dependencia sistemica", this.percent(systemicEvents.length, events.length), "%", "Heartbeat, restauraciones, protegidos o cambios sin efecto sobre total eventos.", "Si es alto, conviene filtrar antes de interpretar agencia.", systemicEvents.length, "estimated")
       ]),
       this.group("Integridad y cumplimiento", [
-        this.metric(47, false, "Manipulacion o alteracion de archivos protegidos", protectedEvents.length, undefined, "Acciones sobre AGENTS.md, .vsc4education o metadatos internos.", "Indicador de revision, nunca acusacion automatica.", protectedEvents.length, "estimated"),
+        this.metric(47, false, "Secuencias sospechosas sobre archivos protegidos", protectedEditSequences.length, undefined, this.protectedEditDetail(protectedEditSequences), "Apertura de archivo protegido seguida por cambio/guardado dentro de una ventana sospechosa. Indicador de revision, nunca acusacion automatica.", protectedEditSequences.length, "estimated"),
         this.metric(48, true, "Integridad de la cadena hash", hashDiscontinuities === 0 ? "continua" : `${hashDiscontinuities} discontinuidades`, undefined, "Comprueba previousHash contra hash anterior.", "Afecta la confianza en la trazabilidad del log.", contribution.events.length, "direct"),
         this.metric(49, false, "Discontinuidades temporales", temporalGaps, undefined, "Pausas de 15 minutos o mas entre acciones no-heartbeat.", "Ayuda a no sobreinterpretar ausencia de eventos.", temporalGaps, "direct")
       ]),
@@ -187,7 +201,217 @@ export class AgencyMetricsService {
       ])
     ];
 
-    return { studentId: contribution.studentId, groups };
+    return {
+      studentId: contribution.studentId,
+      groups,
+      observableAgency: this.observableAgency(groups)
+    };
+  }
+
+  private observableAgency(groups: AgencyMetricGroup[]): ObservableAgencyAssessment {
+    const byId = new Map<number, AgencyMetric>();
+    groups.forEach((group) =>
+      group.metrics.forEach((metric) => byId.set(metric.id, metric))
+    );
+    const metric = (id: number): AgencyMetric | undefined => byId.get(id);
+    const value = (id: number): number | undefined => this.numericValue(metric(id)?.value);
+    const dimension = (
+      name: string,
+      weight: number,
+      parts: Array<[number, string]>
+    ): ObservableAgencyDimension => {
+      const usable = parts.filter(([score]) => Number.isFinite(score));
+      const score = usable.length
+        ? this.round(this.average(usable.map(([score]) => score)))
+        : 0;
+      return { name, score, weight, evidence: usable.map(([, text]) => text) };
+    };
+
+    const dimensions = [
+      dimension("Continuidad", 20, [
+        [this.cap(value(2), 30), this.evidence(metric(2))],
+        [this.cap(value(3), 30), this.evidence(metric(3))],
+        [this.cap(value(4), 1), this.evidence(metric(4))],
+        [this.inverseCount(value(49), 3), this.evidence(metric(49))]
+      ]),
+      dimension("Edicion efectiva", 25, [
+        [this.percentScore(value(6)), this.evidence(metric(6))],
+        [this.cap(value(9), 20), this.evidence(metric(9))],
+        [this.cap(value(7), 30), this.evidence(metric(7))],
+        [this.band(value(5), 0.1, 4), this.evidence(metric(5))],
+        [this.percentScore(value(33)), this.evidence(metric(33))]
+      ]),
+      dimension("Relevancia", 20, [
+        [this.percentOrNeutral(metric(12)), this.evidence(metric(12))],
+        [this.inverseCount(value(13), 8), this.evidence(metric(13))],
+        [this.inversePercent(value(11), 100), this.evidence(metric(11))],
+        [this.cap(this.leadingNumber(metric(42)?.value), 4), this.evidence(metric(42))]
+      ]),
+      dimension("Gestion del proceso", 15, [
+        [this.cap(value(18), 3), this.evidence(metric(18))],
+        [this.band(value(19), 0.5, 8), this.evidence(metric(19))],
+        [this.percentScore(value(25)), this.evidence(metric(25))],
+        [this.inversePercent(value(29), 100), this.evidence(metric(29))],
+        [this.percentScore(value(31)), this.evidence(metric(31))],
+        [this.percentScore(value(50)), this.evidence(metric(50))]
+      ]),
+      dimension("Iteracion y refinamiento", 10, [
+        [this.cap(value(36), 4), this.evidence(metric(36))],
+        [this.cap(value(37), 5), this.evidence(metric(37))],
+        [this.cap(value(39), 3), this.evidence(metric(39))],
+        [this.cap(this.maxNumber(metric(40)?.value), 4), this.evidence(metric(40))],
+        [this.band(value(41), 5, 45), this.evidence(metric(41))]
+      ]),
+      dimension("Validacion y entrega", 10, [
+        [this.cap(value(43), 3), this.evidence(metric(43))],
+        [this.cap(value(44), 3), this.evidence(metric(44))],
+        [this.band(value(22), 1, 60), this.evidence(metric(22))],
+        [this.cap(value(23), 1), this.evidence(metric(23))],
+        [this.cap(value(24), 5), this.evidence(metric(24))]
+      ])
+    ];
+
+    const weighted = dimensions.reduce(
+      (total, item) => total + item.score * item.weight,
+      0
+    );
+    const totalWeight = this.sum(dimensions.map((item) => item.weight));
+    const penalty = this.penalty(byId);
+    const score = Math.max(0, Math.min(100, this.round(weighted / totalWeight - penalty)));
+    const strengths = dimensions
+      .filter((item) => item.score >= 70)
+      .map((item) => `${item.name}: ${item.score}/100`);
+    const flags = this.metaFlags(byId, dimensions, penalty);
+
+    return {
+      score,
+      level: this.agencyLevel(score),
+      confidence: this.confidence(Array.from(byId.values())),
+      dimensions,
+      strengths,
+      flags
+    };
+  }
+
+  private agencyLevel(
+    score: number
+  ): ObservableAgencyAssessment["level"] {
+    if (score >= 85) return "muy alta";
+    if (score >= 65) return "alta";
+    if (score >= 40) return "media";
+    if (score >= 15) return "baja";
+    return "insuficiente";
+  }
+
+  private confidence(metrics: AgencyMetric[]): ObservableAgencyAssessment["confidence"] {
+    const evidence = this.sum(metrics.map((metric) => metric.evidenceCount));
+    const limited = metrics.filter((metric) => metric.reliability === "limited").length;
+    const direct = metrics.filter((metric) => metric.reliability === "direct").length;
+    const hash = metrics.find((metric) => metric.id === 48)?.value;
+    if (evidence >= 30 && direct >= limited && hash === "continua") return "alta";
+    if (evidence >= 10 && limited < metrics.length / 2) return "media";
+    return "limitada";
+  }
+
+  private penalty(metrics: Map<number, AgencyMetric>): number {
+    const value = (id: number): number | undefined => this.numericValue(metrics.get(id)?.value);
+    let penalty = 0;
+    penalty += Math.min(12, (value(30) ?? 0) * 3);
+    penalty += Math.min(12, (value(32) ?? 0) * 2);
+    penalty += Math.min(10, (value(47) ?? 0) * 3);
+    penalty += Math.min(10, (value(49) ?? 0) * 2);
+    const systemic = value(46);
+    if (systemic !== undefined && systemic > 50) penalty += 8;
+    const integrity = metrics.get(48)?.value;
+    if (typeof integrity === "string" && integrity !== "continua") penalty += 10;
+    return penalty;
+  }
+
+  private metaFlags(
+    metrics: Map<number, AgencyMetric>,
+    dimensions: ObservableAgencyDimension[],
+    penalty: number
+  ): string[] {
+    const flags: string[] = [];
+    const value = (id: number): number | undefined => this.numericValue(metrics.get(id)?.value);
+    dimensions
+      .filter((dimension) => dimension.score < 40)
+      .forEach((dimension) =>
+        flags.push(`${dimension.name} con evidencia debil (${dimension.score}/100)`)
+      );
+    if ((value(30) ?? 0) > 0) flags.push("Hay cambios posteriores a la entrega registrada");
+    if ((value(32) ?? 0) > 0) flags.push("Hay cambios masivos repentinos para revisar en contexto");
+    if ((value(47) ?? 0) > 0) flags.push("Hay actividad sobre archivos protegidos o internos");
+    if ((value(49) ?? 0) > 0) flags.push("Hay discontinuidades temporales relevantes");
+    const integrity = metrics.get(48)?.value;
+    if (typeof integrity === "string" && integrity !== "continua") {
+      flags.push("La cadena hash no es continua");
+    }
+    if (penalty > 0) flags.push(`Penalizacion contextual aplicada: ${this.round(penalty)} puntos`);
+    return flags;
+  }
+
+  private evidence(metric: AgencyMetric | undefined): string {
+    if (!metric) return "Metrica no disponible.";
+    const unit = metric.unit ? ` ${metric.unit}` : "";
+    return `${metric.name}: ${metric.value}${unit}`;
+  }
+
+  private numericValue(value: AgencyMetric["value"] | undefined): number | undefined {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value !== "string") return undefined;
+    const normalized = value.replace(",", ".");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  private leadingNumber(value: AgencyMetric["value"] | undefined): number | undefined {
+    if (typeof value === "number") return value;
+    if (typeof value !== "string") return undefined;
+    const match = value.match(/-?\d+(\.\d+)?/);
+    return match ? Number(match[0]) : undefined;
+  }
+
+  private maxNumber(value: AgencyMetric["value"] | undefined): number | undefined {
+    if (typeof value === "number") return value;
+    if (typeof value !== "string") return undefined;
+    const numbers = Array.from(value.matchAll(/-?\d+(\.\d+)?/g)).map((match) =>
+      Number(match[0])
+    );
+    return numbers.length ? Math.max(...numbers) : undefined;
+  }
+
+  private cap(value: number | undefined, fullScoreAt: number): number {
+    if (value === undefined) return 0;
+    return Math.max(0, Math.min(100, (value / Math.max(1, fullScoreAt)) * 100));
+  }
+
+  private percentScore(value: number | undefined): number {
+    if (value === undefined) return 0;
+    return Math.max(0, Math.min(100, value));
+  }
+
+  private inverseCount(value: number | undefined, zeroAt: number): number {
+    if (value === undefined) return 100;
+    return Math.max(0, Math.min(100, 100 - (value / Math.max(1, zeroAt)) * 100));
+  }
+
+  private inversePercent(value: number | undefined, zeroAt: number): number {
+    if (value === undefined) return 50;
+    return Math.max(0, Math.min(100, 100 - (value / Math.max(1, zeroAt)) * 100));
+  }
+
+  private percentOrNeutral(metric: AgencyMetric | undefined): number {
+    if (!metric) return 50;
+    if (metric.reliability === "limited") return 55;
+    return this.percentScore(this.numericValue(metric.value));
+  }
+
+  private band(value: number | undefined, low: number, high: number): number {
+    if (value === undefined) return 0;
+    if (value < low) return Math.max(0, (value / Math.max(low, 0.1)) * 70);
+    if (value <= high) return 100;
+    return Math.max(0, 100 - ((value - high) / Math.max(high, 1)) * 60);
   }
 
   private view(event: LearningEvent): EventView {
@@ -262,8 +486,54 @@ export class AgencyMetricsService {
     return PROTECTED_PATTERNS.some((pattern) => pattern.test(file));
   }
 
+  private isWorkSourceFile(file: string): boolean {
+    return this.normalizePath(file).startsWith("src/");
+  }
+
   private normalizePath(file: string): string {
     return file.replace(/\\/g, "/").replace(/^\.\//, "");
+  }
+
+  private protectedEditSequences(
+    events: EventView[]
+  ): { opened: EventView; change: EventView; file: string }[] {
+    const ordered = events
+      .filter((event): event is EventView & { time: number } => Number.isFinite(event.time))
+      .sort((a, b) => a.time - b.time);
+    const sequences: { opened: EventView; change: EventView; file: string }[] = [];
+    let protectedOpen: (EventView & { time: number; file: string }) | undefined;
+    for (const event of ordered) {
+      if (event.type === "active_editor_changed" && event.file) {
+        protectedOpen = this.isProtected(event.file)
+          ? (event as EventView & { time: number; file: string })
+          : undefined;
+        continue;
+      }
+      if (
+        protectedOpen &&
+        ["file_changed", "file_saved", "file_created", "file_deleted"].includes(event.type) &&
+        event.time - protectedOpen.time <= PROTECTED_EDIT_WINDOW_MS &&
+        (!event.file || event.file === protectedOpen.file)
+      ) {
+        sequences.push({ opened: protectedOpen, change: event, file: protectedOpen.file });
+        protectedOpen = undefined;
+      }
+      if (protectedOpen && event.time - protectedOpen.time > PROTECTED_EDIT_WINDOW_MS) {
+        protectedOpen = undefined;
+      }
+    }
+    return sequences;
+  }
+
+  private protectedEditDetail(
+    sequences: { opened: EventView; change: EventView; file: string }[]
+  ): string {
+    if (!sequences.length) {
+      return "No hay apertura de archivo protegido seguida por cambio/guardado sospechoso.";
+    }
+    return sequences
+      .map((sequence) => `${sequence.file}: ${sequence.opened.type} -> ${sequence.change.type}`)
+      .join("; ");
   }
 
   private minutesBetween(start?: number, end?: number): number {

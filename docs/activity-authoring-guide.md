@@ -52,10 +52,8 @@ my-activity/
 |-- agent/
 |   `-- instructions.md
 |-- starter/
-|   `-- proyecto-base/
-|       |-- src/
-|       |-- package.json
-|       `-- ...
+|   |-- Animal.ts
+|   `-- ...
 `-- signatures/
     `-- manifest.sig
 ```
@@ -219,15 +217,16 @@ student-side flows may not validate automatically that the file exists.
 The project the student receives must be located at:
 
 ```text
-starter/proyecto-base/
+starter/
 ```
 
-All of its contents are copied to the root of the working directory.
+All of its contents are copied to the `src/` directory in the working
+workspace.
 
 For example:
 
 ```text
-starter/proyecto-base/src/Animal.ts
+starter/Animal.ts
 ```
 
 becomes:
@@ -252,10 +251,10 @@ Avoid:
 - including secrets or credentials;
 - depending on absolute paths from the teacher's machine;
 - including `node_modules`, build outputs, or temporary files;
-- including a `.git` directory inside `proyecto-base`.
+- including a `.git` directory inside `starter/`.
 
-Before packaging, the teacher should copy `starter/proyecto-base` to a clean
-temporary directory and verify that it can be installed, built, and run.
+Before packaging, the teacher should copy `starter/` to a clean temporary
+directory and verify that the source files are ready for the student workspace.
 
 ## 7. Instructions For AI Agents
 
@@ -341,7 +340,7 @@ Before creating the ZIP, check that:
 - identifiers are unique;
 - each `file` field points to the correct document;
 - `agent/instructions.md` exists;
-- `starter/proyecto-base` exists;
+- `starter/` exists;
 - the starter project builds in a clean directory;
 - no installed dependencies or temporary files are included;
 - there are no secrets, tokens, or personal data;
@@ -402,7 +401,7 @@ To test an activity:
 
 Check that:
 
-- the starter was copied to the root;
+- the starter was copied into `src/`;
 - the full package was preserved in `.vsc4education/`;
 - `AGENTS.md` exists;
 - the student's contribution exists;
@@ -599,9 +598,10 @@ Do not use spaces, slashes, or relative paths in `id`.
 Check that `agent/instructions.md` exists and that the student has been
 registered.
 
-### The Starter Appears Inside Another Folder
+### The Starter Appears In The Wrong Folder
 
-The executable content must be directly inside `starter/proyecto-base`.
+The files that should become editable source files must be directly inside
+`starter/`, so they import into `src/`.
 
 ### The Project Does Not Compile After Import
 
@@ -652,6 +652,6 @@ It is a good starting point. Copy it and replace:
 - the contents of `theory/`;
 - the contents of `tasks/`;
 - `agent/instructions.md`;
-- the project in `starter/proyecto-base/`.
+- the source files in `starter/`.
 
 Keep the folder structure until a formal shared metamodel version exists.

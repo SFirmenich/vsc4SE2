@@ -18,11 +18,24 @@ describe("ZIP export and submission import", () => {
       tasks: [{ id: "task", title: "Task", file: "tasks/task.md" }]
     });
     await fs.writeFile(path.join(root, "tasks", "task.md"), "# Task");
+    await fs.writeFile(path.join(root, "starter", "Animal.ts"), "export class Animal {}\n");
+    await fs.mkdir(path.join(root, "starter", "assets", "empty"), { recursive: true });
+    await fs.writeFile(path.join(root, "imports", "theory", "legacy.pdf"), "PDF");
+    await fs.writeFile(
+      path.join(root, "imports", "practice", "legacy.docx"),
+      "DOCX"
+    );
     const destination = path.join(parent, "activity.zip");
     await new ActivityPackageService().export(root, destination);
     const names = new AdmZip(destination).getEntries().map((entry) => entry.entryName);
     assert.ok(names.includes("manifest.json"));
+    assert.ok(names.includes("starter/Animal.ts"));
+    assert.ok(names.includes("starter/assets/"));
+    assert.ok(names.includes("starter/assets/empty/"));
+    assert.ok(!names.includes("starter/proyecto-base/Animal.ts"));
     assert.ok(names.includes("signatures/hashes.json"));
+    assert.ok(!names.includes("AGENTS.md"));
+    assert.ok(!names.some((name) => name.startsWith("imports/")));
   });
 
   it("blocks path traversal before resolving extraction targets", () => {
@@ -67,5 +80,32 @@ describe("ZIP export and submission import", () => {
     assert.strictEqual(imported.manifest.id, "activity");
     assert.strictEqual(imported.contributions[0].studentId, "student-1");
     assert.strictEqual(imported.contributions[0].events.length, 1);
+  });
+
+  it("imports a submission into a selected inspection directory", async () => {
+    const parent = await tempDirectory("lat-import-destination-");
+    const source = path.join(parent, "project");
+    const metadata = path.join(source, ".vsc4education");
+    const student = path.join(metadata, "contributions", "student-1");
+    await fs.mkdir(student, { recursive: true });
+    await fs.writeFile(
+      path.join(metadata, "activity-manifest.json"),
+      JSON.stringify({
+        id: "activity",
+        title: "Activity",
+        tasks: [{ id: "task", title: "Task" }]
+      })
+    );
+    await fs.writeFile(path.join(student, "events.jsonl"), "");
+    const zipPath = path.join(parent, "submission.zip");
+    await new ZipService().createFromDirectory(source, zipPath, new Set());
+    const destination = path.join(parent, "teacher-inspection");
+    const imported = await new SubmissionImportService().importToDirectory(
+      zipPath,
+      destination
+    );
+    assert.ok(imported.rootPath.startsWith(destination));
+    assert.strictEqual(imported.projectPath, imported.rootPath);
+    assert.ok(await fs.stat(path.join(imported.projectPath, ".vsc4education")));
   });
 });

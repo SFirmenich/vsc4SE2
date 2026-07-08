@@ -174,23 +174,30 @@ describe("Integrity and agent interactions", () => {
           },
           {
             timestamp: "2026-01-01T10:05:00Z",
-            event: "file_changed",
-            data: { file: ".vsc4education/state.json", changeCount: 1 },
+            event: "active_editor_changed",
+            data: { file: ".vsc4education/state.json" },
             previousHash: "five",
             hash: "six"
+          },
+          {
+            timestamp: "2026-01-01T10:05:30Z",
+            event: "file_changed",
+            data: { file: ".vsc4education/state.json", changeCount: 1 },
+            previousHash: "six",
+            hash: "seven"
           },
           {
             timestamp: "2026-01-01T10:06:00Z",
             event: "task_finished",
             taskId: "task",
-            previousHash: "six",
-            hash: "seven"
+            previousHash: "seven",
+            hash: "eight"
           },
           {
             timestamp: "2026-01-01T10:07:00Z",
             event: "submission_exported",
-            previousHash: "seven",
-            hash: "eight"
+            previousHash: "eight",
+            hash: "nine"
           }
         ],
         eventParseErrors: [],
@@ -212,7 +219,17 @@ describe("Integrity and agent interactions", () => {
     assert.strictEqual(metric(12)?.value, 100);
     assert.strictEqual(metric(13)?.value, 3);
     assert.strictEqual(metric(20)?.value, 2);
-    assert.strictEqual(metric(43)?.value, 1);
+    assert.strictEqual(metric(43)?.value, 0);
+    assert.strictEqual(metric(47)?.value, 1);
     assert.strictEqual(metric(48)?.value, "continua");
+    assert.strictEqual(typeof metrics.observableAgency.score, "number");
+    assert.ok(metrics.observableAgency.score >= 0);
+    assert.ok(metrics.observableAgency.score <= 100);
+    assert.ok(metrics.observableAgency.dimensions.length >= 6);
+    assert.ok(
+      ["muy alta", "alta", "media", "baja", "insuficiente"].includes(
+        metrics.observableAgency.level
+      )
+    );
   });
 });

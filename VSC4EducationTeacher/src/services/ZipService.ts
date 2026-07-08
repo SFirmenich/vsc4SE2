@@ -17,17 +17,19 @@ export class ZipService {
   async createFromDirectory(
     source: string,
     destination: string,
-    exclude = new Set(["node_modules", ".git", "dist", "out"])
+    exclude = new Set(["node_modules", ".git", "dist", "out"]),
+    excludeRootEntries = new Set<string>()
   ): Promise<void> {
     const zip = new AdmZip();
     const visit = async (current: string): Promise<void> => {
       for (const entry of await fs.readdir(current, { withFileTypes: true })) {
-        if (exclude.has(entry.name)) {
-          continue;
-        }
         const full = path.join(current, entry.name);
         const relative = path.relative(source, full).replace(/\\/g, "/");
+        if (exclude.has(entry.name) || excludeRootEntries.has(relative)) {
+          continue;
+        }
         if (entry.isDirectory()) {
+          zip.addFile(`${relative}/`, Buffer.alloc(0));
           await visit(full);
         } else if (entry.isFile()) {
           zip.addFile(relative, await fs.readFile(full));

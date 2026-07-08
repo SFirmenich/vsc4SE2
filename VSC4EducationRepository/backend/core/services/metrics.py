@@ -4,14 +4,18 @@ from core.models import ActivityVersion, CourseGroup, Submission, SubmissionTask
 
 
 class ActivityMetricsService:
-    def for_activity_version(self, activity_version: ActivityVersion) -> dict:
+    def for_activity_version(self, activity_version: ActivityVersion, course_id=None, course_group_id=None) -> dict:
         submissions = Submission.objects.filter(activity_version=activity_version)
+        if course_id:
+            submissions = submissions.filter(course_group__course_id=course_id)
+        if course_group_id:
+            submissions = submissions.filter(course_group_id=course_group_id)
         total = submissions.count()
         task_ids = list(activity_version.tasks.values_list("task_id", flat=True))
         completed_by_task = {}
         for task_id in task_ids:
             completed = SubmissionTaskState.objects.filter(
-                submission__activity_version=activity_version,
+                submission__in=submissions,
                 task_id=task_id,
                 status__in=["completed", "finished", "done"],
             ).count()

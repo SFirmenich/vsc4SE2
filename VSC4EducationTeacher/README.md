@@ -9,9 +9,13 @@ submissions compatible with **Learning Activity Tracker - Student**.
 - Use one Teacher Panel to inspect project state, validate, and export.
 - Edit manifests, tasks, theory, rubrics, agent instructions, and starter code
   with the normal VS Code file editors.
+- Use local `imports/theory` and `imports/practice` folders plus the generated
+  root `AGENTS.md` to help agents port previous course material into the
+  activity structure.
 - Validate manifests, references, cycles, paths, rubrics, and package contents.
 - Export student-compatible ZIP packages with optional SHA-256 file hashes.
-- Safely import student ZIP submissions into extension global storage.
+- Safely import student ZIP submissions into a teacher-selected inspection
+  folder.
 - Review timelines, contribution summaries, agent interactions, Git commits,
   changed files, and event-chain integrity.
 - Save rubric feedback outside the imported submission and export it as ZIP.
@@ -27,8 +31,9 @@ submissions compatible with **Learning Activity Tracker - Student**.
 
 The open workspace folder and its files are the activity source of truth. The
 panel refreshes when files are saved, created, renamed, or deleted. Imported
-submissions and reviews use `globalStorageUri`; large submissions are never
-stored in `globalState`.
+submission files are extracted into the selected inspection folder, while
+reviews use `globalStorageUri`; large submissions are never stored in
+`globalState`.
 
 ## Commands
 

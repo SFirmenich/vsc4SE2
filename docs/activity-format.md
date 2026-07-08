@@ -11,7 +11,7 @@ activity.zip
 |-- agent/
 |   `-- instructions.md
 |-- starter/
-|   `-- proyecto-base/
+|   `-- Animal.ts
 `-- signatures/
     `-- manifest.sig
 ```
@@ -40,9 +40,12 @@ activity.zip
 
 ## Import
 
-The contents of `starter/proyecto-base` are copied to the root of the selected
-workspace folder. For example, `starter/proyecto-base/src` becomes `src`, where
-the student works.
+The contents of `starter/` are copied into the `src/` directory of the selected
+workspace folder. For example, `starter/Animal.ts` becomes `src/Animal.ts`,
+where the student works.
+
+Legacy activity packages that contain `starter/proyecto-base/` are still
+accepted by the student extension for compatibility.
 
 The full academic package is preserved inside `.vsc4education/`:
 
@@ -112,3 +115,13 @@ local contribution.
 
 The `signatures/manifest.sig` file is preserved, but the MVP does not implement
 cryptographic validation.
+
+## Repository Import
+
+`VSC4EducationRepository` imports this same activity ZIP format. It stores the
+original archive, reads `manifest.json`, extracts activity and task metadata,
+and associates the activity version with courses or groups.
+
+Repository import requires `manifest.version` in addition to the base `id`,
+`title`, and task requirements, because activity versions are the unit used to
+match later submissions and compute comparisons.

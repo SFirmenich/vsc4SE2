@@ -111,7 +111,7 @@ export class ActivityValidationService {
     }
 
     for (const required of [
-      path.join("starter", "proyecto-base"),
+      "starter",
       path.join("agent", "instructions.md")
     ]) {
       if (!(await pathExists(path.join(root, required)))) {

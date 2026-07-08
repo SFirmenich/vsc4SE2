@@ -114,6 +114,7 @@ class Submission(models.Model):
     activity_version = models.ForeignKey(ActivityVersion, related_name="submissions", on_delete=models.CASCADE)
     course_group = models.ForeignKey(CourseGroup, related_name="submissions", null=True, blank=True, on_delete=models.SET_NULL)
     student = models.ForeignKey(Student, related_name="submissions", on_delete=models.CASCADE)
+    name = models.CharField(max_length=240, blank=True)
     original_zip = models.FileField(upload_to=submission_zip_upload_to)
     checksum_sha256 = models.CharField(max_length=64, unique=True)
     activity_manifest = models.JSONField(default=dict)
@@ -132,7 +133,8 @@ class Submission(models.Model):
         ordering = ["-imported_at"]
 
     def __str__(self):
-        return f"{self.student} -> {self.activity_version}"
+        prefix = self.name or str(self.student)
+        return f"{prefix} -> {self.activity_version}"
 
 
 class SubmissionTaskState(models.Model):

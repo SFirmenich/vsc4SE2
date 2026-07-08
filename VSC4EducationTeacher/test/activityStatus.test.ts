@@ -38,6 +38,23 @@ describe("Workspace activity status", () => {
     assert.ok(status.files.some((file) => file.path === "theory/guide.md"));
   });
 
+  it("scaffolds authoring imports and root agent guidance", async () => {
+    const root = await tempDirectory("lat-status-authoring-");
+    await new ActivityProjectService().initialize(root, {
+      id: "authoring-activity",
+      title: "Authoring Activity",
+      tasks: []
+    });
+
+    assert.ok(await fs.stat(path.join(root, "imports", "theory")));
+    assert.ok(await fs.stat(path.join(root, "imports", "practice")));
+    const agents = await fs.readFile(path.join(root, "AGENTS.md"), "utf8");
+    assert.ok(agents.includes("imports/theory"));
+    assert.ok(agents.includes("imports/practice"));
+    assert.ok(agents.includes("tasks/"));
+    assert.ok(agents.includes("theory/"));
+  });
+
   it("keeps the dashboard available for malformed manifest JSON", async () => {
     const root = await tempDirectory("lat-status-invalid-");
     await fs.writeFile(path.join(root, "manifest.json"), "{ invalid");

@@ -107,6 +107,8 @@ class SubmissionListSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)
     activityVersion = ActivityVersionListSerializer(source="activity_version", read_only=True)
     courseGroup = CourseGroupSerializer(source="course_group", read_only=True)
+    originalZipUrl = serializers.FileField(source="original_zip", read_only=True)
+    originalZipName = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -115,15 +117,23 @@ class SubmissionListSerializer(serializers.ModelSerializer):
             "activityVersion",
             "courseGroup",
             "student",
+            "name",
             "contribution_id",
             "checksum_sha256",
             "has_git",
             "event_count",
             "agent_interaction_count",
             "warning_count",
+            "originalZipUrl",
+            "originalZipName",
             "exported_at",
             "imported_at",
         ]
+
+    def get_originalZipName(self, obj):
+        if not obj.original_zip:
+            return ""
+        return obj.original_zip.name.rsplit("/", 1)[-1]
 
 
 class SubmissionDetailSerializer(SubmissionListSerializer):
@@ -131,7 +141,6 @@ class SubmissionDetailSerializer(SubmissionListSerializer):
     event_summaries = SubmissionEventSummarySerializer(many=True, read_only=True)
     agent_summary = SubmissionAgentSummarySerializer(read_only=True)
     warnings = ImportWarningSerializer(many=True, read_only=True)
-    originalZipUrl = serializers.FileField(source="original_zip", read_only=True)
 
     class Meta(SubmissionListSerializer.Meta):
         fields = SubmissionListSerializer.Meta.fields + [
@@ -150,3 +159,5 @@ class ZipImportSerializer(serializers.Serializer):
     zip = serializers.FileField()
     courseGroupId = serializers.IntegerField(required=False)
     activityVersionId = serializers.IntegerField(required=False)
+    submissionName = serializers.CharField(required=False, allow_blank=True, max_length=240)
+    name = serializers.CharField(required=False, allow_blank=True, max_length=240)

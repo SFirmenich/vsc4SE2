@@ -2,21 +2,26 @@
 
 ## Project Purpose
 
-VSCode4Education is a two-extension system for programming learning activities in
-Visual Studio Code:
+VSCode4Education is an ecosystem for programming learning activities centered on
+portable activity and submission packages:
 
 - `VSC4EducationTeacher` authors, validates, exports, imports, reviews, and gives
   feedback on learning activities and student submissions.
 - `VSC4EducationStudents` imports learning activities, prepares the student
   workspace, tracks local evidence, manages task state, exports submissions, and
   generates local agent instructions.
+- `VSC4EducationRepository` stores activity packages and student submissions,
+  extracts metadata, and provides course/group metrics and comparisons through a
+  Django, React, and Electron local application.
 
 The most important invariant in this repository is end-to-end compatibility:
 
 ```text
 Teacher activity export
+-> Repository activity import when used
 -> Student activity import
 -> Student submission export
+-> Repository submission import when used
 -> Teacher submission import/review
 ```
 
@@ -27,20 +32,23 @@ format change.
 
 ## Compatibility Contract
 
-The shared contract is file-based. Do not treat either extension's UI or internal
-implementation as the source of truth. The source of truth is the portable
-activity/submission structure documented in:
+The shared contract is file-based. Do not treat any component's UI, internal
+implementation, or the repository application's database as the source of truth.
+The source of truth is the portable activity/submission structure documented in:
 
 - `docs/project-and-extensions-spec.md`
 - `docs/activity-format.md`
 - `docs/events.md`
+- `docs/repository.md`
 - `docs/teacher-activity-authoring.md`
 - `docs/submission-review.md`
 
 An exported activity must remain importable by the student extension. A student
 workspace produced from that activity must remain exportable as a submission. A
 student submission must remain importable and reviewable by the teacher
-extension.
+extension. When `VSC4EducationRepository` is involved, the same activity and
+submission ZIPs must remain importable there without making Repository-specific
+database rows or summaries part of the portable format.
 
 ## Activity Package Rules
 
@@ -55,7 +63,6 @@ activity/
 |-- agent/
 |   `-- instructions.md
 |-- starter/
-|   `-- proyecto-base/
 `-- signatures/
 ```
 
@@ -69,7 +76,7 @@ Required compatibility points:
 - `manifest.tasks[*].id` is stable and is the canonical task reference.
 - Task IDs must not be interpreted by array position.
 - Task files and other package references are relative paths inside the package.
-- `starter/proyecto-base/` is copied to the student workspace root.
+- `starter/` is copied to the student workspace root.
 - Academic package contents are preserved under `.vsc4education/`.
 - `agent/instructions.md` remains the canonical source for generated agent
   instructions.
@@ -125,6 +132,35 @@ handled as missing data rather than a fatal error. Corrupt required JSON,
 unreadable JSONL, invalid paths, and unsafe archive entries should be reported
 clearly.
 
+## Repository Application Rules
+
+`VSC4EducationRepository` is a consumer and organizer of the shared portable
+artifacts, not a replacement for teacher or student extension contracts.
+
+When changing Repository import, storage, metrics, API, or desktop packaging:
+
+- keep original uploaded activity and submission ZIPs as the durable artifact;
+- treat database rows, checksums, metrics, and comparisons as derived data;
+- preserve imports for the activity ZIP shape documented above;
+- preserve imports for student submissions containing `.vsc4education/` and
+  per-student contribution directories;
+- match submissions to activities by `activity id` and `version`, not task
+  position or UI labels;
+- keep task references based on `manifest.tasks[*].id`;
+- do not execute student code, install student dependencies, or run package
+  scripts from imported submissions;
+- treat all ZIP paths and uploaded contents as untrusted input;
+- store warnings for missing optional evidence where possible instead of failing
+  the whole import;
+- fail clearly on unsafe archive entries, corrupt required JSON, missing
+  required submission files, or mismatched activity versions;
+- keep course and group assignment metadata outside the portable package
+  contract unless a documented format change explicitly adds it.
+
+Repository integration endpoints under `/api/integration/teacher/` should remain
+thin adapters over the same import/review contract. Avoid adding behavior there
+that bypasses validation used by the normal Repository API.
+
 ## Event And Evidence Rules
 
 Events are JSON Lines and must remain parseable line by line. When adding or
@@ -163,12 +199,14 @@ When changing generated agent instructions:
 
 ## Schema And Versioning Rules
 
-Before changing a schema or file format, check all four stages of the chain:
+Before changing a schema or file format, check all affected stages of the chain:
 
 1. Teacher export or authoring validation.
 2. Student import and workspace creation.
 3. Student submission export.
-4. Teacher submission import and review.
+4. Repository activity or submission import when the artifact can pass through
+   `VSC4EducationRepository`.
+5. Teacher submission import and review.
 
 If a change is backward compatible, tests should prove the old and new shapes
 work where relevant. If a change is breaking, document it in the relevant docs,
@@ -185,6 +223,7 @@ the affected direction:
 - teacher activity validation/package export
 - student ZIP import
 - student task/event/submission export
+- repository activity/submission ZIP import and metrics extraction
 - teacher submission import/review
 
 Useful commands:
@@ -195,6 +234,9 @@ npm test
 
 cd ../VSC4EducationTeacher
 npm test
+
+cd ../VSC4EducationRepository/backend
+python manage.py test
 ```
 
 If full tests are too expensive for a small change, run the narrowest relevant
@@ -205,8 +247,11 @@ compile/test command and state the remaining risk.
 - Keep changes scoped to the extension and contract surface involved.
 - Reuse existing services and utilities for paths, JSON, ZIP handling,
   validation, hashing, and Git.
+- In Repository code, prefer the existing import services, serializers, and
+  metrics services over duplicating ZIP parsing or summary extraction.
 - Treat archive paths as untrusted input.
-- Avoid writing outside the selected workspace or extension storage locations.
+- Avoid writing outside the selected workspace, extension storage locations, or
+  Repository media/database locations.
 - Do not delete user work, Git history, submissions, or contribution data.
 - Keep documentation, examples, validation, import, export, and review behavior
   aligned.
@@ -214,5 +259,5 @@ compile/test command and state the remaining risk.
 When in doubt, protect the full lifecycle:
 
 ```text
-activity ZIP -> imported workspace -> submission ZIP -> teacher review
+activity ZIP -> repository import -> imported workspace -> submission ZIP -> repository import -> teacher review
 ```

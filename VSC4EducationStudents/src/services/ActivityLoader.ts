@@ -31,7 +31,7 @@ export class ActivityLoader {
 			const manifest = this.normalizeManifest(rawManifest);
 
 			await ensureDirectory(destination);
-			await copyDirectory(path.join(packageRoot, 'starter', 'proyecto-base'), destination);
+			await this.copyStarter(packageRoot, destination);
 			await copyDirectory(packageRoot, learningPath(destination));
 
 			const gitService = new GitService(destination);
@@ -75,6 +75,18 @@ export class ActivityLoader {
 			}
 		}
 		throw new Error('El ZIP no contiene manifest.json en su raíz.');
+	}
+
+	private async copyStarter(packageRoot: string, destination: string): Promise<void> {
+		await ensureDirectory(path.join(destination, 'src'));
+
+		const legacyStarter = path.join(packageRoot, 'starter', 'proyecto-base');
+		if (await pathExists(legacyStarter)) {
+			await copyDirectory(legacyStarter, destination);
+			return;
+		}
+
+		await copyDirectory(path.join(packageRoot, 'starter'), path.join(destination, 'src'));
 	}
 
 	private normalizeManifest(value: unknown): ActivityManifest {

@@ -14,3 +14,8 @@ extension never claims that hashes constitute a real digital signature.
 Submission import locates
 `.vsc4education/activity-manifest.json` recursively and reads contributions
 under `.vsc4education/contributions/<studentId>/`.
+
+The repository application follows the same portable-file contract when it
+imports teacher activity ZIPs and student submission ZIPs. Repository database
+rows, metrics, and comparisons are derived from those archives; they do not
+replace the activity or submission ZIP as the compatibility artifact.

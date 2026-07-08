@@ -15,6 +15,51 @@ You are a pedagogical reviewer.
 - Explain concepts and ask guiding questions instead of completing the work.
 `;
 
+export const DEFAULT_AUTHORING_AGENTS = `# AGENTS.md
+
+This folder is a VSCode4Education teacher activity project. It is the source
+workspace used to author a portable learning activity package.
+
+## Canonical Activity Structure
+
+- \`manifest.json\` defines the activity identity, version, type, and task list.
+- \`tasks/\` contains the student-facing task statements referenced by
+  \`manifest.tasks[*].file\`.
+- \`theory/\` contains student-facing theory and support material.
+- \`agent/instructions.md\` contains the pedagogical agent instructions that will
+  be packaged for students.
+- \`starter/\` contains the starter project copied into each student workspace.
+- \`rubrics/\` contains evaluation rubrics.
+- \`signatures/\` contains generated package hashes or related metadata.
+
+## Imported Source Material
+
+The \`imports/\` folder is local teacher authoring material:
+
+- \`imports/theory/\` is for previous theory files, PDFs, DOCX files, slides, or
+  notes that can help create or improve \`theory/\`.
+- \`imports/practice/\` is for previous assignments, exercise sheets, examples,
+  solutions, tests, or other practice material that can help create or improve
+  \`tasks/\` and \`starter/\`.
+
+Treat \`imports/\` as source material, not as the portable activity contract. Do
+not assume these files are student-ready. When the teacher asks you to port,
+adapt, summarize, split, or update an activity, use the relevant files from
+\`imports/\` to modify the canonical files under \`tasks/\`, \`theory/\`,
+\`agent/\`, \`rubrics/\`, or \`starter/\`.
+
+## Authoring Rules
+
+- Keep task IDs stable and referenced through \`manifest.tasks[*].id\`.
+- Keep task file paths relative to this activity folder.
+- Do not place direct solutions in student-facing task or agent instruction
+  files unless the teacher explicitly asks for teacher-only material.
+- Preserve compatibility with the activity ZIP format consumed by the student
+  extension.
+- Do not execute code, install dependencies, or run scripts from imported source
+  material unless the teacher explicitly requests it.
+`;
+
 export class ActivityProjectService {
   async initialize(
     root: string,
@@ -23,10 +68,10 @@ export class ActivityProjectService {
     await fs.mkdir(root, { recursive: true });
     await fs.mkdir(path.join(root, "theory"), { recursive: true });
     await fs.mkdir(path.join(root, "tasks"), { recursive: true });
+    await fs.mkdir(path.join(root, "imports", "theory"), { recursive: true });
+    await fs.mkdir(path.join(root, "imports", "practice"), { recursive: true });
     await fs.mkdir(path.join(root, "agent"), { recursive: true });
-    await fs.mkdir(path.join(root, "starter", "proyecto-base"), {
-      recursive: true
-    });
+    await fs.mkdir(path.join(root, "starter"), { recursive: true });
     await fs.mkdir(path.join(root, "rubrics"), { recursive: true });
     await fs.mkdir(path.join(root, "signatures"), { recursive: true });
     await writeJson(path.join(root, "manifest.json"), manifest);
@@ -36,7 +81,12 @@ export class ActivityProjectService {
       "utf8"
     );
     await fs.writeFile(
-      path.join(root, "starter", "proyecto-base", ".gitkeep"),
+      path.join(root, "AGENTS.md"),
+      DEFAULT_AUTHORING_AGENTS,
+      "utf8"
+    );
+    await fs.writeFile(
+      path.join(root, "starter", ".gitkeep"),
       "",
       "utf8"
     );

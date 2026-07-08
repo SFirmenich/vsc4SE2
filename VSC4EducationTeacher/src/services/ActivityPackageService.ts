@@ -30,6 +30,8 @@ export class ActivityPackageService {
         const relative = path.relative(activityRoot, file).replace(/\\/g, "/");
         if (
           relative === "signatures/hashes.json" ||
+          relative === "AGENTS.md" ||
+          relative.startsWith("imports/") ||
           relative.startsWith(".git/") ||
           relative.startsWith("node_modules/")
         ) {
@@ -43,6 +45,30 @@ export class ActivityPackageService {
         files: hashes
       });
     }
-    await this.zip.createFromDirectory(activityRoot, destination);
+    await this.zip.createFromDirectory(
+      activityRoot,
+      destination,
+      new Set(["node_modules", ".git", "dist", "out"]),
+      new Set(["imports", "AGENTS.md"])
+    );
+  }
+
+  async exportTeacherPackage(
+    activityRoot: string,
+    destination: string
+  ): Promise<void> {
+    const result = await this.validation.validate(activityRoot);
+    if (!result.valid) {
+      throw new Error(
+        `Activity has validation errors: ${result.errors
+          .map((issue) => issue.message)
+          .join("; ")}`
+      );
+    }
+    await this.zip.createFromDirectory(
+      activityRoot,
+      destination,
+      new Set(["node_modules", ".git", "dist", "out"])
+    );
   }
 }
