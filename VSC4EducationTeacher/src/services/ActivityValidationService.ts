@@ -10,9 +10,13 @@ import { pathExists, readJson } from "../utils/fs";
 import { isSafeRelativePath, resolveInside } from "../utils/paths";
 import { hasCycle, VALID_ID } from "../utils/validation";
 import { RubricService } from "./RubricService";
+import { AssessmentService } from "./AssessmentService";
 
 export class ActivityValidationService {
-  constructor(private readonly rubricService = new RubricService()) {}
+  constructor(
+    private readonly rubricService = new RubricService(),
+    private readonly assessmentService = new AssessmentService()
+  ) {}
 
   async validate(root: string): Promise<ValidationResult> {
     const issues: ValidationIssue[] = [];
@@ -128,6 +132,11 @@ export class ActivityValidationService {
       try {
         const rubric = await readJson<Rubric>(rubricPath);
         issues.push(...this.rubricService.validate(rubric, taskIds));
+        issues.push({
+          severity: "info",
+          code: "rubric.legacy",
+          message: "rubrics/main.json is a legacy rubric; prefer assessment/rubrics/<taskId>.yml"
+        });
       } catch {
         issues.push({
           severity: "error",
@@ -135,13 +144,9 @@ export class ActivityValidationService {
           message: "rubrics/main.json is not valid JSON"
         });
       }
-    } else {
-      issues.push({
-        severity: "info",
-        code: "rubric.missing",
-        message: "No main rubric is defined"
-      });
     }
+
+    issues.push(...await this.assessmentService.validate(root, manifest));
 
     await this.findDiscouraged(root, root, issues);
     return this.result(issues);

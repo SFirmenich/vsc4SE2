@@ -19,6 +19,11 @@ compatible.
 - [Teacher activity authoring](teacher-activity-authoring.md)
 - [Submission review](submission-review.md)
 - [Rubrics](rubrics.md)
+- [Assessment rubric YAML](assessment-rubrics.md)
+
+## Schemas
+
+- [Assessment rubric JSON Schema](schemas/assessment-rubric.schema.json)
 
 ## Extension Overviews
 

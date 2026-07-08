@@ -88,6 +88,27 @@ student-workspace/
     `-- contributions/
 ```
 
+Teacher source projects and teacher packages may additionally contain private
+assessment material:
+
+```text
+assessment/
+|-- rubrics/
+|   `-- <taskId>.yml
+`-- solutions/
+    `-- <taskId>.md
+resources/
+|-- assessment-rubric.schema.json
+|-- auto-grading-prompt.md
+`-- overall-review-template.md
+```
+
+The student activity ZIP excludes `assessment/`. Public acceptance criteria live
+in `manifest.tasks[*].acceptanceCriteria`; private scoring criteria and
+official solutions live in the teacher-only assessment files. The student
+activity ZIP also excludes `resources/`; teacher package exports include it as
+reusable schema and auto-grading template material.
+
 ### 2.1 `manifest.json`
 
 The manifest identifies the activity and declares its tasks.
@@ -272,6 +293,11 @@ It must allow teachers to:
 - manage theory in `theory/`;
 - manage tasks in `tasks/`;
 - associate each manifest task with its Markdown document;
+- maintain `assessment/rubrics/<taskId>.yml` and
+  `assessment/solutions/<taskId>.md` for every task;
+- provide `resources/assessment-rubric.schema.json` for local schema guidance;
+- provide `resources/auto-grading-prompt.md` and
+  `resources/overall-review-template.md` for teacher-side assisted review;
 - prepare or select `starter/`, whose contents become the student's `src/`;
 - create and edit `agent/instructions.md`;
 - maintain a package changelog;
@@ -288,6 +314,9 @@ It must validate that:
 - each `task.file` points to an existing file;
 - `agent/instructions.md` exists;
 - `starter/` exists;
+- each task has one private assessment YAML and one official solution in the
+  teacher source project;
+- per-task assessment scores total 100;
 - the starter does not contain `.git`, `node_modules`, unnecessary builds, or
   temporary files;
 - there are no obvious secrets or credentials;
@@ -302,6 +331,11 @@ It must:
 - preserve relative paths;
 - include `manifest.json`, `theory/`, `tasks/`, `agent/`, `starter/`, and
   optional resources;
+- exclude teacher-only `assessment/` and legacy private `rubrics/` from the
+  student activity ZIP;
+- exclude teacher-only `resources/` from the student activity ZIP;
+- include teacher-only assessment material in teacher package exports used for
+  review;
 - generate or update `signatures/manifest.sig` when cryptographic support
   exists;
 - calculate package checksums when formal support is added.

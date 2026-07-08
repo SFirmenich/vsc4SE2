@@ -93,4 +93,34 @@ describe("Activity validation", () => {
     assert.ok(issues.some((issue) => issue.code === "rubric.levels"));
     assert.ok(issues.some((issue) => issue.code === "rubric.totalWeight"));
   });
+
+  it("validates per-task private assessment YAML files", async () => {
+    const root = await create({
+      id: "assessment",
+      title: "Assessment",
+      tasks: [{ id: "task", title: "Task", file: "tasks/task.md" }]
+    });
+    await fs.writeFile(
+      path.join(root, "assessment", "rubrics", "task.yml"),
+      [
+        "taskId: task",
+        "maxScore: 100",
+        "requiresTeacherReview: true",
+        "criteria:",
+        "  - id: correctness",
+        "    title: Correctness",
+        "    maxScore: 100",
+        "    allowsPartialCredit: true",
+        "agency:",
+        "  mode: none",
+        ""
+      ].join("\n")
+    );
+    await fs.writeFile(
+      path.join(root, "assessment", "solutions", "task.md"),
+      "# Official solution\n"
+    );
+    const result = await new ActivityValidationService().validate(root);
+    assert.strictEqual(result.valid, true);
+  });
 });

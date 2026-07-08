@@ -31,6 +31,9 @@ export class ActivityPackageService {
         if (
           relative === "signatures/hashes.json" ||
           relative === "AGENTS.md" ||
+          relative.startsWith("assessment/") ||
+          relative.startsWith("resources/") ||
+          relative.startsWith("rubrics/") ||
           relative.startsWith("imports/") ||
           relative.startsWith(".git/") ||
           relative.startsWith("node_modules/")
@@ -49,7 +52,7 @@ export class ActivityPackageService {
       activityRoot,
       destination,
       new Set(["node_modules", ".git", "dist", "out"]),
-      new Set(["imports", "AGENTS.md"])
+      new Set(["imports", "AGENTS.md", "assessment", "resources", "rubrics"])
     );
   }
 

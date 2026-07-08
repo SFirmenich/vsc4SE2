@@ -61,6 +61,27 @@ my-activity/
 The ZIP may contain these elements directly at its root or inside a single
 container directory.
 
+Teacher source projects also contain private assessment files:
+
+```text
+assessment/
+|-- rubrics/
+|   `-- <taskId>.yml
+`-- solutions/
+    `-- <taskId>.md
+resources/
+|-- assessment-rubric.schema.json
+|-- auto-grading-prompt.md
+`-- overall-review-template.md
+```
+
+These files are not distributed to students. They are used by the teacher
+extension and teacher-side agents during review. The local schema in
+`resources/assessment-rubric.schema.json` supports editor validation and agent
+guidance. The auto-grading prompt and overall-review template are reusable
+teacher-side review resources. The YAML format is documented in
+[Assessment rubric YAML](assessment-rubrics.md).
+
 Valid examples:
 
 ```text
@@ -345,6 +366,7 @@ Before creating the ZIP, check that:
 - no installed dependencies or temporary files are included;
 - there are no secrets, tokens, or personal data;
 - agent instructions do not contain solutions.
+- each task has a private assessment rubric and official solution.
 
 ## 10. Creating The ZIP
 
@@ -632,6 +654,9 @@ Before distributing an activity:
 - [ ] The starter does not contain the solution.
 - [ ] The starter builds from a clean directory.
 - [ ] `agent/instructions.md` correctly limits agents.
+- [ ] Each task has `assessment/rubrics/<taskId>.yml`.
+- [ ] Each task has `assessment/solutions/<taskId>.md`.
+- [ ] Assessment task scores sum to 100.
 - [ ] There are no secrets or personal data.
 - [ ] The ZIP has the expected structure.
 - [ ] Import was tested with a new Git repository.

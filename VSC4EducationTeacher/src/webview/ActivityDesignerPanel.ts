@@ -88,6 +88,7 @@ export class ActivityDesignerPanel {
           }
           await this.projects.save(this.root, message.manifest);
           await this.ensureTaskFiles(message.manifest);
+          await this.projects.ensureAssessmentFiles(this.root, message.manifest);
           await this.sendModel();
           break;
         case "saveInstructions":

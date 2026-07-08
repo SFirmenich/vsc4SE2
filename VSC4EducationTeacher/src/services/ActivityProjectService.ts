@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import * as path from "path";
 import { ActivityManifest } from "../types/ActivityManifest";
 import { readJson, writeJson } from "../utils/fs";
+import { AssessmentService } from "./AssessmentService";
 
 export const DEFAULT_AGENT_INSTRUCTIONS = `# Agent instructions
 
@@ -13,6 +14,246 @@ You are a pedagogical reviewer.
 - Consult the theory, task descriptions, and current task state before responding.
 - Record conversations in the file indicated by the student extension.
 - Explain concepts and ask guiding questions instead of completing the work.
+`;
+
+export const DEFAULT_ASSESSMENT_RUBRIC_SCHEMA = `{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsc4education.local/schemas/assessment-rubric.schema.json",
+  "title": "VSCode4Education Assessment Rubric",
+  "description": "Private per-task teacher assessment rubric for assessment/rubrics/<taskId>.yml.",
+  "type": "object",
+  "required": [
+    "maxScore",
+    "requiresTeacherReview",
+    "criteria",
+    "agency"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "taskId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "description": "Optional task ID. When present, it must match the manifest task ID and file name."
+    },
+    "maxScore": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Maximum score for this task. All task maxScore values across the activity must total 100."
+    },
+    "requiresTeacherReview": {
+      "type": "boolean",
+      "description": "Whether the teacher must review or confirm the proposed score."
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Private scoring criteria for this task.",
+      "items": {
+        "$ref": "#/$defs/criterion"
+      }
+    },
+    "agency": {
+      "$ref": "#/$defs/agency"
+    }
+  },
+  "$defs": {
+    "criterion": {
+      "type": "object",
+      "required": [
+        "id",
+        "maxScore",
+        "allowsPartialCredit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "maxScore": {
+          "type": "number",
+          "minimum": 0
+        },
+        "allowsPartialCredit": {
+          "type": "boolean",
+          "description": "If true, intermediate scores are allowed. If false, the criterion is all-or-nothing."
+        }
+      }
+    },
+    "agency": {
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "none",
+            "weighted",
+            "modifier",
+            "cap",
+            "bonus"
+          ]
+        },
+        "maxScore": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Points reserved for agency when mode is weighted."
+        },
+        "maxAdjustment": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum absolute score adjustment for modifier or bonus modes."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agencyRule"
+          }
+        }
+      }
+    },
+    "agencyRule": {
+      "type": "object",
+      "required": [
+        "metric",
+        "when"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "type": "string",
+          "examples": [
+            "observableAgency.score"
+          ]
+        },
+        "when": {
+          "type": "string",
+          "description": "Simple condition over the metric, such as \\">= 80\\" or \\"< 40\\"."
+        },
+        "reason": {
+          "type": "string"
+        },
+        "adjustment": {
+          "type": "number"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cap": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
+`;
+
+export const DEFAULT_AUTO_GRADING_PROMPT = `# Auto-grading prompt
+
+You are assisting a teacher with evidence-based review of student submissions.
+
+Use the teacher-only activity material, imported submission evidence, and the
+overall review template to produce a proposed review. The final grade remains a
+teacher decision.
+
+## Inputs to inspect
+
+- \`manifest.json\` and each \`manifest.tasks[*].id\`
+- \`tasks/<taskId>.md\`
+- \`manifest.tasks[*].acceptanceCriteria\`
+- \`assessment/rubrics/<taskId>.yml\`
+- \`assessment/solutions/<taskId>.md\`
+- imported student project files
+- contribution metadata, task metadata, events, Git commits, and agent
+  interactions when available
+- observable agency metrics shown by the teacher review panel
+
+## Output
+
+Create one review file at:
+
+\`\`\`text
+reviews/auto-grading/results/<submissionId>/<studentId>/overall-review.md
+\`\`\`
+
+Use \`resources/overall-review-template.md\` exactly as the output structure.
+Do not create per-student prompt or metadata files unless the teacher asks.
+
+## Rules
+
+- Treat scores as proposed, not final.
+- Cite concrete evidence for each task and criterion.
+- Respect \`allowsPartialCredit\` from each private criterion.
+- Apply agency rules only as described in the task rubric.
+- Do not execute student code or install dependencies.
+- Mark uncertainty clearly and request teacher review when evidence is missing
+  or ambiguous.
+`;
+
+export const DEFAULT_OVERALL_REVIEW_TEMPLATE = `# Auto-grading review
+
+Submission: <submissionId>
+Student: <studentId>
+Activity: <activityId>
+Activity version: <activityVersion>
+Generated at: <ISO-8601 timestamp>
+Generated by: <agent/model/tool>
+Status: proposed
+Requires teacher review: yes
+
+## Task: <taskId>
+
+Score: <score> / <maxScore>
+Requires teacher review: <yes/no>
+Confidence: <low/medium/high>
+
+### Criterion: <criterionId>
+
+Score: <score> / <maxScore>
+Partial credit: <yes/no>
+
+Justification:
+<Explain how the submission satisfies, partially satisfies, or misses this criterion.>
+
+Evidence:
+- <file, event, commit, metadata, or observation>
+
+### Agency impact
+
+Mode: <none/weighted/modifier/cap/bonus>
+Impact: <points or none>
+
+Justification:
+<Explain the agency effect using observable evidence, or state that no agency impact applies.>
+
+### Task summary
+
+<Short task-level summary.>
+
+## Final Summary
+
+Task score subtotal: <score> / 100
+Agency total impact: <impact>
+Final proposed score: <score> / 100
+
+Overall justification:
+<Summarize the strongest evidence, main gaps, and any uncertainty.>
+
+Teacher action:
+- [ ] Accept proposed grade
+- [ ] Edit grade
+- [ ] Request another agent review
+- [ ] Mark for manual review
 `;
 
 export const DEFAULT_AUTHORING_AGENTS = `# AGENTS.md
@@ -29,7 +270,14 @@ workspace used to author a portable learning activity package.
 - \`agent/instructions.md\` contains the pedagogical agent instructions that will
   be packaged for students.
 - \`starter/\` contains the starter project copied into each student workspace.
-- \`rubrics/\` contains evaluation rubrics.
+- \`assessment/rubrics/\` contains private per-task YAML rubrics.
+- \`assessment/solutions/\` contains private official per-task solutions.
+- \`resources/assessment-rubric.schema.json\` documents the YAML schema used by
+  \`assessment/rubrics/*.yml\`.
+- \`resources/auto-grading-prompt.md\` and
+  \`resources/overall-review-template.md\` define the generic teacher-side
+  agent review workflow.
+- \`rubrics/\` may contain legacy evaluation rubrics.
 - \`signatures/\` contains generated package hashes or related metadata.
 
 ## Imported Source Material
@@ -46,7 +294,38 @@ Treat \`imports/\` as source material, not as the portable activity contract. Do
 not assume these files are student-ready. When the teacher asks you to port,
 adapt, summarize, split, or update an activity, use the relevant files from
 \`imports/\` to modify the canonical files under \`tasks/\`, \`theory/\`,
-\`agent/\`, \`rubrics/\`, or \`starter/\`.
+\`agent/\`, \`assessment/\`, \`rubrics/\`, or \`starter/\`.
+
+## Assessment Authoring Rules
+
+When helping generate assessment material:
+
+- Create one private rubric at \`assessment/rubrics/<taskId>.yml\` and one
+  official solution at \`assessment/solutions/<taskId>.md\` for every
+  \`manifest.tasks[*].id\`.
+- Follow \`resources/assessment-rubric.schema.json\` for YAML structure.
+- Rubric YAML must contain only private \`criteria\`; do not create
+  \`publicCriteria\` or \`visibility\` fields.
+- Every criterion needs \`id\`, \`maxScore\`, and explicit
+  \`allowsPartialCredit: true\` or \`allowsPartialCredit: false\`.
+- The sum of all task \`maxScore\` values across assessment rubrics must be 100.
+- Public acceptance criteria belong in \`manifest.tasks[*].acceptanceCriteria\`,
+  not in assessment YAML.
+- Official solutions should explain intent, reference implementation,
+  acceptable variants, common mistakes, and notes for assisted evaluation.
+
+## Auto-Grading Review Rules
+
+When helping review submissions in a teacher review workspace:
+
+- Use \`resources/auto-grading-prompt.md\` as the reusable instruction source.
+- Use \`resources/overall-review-template.md\` as the required output format.
+- Generate one result per submission/student at
+  \`reviews/auto-grading/results/<submissionId>/<studentId>/overall-review.md\`.
+- Do not duplicate prompt or metadata files inside each result directory unless
+  the teacher asks for that.
+- Keep the review proposed and auditable: include scores, textual
+  justification, concrete evidence, uncertainty, and teacher action checkboxes.
 
 ## Authoring Rules
 
@@ -61,6 +340,8 @@ adapt, summarize, split, or update an activity, use the relevant files from
 `;
 
 export class ActivityProjectService {
+  constructor(private readonly assessment = new AssessmentService()) {}
+
   async initialize(
     root: string,
     manifest: ActivityManifest
@@ -72,7 +353,10 @@ export class ActivityProjectService {
     await fs.mkdir(path.join(root, "imports", "practice"), { recursive: true });
     await fs.mkdir(path.join(root, "agent"), { recursive: true });
     await fs.mkdir(path.join(root, "starter"), { recursive: true });
+    await fs.mkdir(path.join(root, "resources"), { recursive: true });
     await fs.mkdir(path.join(root, "rubrics"), { recursive: true });
+    await fs.mkdir(path.join(root, "assessment", "rubrics"), { recursive: true });
+    await fs.mkdir(path.join(root, "assessment", "solutions"), { recursive: true });
     await fs.mkdir(path.join(root, "signatures"), { recursive: true });
     await writeJson(path.join(root, "manifest.json"), manifest);
     await fs.writeFile(
@@ -90,6 +374,22 @@ export class ActivityProjectService {
       "",
       "utf8"
     );
+    await fs.writeFile(
+      path.join(root, "resources", "assessment-rubric.schema.json"),
+      DEFAULT_ASSESSMENT_RUBRIC_SCHEMA,
+      "utf8"
+    );
+    await fs.writeFile(
+      path.join(root, "resources", "auto-grading-prompt.md"),
+      DEFAULT_AUTO_GRADING_PROMPT,
+      "utf8"
+    );
+    await fs.writeFile(
+      path.join(root, "resources", "overall-review-template.md"),
+      DEFAULT_OVERALL_REVIEW_TEMPLATE,
+      "utf8"
+    );
+    await this.ensureAssessmentFiles(root, manifest);
     return root;
   }
 
@@ -108,4 +408,41 @@ export class ActivityProjectService {
   save(root: string, manifest: ActivityManifest): Promise<void> {
     return writeJson(path.join(root, "manifest.json"), manifest);
   }
+
+  async ensureAssessmentFiles(root: string, manifest: ActivityManifest): Promise<void> {
+    await fs.mkdir(path.join(root, "assessment", "rubrics"), { recursive: true });
+    await fs.mkdir(path.join(root, "assessment", "solutions"), { recursive: true });
+    const defaultScore = manifest.tasks?.length === 1 ? 100 : 0;
+    for (const task of manifest.tasks ?? []) {
+      const rubricPath = path.join(root, "assessment", "rubrics", `${task.id}.yml`);
+      if (!(await exists(rubricPath))) {
+        await fs.writeFile(
+          rubricPath,
+          this.assessment.defaultRubric(task.id, roundScore(defaultScore)),
+          "utf8"
+        );
+      }
+      const solutionPath = path.join(root, "assessment", "solutions", `${task.id}.md`);
+      if (!(await exists(solutionPath))) {
+        await fs.writeFile(
+          solutionPath,
+          this.assessment.defaultSolution(task.title),
+          "utf8"
+        );
+      }
+    }
+  }
+}
+
+async function exists(target: string): Promise<boolean> {
+  try {
+    await fs.access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function roundScore(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }

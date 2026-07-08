@@ -36,6 +36,27 @@ describe("ZIP export and submission import", () => {
     assert.ok(names.includes("signatures/hashes.json"));
     assert.ok(!names.includes("AGENTS.md"));
     assert.ok(!names.some((name) => name.startsWith("imports/")));
+    assert.ok(!names.some((name) => name.startsWith("assessment/")));
+    assert.ok(!names.some((name) => name.startsWith("resources/")));
+    assert.ok(!names.some((name) => name.startsWith("rubrics/")));
+  });
+
+  it("keeps teacher resources in the teacher package", async () => {
+    const parent = await tempDirectory("lat-teacher-export-");
+    const root = await new ActivityProjectService().create(parent, {
+      id: "teacher-exportable",
+      title: "Teacher Exportable",
+      tasks: [{ id: "task", title: "Task", file: "tasks/task.md" }]
+    });
+    await fs.writeFile(path.join(root, "tasks", "task.md"), "# Task");
+    const destination = path.join(parent, "teacher-activity.zip");
+    await new ActivityPackageService().exportTeacherPackage(root, destination);
+    const names = new AdmZip(destination).getEntries().map((entry) => entry.entryName);
+    assert.ok(names.includes("resources/assessment-rubric.schema.json"));
+    assert.ok(names.includes("resources/auto-grading-prompt.md"));
+    assert.ok(names.includes("resources/overall-review-template.md"));
+    assert.ok(names.includes("assessment/rubrics/task.yml"));
+    assert.ok(names.includes("assessment/solutions/task.md"));
   });
 
   it("blocks path traversal before resolving extraction targets", () => {

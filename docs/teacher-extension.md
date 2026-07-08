@@ -14,7 +14,7 @@ small project made of:
 - Markdown files with theory and task statements;
 - a starter project for the student;
 - instructions for AI agents;
-- evaluation rubrics;
+- private per-task assessment rubrics and official solutions;
 - enough metadata to validate and export the package.
 
 These packages are meant to be consumed by **Learning Activity Tracker -
@@ -31,9 +31,25 @@ theory/
 tasks/
 agent/instructions.md
 starter/
-rubrics/main.json
 signatures/
 ```
+
+Teacher source projects and teacher packages also contain private assessment
+material:
+
+```text
+assessment/
+|-- rubrics/
+|   `-- <taskId>.yml
+`-- solutions/
+    `-- <taskId>.md
+resources/
+|-- assessment-rubric.schema.json
+|-- auto-grading-prompt.md
+`-- overall-review-template.md
+```
+
+`assessment/` and `resources/` are excluded from the student activity ZIP.
 
 `manifest.json` describes the activity: identifier, title, description, version,
 type, and task list. Each task may have an associated Markdown file,
@@ -47,7 +63,15 @@ The directories serve different purposes:
   adapting previous activities into the canonical files.
 - `starter/`: initial source files copied into the student's `src/` folder.
 - `agent/`: pedagogical instructions for AI agents.
-- `rubrics/`: evaluation criteria.
+- `assessment/rubrics/`: private YAML scoring criteria per task.
+- `assessment/solutions/`: official solutions per task.
+- `resources/assessment-rubric.schema.json`: schema for authoring and validating
+  rubric YAML.
+- `resources/auto-grading-prompt.md`: reusable prompt for teacher-side assisted
+  grading.
+- `resources/overall-review-template.md`: required Markdown structure for
+  proposed review output.
+- `rubrics/`: legacy evaluation criteria.
 - `signatures/`: hashes or other integrity metadata, without claiming a digital
   signature when no real signature exists.
 
@@ -80,7 +104,7 @@ From that panel, the teacher can:
 - create new `task-N` tasks;
 - automatically detect manually created `tasks/task-N.md` files;
 - register detected tasks in `manifest.json`;
-- open the manifest, tasks, theory, rubric, and instructions in the normal
+- open the manifest, tasks, theory, assessment rubrics, solutions, and instructions in the normal
   editor;
 - validate the structure before export;
 - export a ZIP compatible with the student extension.
@@ -100,7 +124,7 @@ Before export, the extension validates items such as:
 - missing or circular dependencies;
 - existence of the starter project;
 - existence of agent instructions;
-- invalid rubrics;
+- invalid per-task assessment rubrics or missing official solutions;
 - paths that escape the package;
 - discouraged directories such as `node_modules`, `.git`, `dist`, or `out`.
 
