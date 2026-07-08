@@ -174,6 +174,12 @@ class ImportServicesTests(TestCase):
         self.assertEqual(submission.agent_interaction_count, 2)
         self.assertEqual(submission.agent_summary.providers, ["chatGPT"])
 
+    def test_import_submission_stores_repository_name(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        submission = SubmissionZipImportService().import_zip(submission_zip(), activity_version, name="Grupo A")
+
+        self.assertEqual(submission.name, "Grupo A")
+
     def test_import_submission_with_partially_invalid_jsonl(self):
         activity_version = ActivityZipImportService().import_zip(activity_zip())
         submission = SubmissionZipImportService().import_zip(submission_zip(invalid_jsonl=True), activity_version)
@@ -249,7 +255,7 @@ class ImportServicesTests(TestCase):
 
     def test_submission_review_endpoint_returns_teacher_like_sections(self):
         activity_version = ActivityZipImportService().import_zip(activity_zip())
-        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version)
+        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version, name="Solucion oficial")
 
         response = Client().get(f"/api/submissions/{submission.id}/review/")
         data = response.json()
@@ -291,7 +297,7 @@ class ImportServicesTests(TestCase):
 
     def test_submission_analysis_returns_values_by_submission(self):
         activity_version = ActivityZipImportService().import_zip(activity_zip())
-        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version)
+        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version, name="Solucion oficial")
 
         response = Client().get(f"/api/activity-versions/{activity_version.id}/submission-analysis/")
         data = response.json()
@@ -299,5 +305,6 @@ class ImportServicesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data["reviewedSubmissionCount"], 1)
         self.assertEqual(data["submissions"][0]["submissionId"], submission.id)
+        self.assertEqual(data["submissions"][0]["submissionName"], "Solucion oficial")
         self.assertEqual(data["submissions"][0]["summary"]["activeMinutes"], 11)
         self.assertTrue(data["submissions"][0]["agencyMetrics"])

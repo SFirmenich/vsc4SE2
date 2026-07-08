@@ -29,9 +29,10 @@ from core.services.safe_zip import (
 
 
 class SubmissionZipImportService:
-    def import_zip(self, uploaded_file, activity_version=None, course_group=None) -> Submission:
+    def import_zip(self, uploaded_file, activity_version=None, course_group=None, name="") -> Submission:
         checksum, data = sha256_file(uploaded_file)
         filename = uploaded_file.name or "submission.zip"
+        submission_name = (name or "").strip()
 
         with zipfile.ZipFile(BytesIO(data)) as zf:
             validate_zip(zf)
@@ -46,6 +47,9 @@ class SubmissionZipImportService:
         with transaction.atomic():
             existing = Submission.objects.filter(checksum_sha256=checksum).first()
             if existing:
+                if submission_name and existing.name != submission_name:
+                    existing.name = submission_name
+                    existing.save(update_fields=["name", "updated_at"])
                 return existing
 
             profile = parsed["profile"]
@@ -63,6 +67,7 @@ class SubmissionZipImportService:
                 activity_version=activity_version,
                 course_group=course_group,
                 student=student,
+                name=submission_name,
                 checksum_sha256=checksum,
                 activity_manifest=parsed["activity_manifest"],
                 activity_configuration=parsed["activity_configuration"],

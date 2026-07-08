@@ -219,7 +219,13 @@ def import_submission_zip(request, activity_version=None):
     serializer.is_valid(raise_exception=True)
     try:
         group = _course_group(serializer.validated_data.get("courseGroupId"))
-        submission = SubmissionZipImportService().import_zip(serializer.validated_data["zip"], activity_version=activity_version, course_group=group)
+        submission_name = serializer.validated_data.get("submissionName") or serializer.validated_data.get("name") or ""
+        submission = SubmissionZipImportService().import_zip(
+            serializer.validated_data["zip"],
+            activity_version=activity_version,
+            course_group=group,
+            name=submission_name,
+        )
     except ZipValidationError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(SubmissionDetailSerializer(submission, context={"request": request}).data, status=status.HTTP_201_CREATED)

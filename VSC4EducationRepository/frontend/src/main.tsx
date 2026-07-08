@@ -141,7 +141,7 @@ function App() {
     }
   }
 
-  async function importSubmission(file: File, courseGroupId: string) {
+  async function importSubmission(file: File, courseGroupId: string, submissionName = "") {
     if (!selectedActivity) {
       return;
     }
@@ -149,7 +149,7 @@ function App() {
       setMessage("Elegí una comisión para asociar la entrega.");
       return;
     }
-    await uploadZip<Submission>(`/activity-versions/${selectedActivity.id}/submissions/import-zip/`, file, { courseGroupId });
+    await uploadZip<Submission>(`/activity-versions/${selectedActivity.id}/submissions/import-zip/`, file, { courseGroupId, submissionName });
     setMessage("Entrega agregada.");
     setAddPanel(null);
     await openActivity(selectedActivity);
@@ -228,7 +228,7 @@ function App() {
             scopeQuery={selectedCourse ? `?courseId=${selectedCourse.id}` : ""}
             addPanel={addPanel}
             onAdd={() => setAddPanel(addPanel === "submission" ? null : "submission")}
-            onUpload={(file, groupId) => importSubmission(file, groupId).catch((error) => setMessage(errorMessage(error)))}
+            onUpload={(file, groupId, submissionName) => importSubmission(file, groupId, submissionName).catch((error) => setMessage(errorMessage(error)))}
             onOpen={openSubmission}
           />
         )}
@@ -324,7 +324,7 @@ function ActivityView(props: {
   scopeQuery: string;
   addPanel: string | null;
   onAdd: () => void;
-  onUpload: (file: File, groupId: string) => void;
+  onUpload: (file: File, groupId: string, submissionName?: string) => void;
   onOpen: (submission: Submission) => void;
 }) {
   const activity = props.activity;
@@ -399,12 +399,13 @@ function ActivityView(props: {
 
       {tab === "submissions" && (
         <>
-          {props.addPanel === "submission" && <ZipUploadPanel label="ZIP de entrega" groups={props.groups} onUpload={props.onUpload} />}
+          {props.addPanel === "submission" && <ZipUploadPanel label="ZIP de entrega" groups={props.groups} includeName onUpload={props.onUpload} />}
           <section className="tablePanel">
             <h2><Upload size={18} /> Entregas</h2>
             <table>
               <thead>
                 <tr>
+                  <th>Nombre</th>
                   <th>Estudiante</th>
                   <th>Archivo</th>
                   <th>Comision</th>
@@ -418,6 +419,7 @@ function ActivityView(props: {
               <tbody>
                 {props.submissions.map((submission) => (
                   <tr key={submission.id} onClick={() => props.onOpen(submission)}>
+                    <td>{submission.name || "-"}</td>
                     <td>{submission.student.display_name || submission.student.institutional_id}</td>
                     <td>
                       {submission.originalZipUrl ? (
@@ -566,7 +568,7 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
     const points = rows
       .map((row) => ({
         id: row.submissionId,
-        label: row.studentName || row.studentId,
+        label: submissionChartLabel(row),
         value: row.summary[metric.key],
       }))
       .filter((point): point is AnalysisPoint => typeof point.value === "number" && Number.isFinite(point.value));
@@ -583,8 +585,8 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
   }
 
   result.push(
-    categoricalMetric("integrityStatus", "Integridad", "Control de entrega", rows.map((row) => ({ id: row.submissionId, label: row.studentName || row.studentId, value: integrityLabel(row.integrityStatus) }))),
-    categoricalMetric("agencyLevel", "Nivel de agencia", "Agencia", rows.map((row) => ({ id: row.submissionId, label: row.studentName || row.studentId, value: row.agencyLevel }))),
+    categoricalMetric("integrityStatus", "Integridad", "Control de entrega", rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: integrityLabel(row.integrityStatus) }))),
+    categoricalMetric("agencyLevel", "Nivel de agencia", "Agencia", rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: row.agencyLevel }))),
   );
 
   const grouped = new Map<string, AnalysisMetricSeries>();
@@ -603,7 +605,7 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
         if (typeof metric.value === "number" || typeof metric.value === "string") {
           entry.points.push({
             id: row.submissionId,
-            label: row.studentName || row.studentId,
+            label: submissionChartLabel(row),
             value: metric.value,
           });
         }
@@ -613,6 +615,10 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
   }
 
   return [...result, ...Array.from(grouped.values()).filter((metric) => metric.points.length > 0)];
+}
+
+function submissionChartLabel(row: SubmissionAnalysisRow) {
+  return row.submissionName || row.studentName || row.studentId;
 }
 
 function categoricalMetric(key: string, title: string, dimension: string, points: AnalysisPoint[]): AnalysisMetricSeries {
@@ -898,9 +904,10 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
 
   return (
     <>
-      <SectionHeader icon={<UserRound size={20} />} title={submission.student.display_name || submission.student.institutional_id} />
+      <SectionHeader icon={<UserRound size={20} />} title={submission.name || submission.student.display_name || submission.student.institutional_id} />
       <section className="detailPanel">
         <div className="metrics">
+          {submission.name && <Metric label="Nombre" value={submission.name} />}
           <Metric label="Eventos" value={submission.event_count} />
           <Metric label="Interacciones agente" value={submission.agent_interaction_count} />
           <Metric label="Git" value={submission.has_git ? "Si" : "No"} />
@@ -1120,10 +1127,17 @@ function SectionHeader(props: { icon: React.ReactNode; title: string; actionLabe
   );
 }
 
-function ZipUploadPanel(props: { label: string; groups: CourseGroup[]; onUpload: (file: File, groupId: string) => void }) {
+function ZipUploadPanel(props: { label: string; groups: CourseGroup[]; includeName?: boolean; onUpload: (file: File, groupId: string, submissionName?: string) => void }) {
   const [groupId, setGroupId] = useState(props.groups[0]?.id ? String(props.groups[0].id) : "");
+  const [submissionName, setSubmissionName] = useState("");
   return (
     <section className="formPanel horizontal">
+      {props.includeName && (
+        <label>
+          Nombre
+          <input value={submissionName} onChange={(event) => setSubmissionName(event.target.value)} placeholder="Grupo A, Solucion oficial..." />
+        </label>
+      )}
       <label>
         {props.label}
         <input
@@ -1132,7 +1146,7 @@ function ZipUploadPanel(props: { label: string; groups: CourseGroup[]; onUpload:
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) {
-              props.onUpload(file, groupId);
+              props.onUpload(file, groupId, submissionName.trim());
             }
           }}
         />
@@ -1165,7 +1179,7 @@ function EmptyState(props: { text: string }) {
 
 function subtitle(view: View, course: Course | null, activity: ActivityVersion | null, submission: Submission | null) {
   if (view === "submission" && submission) {
-    return "Detalle de entrega";
+    return submission.name ? `Detalle de entrega - ${submission.name}` : "Detalle de entrega";
   }
   if (view === "activity" && activity) {
     return `${activity.activityId}@${activity.version}`;

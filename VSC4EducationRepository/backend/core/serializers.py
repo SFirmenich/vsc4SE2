@@ -117,6 +117,7 @@ class SubmissionListSerializer(serializers.ModelSerializer):
             "activityVersion",
             "courseGroup",
             "student",
+            "name",
             "contribution_id",
             "checksum_sha256",
             "has_git",
@@ -158,3 +159,5 @@ class ZipImportSerializer(serializers.Serializer):
     zip = serializers.FileField()
     courseGroupId = serializers.IntegerField(required=False)
     activityVersionId = serializers.IntegerField(required=False)
+    submissionName = serializers.CharField(required=False, allow_blank=True, max_length=240)
+    name = serializers.CharField(required=False, allow_blank=True, max_length=240)

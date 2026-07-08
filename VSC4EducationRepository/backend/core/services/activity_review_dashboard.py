@@ -81,6 +81,7 @@ class ActivityReviewDashboardService:
             rows.append(
                 {
                     "submissionId": submission.id,
+                    "submissionName": submission.name,
                     "studentId": submission.student.institutional_id,
                     "studentName": str(submission.student),
                     "courseGroup": submission.course_group.name if submission.course_group else None,

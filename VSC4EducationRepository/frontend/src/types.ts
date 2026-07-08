@@ -60,6 +60,7 @@ export interface Submission {
   activityVersion: ActivityVersion;
   courseGroup: CourseGroup | null;
   student: Student;
+  name: string;
   contribution_id: string;
   event_count: number;
   agent_interaction_count: number;
@@ -254,6 +255,7 @@ export interface SubmissionAnalysisMetricGroup {
 
 export interface SubmissionAnalysisRow {
   submissionId: number;
+  submissionName: string;
   studentId: string;
   studentName: string;
   courseGroup: string | null;
