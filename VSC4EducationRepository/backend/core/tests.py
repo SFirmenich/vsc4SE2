@@ -62,7 +62,7 @@ def activity_zip(version="1.0.0", container=False):
     )
 
 
-def submission_zip(with_git=False, with_agent=True, invalid_jsonl=False):
+def submission_zip(with_git=False, with_agent=True, invalid_jsonl=False, student_id="ana-001"):
     events = [
         json.dumps({"timestamp": "2026-06-11T10:00:00Z", "event": "task_started", "taskId": "encapsulation"}),
         json.dumps({"timestamp": "2026-06-11T10:10:00Z", "event": "task_finished", "taskId": "encapsulation"}),
@@ -74,16 +74,16 @@ def submission_zip(with_git=False, with_agent=True, invalid_jsonl=False):
     entries = {
         ".vsc4education/activity-manifest.json": manifest(),
         ".vsc4education/activity-configuration.json": {"loadedAt": "2026-06-11T09:00:00Z"},
-        ".vsc4education/contributions/ana-001/profile.json": {
+        f".vsc4education/contributions/{student_id}/profile.json": {
             "firstName": "Ana",
             "lastName": "Garcia",
-            "institutionalId": "ana-001",
+            "institutionalId": student_id,
         },
-        ".vsc4education/contributions/ana-001/state.json": {
+        f".vsc4education/contributions/{student_id}/state.json": {
             "tasks": {"encapsulation": {"status": "completed"}, "behavior": {"status": "pending"}},
         },
-        ".vsc4education/contributions/ana-001/events.jsonl": "\n".join(events),
-        ".vsc4education/contributions/ana-001/task-metadata/encapsulation.json": {
+        f".vsc4education/contributions/{student_id}/events.jsonl": "\n".join(events),
+        f".vsc4education/contributions/{student_id}/task-metadata/encapsulation.json": {
             "durationSeconds": 600,
             "saveCount": 3,
             "modifiedFiles": ["src/Animal.ts"],
@@ -91,7 +91,7 @@ def submission_zip(with_git=False, with_agent=True, invalid_jsonl=False):
         "src/Animal.ts": "export class Animal {}",
     }
     if with_agent:
-        entries[".vsc4education/contributions/ana-001/agent-interactions.jsonl"] = "\n".join(
+        entries[f".vsc4education/contributions/{student_id}/agent-interactions.jsonl"] = "\n".join(
             [
                 json.dumps({"timestamp": "2026-06-11T10:01:00Z", "actor": "student", "message": "Ayuda"}),
                 json.dumps({"timestamp": "2026-06-11T10:02:00Z", "actor": "agent", "agent": "chatGPT", "message": "Piensa en atributos privados"}),
@@ -230,6 +230,22 @@ class ImportServicesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["id"], activity_version.id)
         self.assertEqual(response.json()[0]["courseGroups"][0]["id"], group.id)
+
+    def test_activity_metrics_can_be_filtered_by_course(self):
+        course_a = Course.objects.create(name="Programacion I", code="PI")
+        course_b = Course.objects.create(name="Programacion II", code="PII")
+        group_a = CourseGroup.objects.create(course=course_a, name="1", term="2026")
+        group_b = CourseGroup.objects.create(course=course_b, name="1", term="2026")
+        activity_version = ActivityZipImportService().import_zip(activity_zip(), course_group=group_a)
+        activity_version.course_groups.add(group_b)
+        SubmissionZipImportService().import_zip(submission_zip(student_id="ana-001"), activity_version, course_group=group_a)
+        SubmissionZipImportService().import_zip(submission_zip(student_id="bea-002"), activity_version, course_group=group_b)
+
+        response = Client().get(f"/api/activity-versions/{activity_version.id}/metrics/?courseId={course_a.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["submissions"], 1)
+        self.assertEqual(response.json()["uniqueStudents"], 1)
 
     def test_submission_review_endpoint_returns_teacher_like_sections(self):
         activity_version = ActivityZipImportService().import_zip(activity_zip())

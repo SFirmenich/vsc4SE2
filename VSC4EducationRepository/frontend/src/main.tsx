@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Activity, ArrowLeft, Bot, BookOpen, FileArchive, GraduationCap, Plus, RefreshCw, ShieldCheck, Upload, UserRound } from "lucide-react";
-import { getJson, postJson, uploadZip } from "./api";
+import { getJson, getListJson, postJson, uploadZip } from "./api";
 import type {
   ActivityVersion,
   ActivityVersionDetail,
@@ -40,8 +40,8 @@ function App() {
 
   async function loadCourses() {
     const [nextCourses, nextGroups] = await Promise.all([
-      getJson<Course[]>("/courses/"),
-      getJson<CourseGroup[]>("/course-groups/"),
+      getListJson<Course>("/courses/"),
+      getListJson<CourseGroup>("/course-groups/"),
     ]);
     setCourses(nextCourses);
     setCourseGroups(nextGroups);
@@ -58,11 +58,11 @@ function App() {
     setView("course");
     setAddPanel(null);
     try {
-      const nextGroups = await getJson<CourseGroup[]>("/course-groups/");
+      const nextGroups = await getListJson<CourseGroup>("/course-groups/");
       const courseGroupsForCourse = nextGroups.filter((group) => group.course === course.id);
       const activityLists = await Promise.all(
         courseGroupsForCourse.map(async (group) => {
-          const groupActivities = await getJson<ActivityVersion[]>(`/course-groups/${group.id}/activities/`);
+          const groupActivities = await getListJson<ActivityVersion>(`/course-groups/${group.id}/activities/`);
           return groupActivities.map((activity) => ({
             ...activity,
             courseGroups: mergeGroups(activity.courseGroups ?? [], [group]),
@@ -82,10 +82,11 @@ function App() {
     setSelectedSubmission(null);
     setSubmissionDetail(null);
     setSubmissionReview(null);
+    const scopeQuery = selectedCourse ? `?courseId=${selectedCourse.id}` : "";
     const [detail, nextSubmissions, nextMetrics] = await Promise.all([
       getJson<ActivityVersionDetail>(`/activity-versions/${activity.id}/`),
-      getJson<Submission[]>(`/activity-versions/${activity.id}/submissions/${selectedCourse ? `?courseId=${selectedCourse.id}` : ""}`),
-      getJson<Metrics>(`/activity-versions/${activity.id}/metrics/`),
+      getListJson<Submission>(`/activity-versions/${activity.id}/submissions/${scopeQuery}`),
+      getJson<Metrics>(`/activity-versions/${activity.id}/metrics/${scopeQuery}`),
     ]);
     setActivityDetail(detail);
     setSubmissions(nextSubmissions);

@@ -129,7 +129,11 @@ class ActivityVersionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["get"])
     def metrics(self, request, pk=None):
-        return Response(ActivityMetricsService().for_activity_version(self.get_object()))
+        return Response(ActivityMetricsService().for_activity_version(
+            self.get_object(),
+            course_id=request.query_params.get("courseId"),
+            course_group_id=request.query_params.get("courseGroupId"),
+        ))
 
     @action(detail=True, methods=["get"])
     def comparison(self, request, pk=None):
