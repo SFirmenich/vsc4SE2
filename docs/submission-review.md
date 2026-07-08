@@ -1,8 +1,10 @@
 # Submission review
 
 Import a student ZIP with `Learning Activity Teacher: Import Student
-Submission`. The archive is extracted under the extension's global storage,
-with entry count and uncompressed-size limits.
+Submission`. The command asks for an inspection folder, extracts the archive
+into a uniquely named subfolder there, and adds the imported project to the
+current VS Code workspace. ZIP entry count and uncompressed-size limits are
+still enforced.
 
 The review panel exposes student selection, task/event/file filters, timelines,
 summary metrics, Git commits, changed files, agent interactions, integrity, the

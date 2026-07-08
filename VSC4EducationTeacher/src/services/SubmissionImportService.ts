@@ -16,6 +16,25 @@ export class SubmissionImportService {
   async import(zipPath: string, storageRoot: string): Promise<ImportedSubmission> {
     const id = createId();
     const rootPath = path.join(storageRoot, "submissions", id);
+    return this.importAtRoot(zipPath, id, rootPath);
+  }
+
+  async importToDirectory(
+    zipPath: string,
+    destinationRoot: string
+  ): Promise<ImportedSubmission> {
+    const id = createId();
+    const zipName = path.basename(zipPath, path.extname(zipPath));
+    const safeName = zipName.replace(/[^a-zA-Z0-9._-]/g, "-") || "submission";
+    const rootPath = path.join(destinationRoot, `${safeName}-${id}`);
+    return this.importAtRoot(zipPath, id, rootPath);
+  }
+
+  private async importAtRoot(
+    zipPath: string,
+    id: string,
+    rootPath: string
+  ): Promise<ImportedSubmission> {
     await fs.mkdir(rootPath, { recursive: true });
     await this.zip.extractSafe(zipPath, rootPath);
     const metadataPath = await this.findMetadata(rootPath);
