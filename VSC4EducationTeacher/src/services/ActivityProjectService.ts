@@ -28,8 +28,8 @@ workspace used to author a portable learning activity package.
 - \`theory/\` contains student-facing theory and support material.
 - \`agent/instructions.md\` contains the pedagogical agent instructions that will
   be packaged for students.
-- \`starter/proyecto-base/\` contains the starter project copied into each
-  student workspace.
+- \`starter/\` contains the files copied into \`src/\` in each student
+  workspace.
 - \`rubrics/\` contains evaluation rubrics.
 - \`signatures/\` contains generated package hashes or related metadata.
 
@@ -41,13 +41,13 @@ The \`imports/\` folder is local teacher authoring material:
   notes that can help create or improve \`theory/\`.
 - \`imports/practice/\` is for previous assignments, exercise sheets, examples,
   solutions, tests, or other practice material that can help create or improve
-  \`tasks/\` and \`starter/proyecto-base/\`.
+  \`tasks/\` and \`starter/\`.
 
 Treat \`imports/\` as source material, not as the portable activity contract. Do
 not assume these files are student-ready. When the teacher asks you to port,
 adapt, summarize, split, or update an activity, use the relevant files from
 \`imports/\` to modify the canonical files under \`tasks/\`, \`theory/\`,
-\`agent/\`, \`rubrics/\`, or \`starter/proyecto-base/\`.
+\`agent/\`, \`rubrics/\`, or \`starter/\`.
 
 ## Authoring Rules
 
@@ -72,9 +72,7 @@ export class ActivityProjectService {
     await fs.mkdir(path.join(root, "imports", "theory"), { recursive: true });
     await fs.mkdir(path.join(root, "imports", "practice"), { recursive: true });
     await fs.mkdir(path.join(root, "agent"), { recursive: true });
-    await fs.mkdir(path.join(root, "starter", "proyecto-base"), {
-      recursive: true
-    });
+    await fs.mkdir(path.join(root, "starter"), { recursive: true });
     await fs.mkdir(path.join(root, "rubrics"), { recursive: true });
     await fs.mkdir(path.join(root, "signatures"), { recursive: true });
     await writeJson(path.join(root, "manifest.json"), manifest);
@@ -89,7 +87,7 @@ export class ActivityProjectService {
       "utf8"
     );
     await fs.writeFile(
-      path.join(root, "starter", "proyecto-base", ".gitkeep"),
+      path.join(root, "starter", ".gitkeep"),
       "",
       "utf8"
     );

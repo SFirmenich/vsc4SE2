@@ -84,7 +84,7 @@ export class ActivityStatusService {
     for (const [directory, kind] of [
       ["tasks", "task"],
       ["theory", "theory"],
-      ["starter/proyecto-base", "starter"]
+      ["starter", "starter"]
     ] as const) {
       const directoryFiles =
         directory === "tasks"

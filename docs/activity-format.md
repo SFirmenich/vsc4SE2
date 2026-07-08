@@ -11,7 +11,7 @@ activity.zip
 |-- agent/
 |   `-- instructions.md
 |-- starter/
-|   `-- proyecto-base/
+|   `-- Animal.ts
 `-- signatures/
     `-- manifest.sig
 ```
@@ -40,9 +40,12 @@ activity.zip
 
 ## Import
 
-The contents of `starter/proyecto-base` are copied to the root of the selected
-workspace folder. For example, `starter/proyecto-base/src` becomes `src`, where
-the student works.
+The contents of `starter/` are copied into the `src/` directory of the selected
+workspace folder. For example, `starter/Animal.ts` becomes `src/Animal.ts`,
+where the student works.
+
+Legacy activity packages that contain `starter/proyecto-base/` are still
+accepted by the student extension for compatibility.
 
 The full academic package is preserved inside `.vsc4education/`:
 

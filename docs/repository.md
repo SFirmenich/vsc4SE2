@@ -105,8 +105,7 @@ Activity import:
 - rejects duplicate task IDs;
 - stores the original activity ZIP;
 - extracts activity version and task metadata;
-- records warnings for missing `starter/proyecto-base` or
-  `agent/instructions.md`.
+- records warnings for missing `starter/` or `agent/instructions.md`.
 
 Submission import:
 

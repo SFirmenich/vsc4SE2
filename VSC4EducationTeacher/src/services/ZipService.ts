@@ -29,6 +29,7 @@ export class ZipService {
           continue;
         }
         if (entry.isDirectory()) {
+          zip.addFile(`${relative}/`, Buffer.alloc(0));
           await visit(full);
         } else if (entry.isFile()) {
           zip.addFile(relative, await fs.readFile(full));

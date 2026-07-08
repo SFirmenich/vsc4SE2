@@ -53,13 +53,14 @@ activity.zip
 |-- agent/
 |   `-- instructions.md
 |-- starter/
-|   `-- proyecto-base/
+|   `-- Animal.ts
 `-- signatures/
 ```
 
 `manifest.json` defines the activity and its tasks. The
-`starter/proyecto-base` directory contains the initial project that will be
-copied to the root of the student's workspace.
+`starter/` directory contains the initial source files that will be copied into
+the `src/` directory of the student's workspace. Legacy packages with
+`starter/proyecto-base/` are still accepted for compatibility.
 
 When the activity is imported, the full package is preserved inside:
 

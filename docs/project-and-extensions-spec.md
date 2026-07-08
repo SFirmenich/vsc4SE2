@@ -59,14 +59,15 @@ activity/
 |-- agent/
 |   `-- instructions.md
 |-- starter/
-|   `-- proyecto-base/
+|   `-- Animal.ts
 `-- signatures/
     `-- manifest.sig
 ```
 
-When imported into the student's workspace, the contents of
-`starter/proyecto-base/` are copied to the project root. The full academic
-package is preserved in `.vsc4education/`:
+When imported into the student's workspace, the contents of `starter/` are
+copied into `src/`. Legacy packages with `starter/proyecto-base/` are still
+accepted by the student extension for compatibility. The full academic package
+is preserved in `.vsc4education/`:
 
 ```text
 student-workspace/
@@ -166,7 +167,7 @@ It must:
 - import activities from a trusted URL;
 - accept `manifest.json` at the root or inside a single container directory;
 - validate the minimum manifest fields;
-- copy `starter/proyecto-base/` to the selected workspace root;
+- copy `starter/` into `src/` in the selected workspace;
 - preserve the full academic package in `.vsc4education/`;
 - write `.vsc4education/activity-manifest.json` as a normalized manifest copy;
 - write `.vsc4education/activity-configuration.json` with load date, Git state,
@@ -271,7 +272,7 @@ It must allow teachers to:
 - manage theory in `theory/`;
 - manage tasks in `tasks/`;
 - associate each manifest task with its Markdown document;
-- prepare or select `starter/proyecto-base/`;
+- prepare or select `starter/`, whose contents become the student's `src/`;
 - create and edit `agent/instructions.md`;
 - maintain a package changelog;
 - increment the activity version according to the type of change.
@@ -286,7 +287,7 @@ It must validate that:
 - there are no duplicate tasks;
 - each `task.file` points to an existing file;
 - `agent/instructions.md` exists;
-- `starter/proyecto-base/` exists;
+- `starter/` exists;
 - the starter does not contain `.git`, `node_modules`, unnecessary builds, or
   temporary files;
 - there are no obvious secrets or credentials;
@@ -408,7 +409,7 @@ An activity is compatible with the current student extension if:
 - each task has `id` and `title`;
 - IDs match the allowed pattern;
 - there are no duplicate task IDs;
-- `starter/proyecto-base/` exists;
+- `starter/` exists;
 - `agent/instructions.md` exists.
 
 A submission is reviewable by the teacher extension if:

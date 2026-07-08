@@ -30,7 +30,7 @@ manifest.json
 theory/
 tasks/
 agent/instructions.md
-starter/proyecto-base/
+starter/
 rubrics/main.json
 signatures/
 ```
@@ -45,7 +45,7 @@ The directories serve different purposes:
 - `theory/`: supporting theoretical material.
 - `imports/theory/` and `imports/practice/`: local source material used while
   adapting previous activities into the canonical files.
-- `starter/proyecto-base/`: initial project received by the student.
+- `starter/`: initial source files copied into the student's `src/` folder.
 - `agent/`: pedagogical instructions for AI agents.
 - `rubrics/`: evaluation criteria.
 - `signatures/`: hashes or other integrity metadata, without claiming a digital

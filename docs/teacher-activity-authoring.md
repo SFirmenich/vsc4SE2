@@ -13,7 +13,7 @@ imports/
 `-- practice/
 AGENTS.md
 agent/instructions.md
-starter/proyecto-base/
+starter/
 rubrics/
 signatures/
 ```
@@ -29,7 +29,8 @@ copy PDFs, DOCX files, slides, old statements, examples, or other source
 material into `imports/theory/` and `imports/practice/`. The generated root
 `AGENTS.md` explains the activity structure to coding agents so the teacher can
 ask an agent to adapt those sources into the canonical `theory/`, `tasks/`,
-`agent/`, `rubrics/`, or `starter/proyecto-base/` files.
+`agent/`, `rubrics/`, or `starter/` files. Files in `starter/` are copied into
+the student's `src/` folder when the activity is imported.
 
 The panel can create a task file plus its manifest entry, create theory
 Markdown, create the initial rubric, show validation state, and export. Export

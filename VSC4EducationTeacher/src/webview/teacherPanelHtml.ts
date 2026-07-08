@@ -100,7 +100,7 @@ function renderReady() {
           <div class="row">\${openButton(task.file, 'Edit Markdown')}<button data-register-task="\${esc(task.file)}">Add to activity</button></div>
         </div>\`).join('')}\` : ''}
     <h2>Project files</h2>
-    <div class="row"><button data-create-file="theory">Create theory file</button><button data-reveal="theory" class="secondary">Reveal theory folder</button><button data-reveal="starter/proyecto-base" class="secondary">Reveal starter project</button></div>
+    <div class="row"><button data-create-file="theory">Create theory file</button><button data-reveal="theory" class="secondary">Reveal theory folder</button><button data-reveal="starter" class="secondary">Reveal starter project</button></div>
     <table><thead><tr><th>File</th><th>Kind</th><th>Status</th><th></th></tr></thead><tbody>
       \${status.files.map((file) => \`<tr><td><code>\${esc(file.path)}</code></td><td>\${esc(file.kind)}</td><td class="\${file.exists ? '' : 'error'}">\${file.exists ? (file.referenced ? 'referenced' : 'present') : 'missing'}</td><td>\${file.exists ? openButton(file.path) : ''}</td></tr>\`).join('')}
     </tbody></table>

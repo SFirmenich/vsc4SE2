@@ -94,8 +94,10 @@ class ActivityZipImportService:
 
     def _collect_warnings(self, name_map: dict[str, str]) -> list[dict]:
         warnings = []
-        if not find_prefix(name_map, "starter/proyecto-base"):
-            warnings.append({"code": "missing_starter", "message": "starter/proyecto-base was not found", "details": {}})
+        if not find_prefix(name_map, "starter"):
+            warnings.append(
+                {"code": "missing_starter", "message": "starter/ was not found", "details": {}}
+            )
         if not find_file(name_map, "agent/instructions.md"):
             warnings.append({"code": "missing_agent_instructions", "message": "agent/instructions.md was not found", "details": {}})
         return warnings

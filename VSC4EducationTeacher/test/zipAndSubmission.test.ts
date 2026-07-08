@@ -18,6 +18,8 @@ describe("ZIP export and submission import", () => {
       tasks: [{ id: "task", title: "Task", file: "tasks/task.md" }]
     });
     await fs.writeFile(path.join(root, "tasks", "task.md"), "# Task");
+    await fs.writeFile(path.join(root, "starter", "Animal.ts"), "export class Animal {}\n");
+    await fs.mkdir(path.join(root, "starter", "assets", "empty"), { recursive: true });
     await fs.writeFile(path.join(root, "imports", "theory", "legacy.pdf"), "PDF");
     await fs.writeFile(
       path.join(root, "imports", "practice", "legacy.docx"),
@@ -27,6 +29,10 @@ describe("ZIP export and submission import", () => {
     await new ActivityPackageService().export(root, destination);
     const names = new AdmZip(destination).getEntries().map((entry) => entry.entryName);
     assert.ok(names.includes("manifest.json"));
+    assert.ok(names.includes("starter/Animal.ts"));
+    assert.ok(names.includes("starter/assets/"));
+    assert.ok(names.includes("starter/assets/empty/"));
+    assert.ok(!names.includes("starter/proyecto-base/Animal.ts"));
     assert.ok(names.includes("signatures/hashes.json"));
     assert.ok(!names.includes("AGENTS.md"));
     assert.ok(!names.some((name) => name.startsWith("imports/")));
