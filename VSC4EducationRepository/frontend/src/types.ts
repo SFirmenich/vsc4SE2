@@ -65,6 +65,8 @@ export interface Submission {
   agent_interaction_count: number;
   warning_count: number;
   has_git: boolean;
+  originalZipUrl: string;
+  originalZipName: string;
   imported_at: string;
 }
 
@@ -104,7 +106,6 @@ export interface SubmissionDetail extends Submission {
     providers: string[];
   };
   warnings: ImportWarning[];
-  originalZipUrl: string;
 }
 
 export interface SubmissionReviewSummary {

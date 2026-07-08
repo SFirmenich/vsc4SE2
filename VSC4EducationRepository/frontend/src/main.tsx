@@ -380,6 +380,7 @@ function ActivityView(props: {
               <thead>
                 <tr>
                   <th>Estudiante</th>
+                  <th>Archivo</th>
                   <th>Comision</th>
                   <th>Eventos</th>
                   <th>Agente</th>
@@ -392,6 +393,18 @@ function ActivityView(props: {
                 {props.submissions.map((submission) => (
                   <tr key={submission.id} onClick={() => props.onOpen(submission)}>
                     <td>{submission.student.display_name || submission.student.institutional_id}</td>
+                    <td>
+                      {submission.originalZipUrl ? (
+                        <a
+                          className="fileLink"
+                          href={submission.originalZipUrl}
+                          download={submission.originalZipName || undefined}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {submission.originalZipName || "Descargar ZIP"}
+                        </a>
+                      ) : "-"}
+                    </td>
                     <td>{submission.courseGroup?.name ?? "Sin comision"}</td>
                     <td>{submission.event_count}</td>
                     <td>{submission.agent_interaction_count}</td>
