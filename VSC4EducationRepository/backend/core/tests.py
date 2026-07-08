@@ -266,6 +266,10 @@ class ImportServicesTests(TestCase):
         self.assertEqual(data["summary"]["agentInteractions"], 2)
         self.assertEqual(data["agentInteractions"][0]["actor"], "student")
         self.assertTrue(data["agencyMetrics"]["groups"])
+        self.assertIn("observableAgency", data["agencyMetrics"])
+        self.assertGreaterEqual(data["agencyMetrics"]["observableAgency"]["score"], 0)
+        self.assertLessEqual(data["agencyMetrics"]["observableAgency"]["score"], 100)
+        self.assertTrue(data["agencyMetrics"]["observableAgency"]["dimensions"])
         metric_names = [metric["name"] for group in data["agencyMetrics"]["groups"] for metric in group["metrics"]]
         self.assertIn("Integridad de la cadena hash", metric_names)
 
@@ -291,6 +295,8 @@ class ImportServicesTests(TestCase):
         self.assertEqual(data["reviewedSubmissionCount"], 2)
         self.assertEqual(data["summary"]["agentInteractions"]["avg"], 2)
         self.assertEqual(data["summary"]["uniqueLinesTouched"]["min"], 3)
+        self.assertGreaterEqual(data["agency"]["score"]["max"], 0)
+        self.assertLessEqual(data["agency"]["score"]["max"], 100)
         self.assertEqual(data["integrity"]["valid"], 1)
         self.assertEqual(data["integrity"]["invalid"], 1)
         self.assertTrue(data["metricGroups"])
@@ -307,4 +313,6 @@ class ImportServicesTests(TestCase):
         self.assertEqual(data["submissions"][0]["submissionId"], submission.id)
         self.assertEqual(data["submissions"][0]["submissionName"], "Solucion oficial")
         self.assertEqual(data["submissions"][0]["summary"]["activeMinutes"], 11)
+        self.assertGreaterEqual(data["submissions"][0]["agencyScore"], 0)
+        self.assertLessEqual(data["submissions"][0]["agencyScore"], 100)
         self.assertTrue(data["submissions"][0]["agencyMetrics"])

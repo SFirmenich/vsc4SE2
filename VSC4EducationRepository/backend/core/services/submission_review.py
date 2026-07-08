@@ -38,6 +38,7 @@ PROTECTED_PATTERNS = [
 ]
 TEST_PATTERN = re.compile(r"(^|/)(tests?|__tests__)/|(\.test|\.spec)\.[^./]+$|(^|/)test_[^/]+\.py$", re.I)
 TEST_TASK_PATTERN = re.compile(r"(test|prueba|testing|validacion|validation)", re.I)
+PROTECTED_EDIT_WINDOW_MS = 10 * 60 * 1000
 
 
 class SubmissionReviewService:
@@ -152,17 +153,20 @@ class SubmissionReviewService:
 
         for event in events:
             file = self._event_file(event)
-            if file:
+            work_file = bool(file and self._is_work_source_file(file))
+            if work_file:
                 files.add(file)
             timestamp = self._timestamp(event.get("timestamp"))
             if timestamp is not None:
                 hour = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc).strftime("%H")
                 activity_by_hour[hour] += 1
-            if self._event_type(event) == "file_changed":
+            if self._event_type(event) == "file_changed" and work_file:
                 file_change_events += 1
                 if timestamp is not None and (previous_edit is None or timestamp - previous_edit > 120_000):
                     edit_bursts += 1
                 previous_edit = timestamp
+            if not work_file:
+                continue
             for line in self._event_lines(event):
                 line_touch_count += 1
                 if file:
@@ -181,7 +185,7 @@ class SubmissionReviewService:
         active_minutes = round(max(0, elapsed - idle) / 60_000)
         student_messages = sum(1 for item in interactions if item.get("actor") == "student")
         agent_messages = sum(1 for item in interactions if item.get("actor") == "agent")
-        source_files = [file for file in files if re.search(r"\.(ts|tsx|js|jsx|py|java|cs|cpp|c|h|html|css|json|md)$", file, re.I)]
+        source_files = list(files)
         agency = self._agency_signals(
             {
                 "tasks_started": event_types.count("task_started"),
@@ -220,21 +224,24 @@ class SubmissionReviewService:
     def _agency_metrics(self, student_id: str, events: list[dict], manifest: dict) -> dict:
         views = [self._event_view(event) for event in events]
         sorted_views = sorted([event for event in views if event["time"] is not None], key=lambda event: event["time"])
+        work_views = [event for event in views if not event["file"] or self._is_work_source_file(event["file"])]
+        work_file_views = [event for event in views if event["file"] and self._is_work_source_file(event["file"])]
         heartbeat = self._count(views, "heartbeat")
-        actions = [event for event in views if event["type"] in ACTION_EVENTS]
-        file_changes = self._by_type(views, "file_changed")
+        actions = [event for event in work_views if event["type"] in ACTION_EVENTS]
+        file_changes = self._by_type(work_file_views, "file_changed")
         effective_changes = [event for event in file_changes if event["changeCount"] > 0 or event["lineCount"] > 0]
-        saves = self._by_type(views, "file_saved")
-        created = self._by_type(views, "file_created")
-        deleted = self._by_type(views, "file_deleted")
+        saves = self._by_type(work_file_views, "file_saved")
+        created = self._by_type(work_file_views, "file_created")
+        deleted = self._by_type(work_file_views, "file_deleted")
         exports = [event for event in self._by_type(views, "submission_exported") if event["time"] is not None]
         starts = [event for event in views if event["type"] == "task_started" and event["taskId"] and event["time"] is not None]
         finishes = [event for event in views if event["type"] in {"task_finished", "task_completed"} and event["taskId"] and event["time"] is not None]
         files_changed = {event["file"] for event in file_changes if event["file"]}
         files_saved = {event["file"] for event in saves if event["file"]}
-        files_consulted = {event["file"] for event in self._by_type(views, "active_editor_changed") if event["file"]}
-        expected = {task.get("file") for task in manifest.get("tasks", []) if isinstance(task, dict) and task.get("file")}
-        protected = [event for event in views if event["file"] and self._is_protected(event["file"])]
+        files_consulted = {event["file"] for event in self._by_type(work_file_views, "active_editor_changed") if event["file"]}
+        expected = {self._normalize_path(task.get("file")) for task in manifest.get("tasks", []) if isinstance(task, dict) and task.get("file") and self._is_work_source_file(task.get("file"))}
+        protected_sequences = self._protected_edit_sequences(views)
+        outside_src = [event for event in views if event["file"] and not self._is_work_source_file(event["file"]) and event["type"] in ACTION_EVENTS]
         session_minutes = self._minutes_between(sorted_views[0]["time"], sorted_views[-1]["time"]) if len(sorted_views) > 1 else 0
         observable_minutes = self._observable_minutes(sorted_views)
         line_visits = Counter()
@@ -251,7 +258,7 @@ class SubmissionReviewService:
         temporal_gaps = len([gap for gap in self._pauses([event for event in sorted_views if event["type"] != "heartbeat"]) if gap >= 15])
         expected_touched = [file for file in expected if file in files_changed]
         top_file_count = max(Counter(event["file"] or "-" for event in file_changes).values() or [0])
-        changes_after_export = self._after_last(exports, [event for event in views if event["type"] in {"file_changed", "file_saved", "file_created"}])
+        changes_after_export = self._after_last(exports, [event for event in work_file_views if event["type"] in {"file_changed", "file_saved", "file_created"}])
         massive_changes = [event for event in file_changes if event["lineCount"] > 20 or event["changeCount"] > 20]
         incremental = [event for event in effective_changes if event["changeCount"] <= 1 and 0 < event["lineCount"] <= 3]
         systemic = [
@@ -259,7 +266,7 @@ class SubmissionReviewService:
             for event in views
             if event["type"] == "heartbeat"
             or event["type"] == "agents_file_restored"
-            or (event["file"] and self._is_protected(event["file"]))
+            or any(sequence["opened"] is event or sequence["change"] is event for sequence in protected_sequences)
             or (event["type"] == "file_changed" and event["changeCount"] == 0 and event["lineCount"] == 0)
         ]
 
@@ -276,11 +283,11 @@ class SubmissionReviewService:
             self._group(
                 "Intensidad de edicion",
                 [
-                    self._metric(5, True, "Densidad de edicion", self._ratio(len(file_changes), observable_minutes), "cambios/min", "Eventos file_changed por minuto observable.", "Densidades extremas requieren revisar contexto.", len(file_changes), "estimated"),
-                    self._metric(6, True, "Proporcion de cambios efectivos", self._percent(len(effective_changes), len(file_changes)), "%", "file_changed con changeCount o lineas sobre total.", "Distingue cambios materiales de ruido tecnico.", len(effective_changes), "direct"),
-                    self._metric(7, True, "Volumen total de cambios", change_volume, None, "Suma de data.changeCount en file_changed.", "Volumen bruto; debe interpretarse junto con lineas y ritmo.", len(file_changes), "direct"),
-                    self._metric(8, False, "Lineas afectadas totales", total_lines, None, "Suma de rangos data.lines.", "Aproxima alcance textual, contando repeticiones.", len(file_changes), "direct"),
-                    self._metric(9, True, "Lineas unicas modificadas", unique_lines, None, "Lineas archivo:numero distintas.", "Evita contar varias visitas a la misma linea.", unique_lines, "direct"),
+                    self._metric(5, True, "Densidad de edicion en src", self._ratio(len(file_changes), observable_minutes), "cambios/min", "Eventos file_changed bajo src/ por minuto observable.", "Densidades extremas requieren revisar contexto.", len(file_changes), "estimated"),
+                    self._metric(6, True, "Proporcion de cambios efectivos en src", self._percent(len(effective_changes), len(file_changes)), "%", "file_changed bajo src/ con changeCount o lineas sobre total en src/.", "Distingue cambios materiales de ruido tecnico.", len(effective_changes), "direct"),
+                    self._metric(7, True, "Volumen total de cambios en src", change_volume, None, "Suma de data.changeCount en file_changed bajo src/.", "Volumen bruto; debe interpretarse junto con lineas y ritmo.", len(file_changes), "direct"),
+                    self._metric(8, False, "Lineas afectadas totales en src", total_lines, None, "Suma de rangos data.lines bajo src/.", "Aproxima alcance textual, contando repeticiones.", len(file_changes), "direct"),
+                    self._metric(9, True, "Lineas unicas modificadas en src", unique_lines, None, "Lineas archivo:numero distintas bajo src/.", "Evita contar varias visitas a la misma linea.", unique_lines, "direct"),
                 ],
             ),
             self._group(
@@ -288,7 +295,7 @@ class SubmissionReviewService:
                 [
                     self._metric(11, False, "Concentracion de edicion por archivo", self._percent(top_file_count, len(file_changes)), "%", "Porcentaje de cambios en el archivo dominante.", "Muestra si el esfuerzo se concentra en un archivo.", len(file_changes), "direct"),
                     self._metric(12, True, "Cobertura de archivos esperados", self._percent(len(expected_touched), len(expected)) if expected else "n/d", "%" if expected else None, f"{len(expected_touched)}/{len(expected)} archivos de tareas modificados." if expected else "El manifiesto no declara task.file.", "Una cobertura baja puede ser incompletitud o estrategia alternativa valida.", len(expected_touched), "direct" if expected else "limited"),
-                    self._metric(13, True, "Actividad en archivos no esperados o protegidos", len(protected) + len(self._non_expected_events(views, expected)), None, "Acciones sobre rutas protegidas o fuera de task.file cuando existe.", "Indicador de revision contextual; no implica mala praxis automaticamente.", len(protected), "estimated" if expected else "limited"),
+                    self._metric(13, True, "Actividad fuera de src o no esperada", len(outside_src) + len(self._non_expected_events(work_file_views, expected)), None, "Acciones sobre rutas fuera de src/ o fuera de task.file cuando existe.", "Indicador de revision contextual; no suma como trabajo efectivo.", len(outside_src), "estimated" if expected else "limited"),
                 ],
             ),
             self._group(
@@ -325,7 +332,7 @@ class SubmissionReviewService:
             self._group(
                 "Validacion y pruebas",
                 [
-                    self._metric(43, False, "Actividad sobre tests", len([event for event in views if event["file"] and TEST_PATTERN.search(event["file"]) and event["type"] in ACTION_EVENTS]), None, "Acciones sobre rutas de tests o archivos *.test/*.spec/test_*.py.", "Indica trabajo orientado a comprobar la solucion cuando aplica.", len(views), "estimated"),
+                    self._metric(43, False, "Actividad sobre tests en src", len([event for event in work_file_views if event["file"] and TEST_PATTERN.search(event["file"]) and event["type"] in ACTION_EVENTS]), None, "Acciones bajo src/ sobre rutas de tests o archivos *.test/*.spec/test_*.py.", "Indica trabajo orientado a comprobar la solucion cuando aplica.", len(work_file_views), "estimated"),
                     self._metric(44, False, "Actividad asociada a tarea de pruebas", len([event for event in views if event["taskId"] and TEST_TASK_PATTERN.search(event["taskId"]) and event["type"] in ACTION_EVENTS]), None, "Acciones en taskId relacionado con pruebas o validacion.", "Mide actividad visible en tareas de verificacion.", len(views), "estimated"),
                 ],
             ),
@@ -340,13 +347,238 @@ class SubmissionReviewService:
             self._group(
                 "Integridad y cumplimiento",
                 [
-                    self._metric(47, False, "Manipulacion o alteracion de archivos protegidos", len(protected), None, "Acciones sobre AGENTS.md, .vsc4education o metadatos internos.", "Indicador de revision, nunca acusacion automatica.", len(protected), "estimated"),
+                    self._metric(47, False, "Secuencias sospechosas sobre archivos protegidos", len(protected_sequences), None, self._protected_edit_detail(protected_sequences), "Apertura de archivo protegido seguida por cambio/guardado dentro de una ventana sospechosa. Indicador de revision, nunca acusacion automatica.", len(protected_sequences), "estimated"),
                     self._metric(48, True, "Integridad de la cadena hash", "continua" if hash_discontinuities == 0 else f"{hash_discontinuities} discontinuidades", None, "Comprueba previousHash contra hash anterior.", "Afecta la confianza en la trazabilidad del log.", len(events), "direct"),
                     self._metric(49, False, "Discontinuidades temporales", temporal_gaps, None, "Pausas de 15 minutos o mas entre acciones no-heartbeat.", "Ayuda a no sobreinterpretar ausencia de eventos.", temporal_gaps, "direct"),
                 ],
             ),
         ]
-        return {"studentId": student_id, "groups": groups}
+        return {
+            "studentId": student_id,
+            "groups": groups,
+            "observableAgency": self._observable_agency(groups),
+        }
+
+    def _observable_agency(self, groups: list[dict]) -> dict:
+        metrics = {
+            metric.get("id"): metric
+            for group in groups
+            for metric in group.get("metrics", [])
+            if isinstance(metric.get("id"), int)
+        }
+
+        def metric(metric_id: int) -> dict | None:
+            return metrics.get(metric_id)
+
+        def value(metric_id: int) -> float | None:
+            return self._numeric_value(metric(metric_id).get("value") if metric(metric_id) else None)
+
+        def dimension(name: str, weight: int, parts: list[tuple[float, str]]) -> dict:
+            usable = [(score, text) for score, text in parts if isinstance(score, (int, float))]
+            score = self._round(self._average(score for score, _ in usable)) if usable else 0
+            return {
+                "name": name,
+                "score": score,
+                "weight": weight,
+                "evidence": [text for _, text in usable],
+            }
+
+        dimensions = [
+            dimension(
+                "Continuidad",
+                20,
+                [
+                    (self._cap(value(2), 30), self._evidence(metric(2))),
+                    (self._cap(value(3), 30), self._evidence(metric(3))),
+                    (self._cap(value(4), 1), self._evidence(metric(4))),
+                    (self._inverse_count(value(49), 3), self._evidence(metric(49))),
+                ],
+            ),
+            dimension(
+                "Edicion efectiva",
+                25,
+                [
+                    (self._percent_score(value(6)), self._evidence(metric(6))),
+                    (self._cap(value(9), 20), self._evidence(metric(9))),
+                    (self._cap(value(7), 30), self._evidence(metric(7))),
+                    (self._band(value(5), 0.1, 4), self._evidence(metric(5))),
+                    (self._percent_score(value(33)), self._evidence(metric(33))),
+                ],
+            ),
+            dimension(
+                "Relevancia",
+                20,
+                [
+                    (self._percent_or_neutral(metric(12)), self._evidence(metric(12))),
+                    (self._inverse_count(value(13), 8), self._evidence(metric(13))),
+                    (self._inverse_percent(value(11), 100), self._evidence(metric(11))),
+                ],
+            ),
+            dimension(
+                "Gestion del proceso",
+                15,
+                [
+                    (self._cap(value(18), 3), self._evidence(metric(18))),
+                    (self._band(value(19), 0.5, 8), self._evidence(metric(19))),
+                    (self._percent_score(value(25)), self._evidence(metric(25))),
+                    (self._percent_score(value(50)), self._evidence(metric(50))),
+                ],
+            ),
+            dimension(
+                "Iteracion y refinamiento",
+                10,
+                [
+                    (self._cap(value(37), 5), self._evidence(metric(37))),
+                    (self._inverse_percent(value(38), 100), self._evidence(metric(38))),
+                    (self._percent_score(value(33)), self._evidence(metric(33))),
+                ],
+            ),
+            dimension(
+                "Validacion y entrega",
+                10,
+                [
+                    (self._cap(value(43), 3), self._evidence(metric(43))),
+                    (self._cap(value(44), 3), self._evidence(metric(44))),
+                    (self._cap(value(23), 1), self._evidence(metric(23))),
+                    (self._percent_score(value(50)), self._evidence(metric(50))),
+                ],
+            ),
+        ]
+
+        total_weight = sum(item["weight"] for item in dimensions)
+        weighted = sum(item["score"] * item["weight"] for item in dimensions)
+        penalty = self._agency_penalty(metrics)
+        score = max(0, min(100, self._round(weighted / max(1, total_weight) - penalty)))
+        return {
+            "score": score,
+            "level": self._agency_level(score),
+            "confidence": self._agency_confidence(list(metrics.values())),
+            "dimensions": dimensions,
+            "strengths": [
+                f"{item['name']}: {item['score']}/100"
+                for item in dimensions
+                if item["score"] >= 70
+            ],
+            "flags": self._agency_flags(metrics, dimensions, penalty),
+        }
+
+    def _agency_level(self, score: float) -> str:
+        if score >= 85:
+            return "muy alta"
+        if score >= 65:
+            return "alta"
+        if score >= 40:
+            return "media"
+        if score >= 15:
+            return "baja"
+        return "insuficiente"
+
+    def _agency_confidence(self, metrics: list[dict]) -> str:
+        evidence = sum(metric.get("evidenceCount") or 0 for metric in metrics)
+        limited = len([metric for metric in metrics if metric.get("reliability") == "limited"])
+        direct = len([metric for metric in metrics if metric.get("reliability") == "direct"])
+        hash_value = next((metric.get("value") for metric in metrics if metric.get("id") == 48), None)
+        if evidence >= 30 and direct >= limited and hash_value == "continua":
+            return "alta"
+        if evidence >= 10 and limited < len(metrics) / 2:
+            return "media"
+        return "limitada"
+
+    def _agency_penalty(self, metrics: dict[int, dict]) -> float:
+        def value(metric_id: int) -> float:
+            return self._numeric_value(metrics.get(metric_id, {}).get("value")) or 0
+
+        penalty = 0
+        penalty += min(12, value(30) * 3)
+        penalty += min(12, value(32) * 2)
+        penalty += min(10, value(47) * 3)
+        penalty += min(10, value(49) * 2)
+        systemic = self._numeric_value(metrics.get(46, {}).get("value"))
+        if systemic is not None and systemic > 50:
+            penalty += 8
+        integrity = metrics.get(48, {}).get("value")
+        if isinstance(integrity, str) and integrity != "continua":
+            penalty += 10
+        return penalty
+
+    def _agency_flags(self, metrics: dict[int, dict], dimensions: list[dict], penalty: float) -> list[str]:
+        flags = [
+            f"{dimension['name']} con evidencia debil ({dimension['score']}/100)"
+            for dimension in dimensions
+            if dimension["score"] < 40
+        ]
+
+        def value(metric_id: int) -> float:
+            return self._numeric_value(metrics.get(metric_id, {}).get("value")) or 0
+
+        if value(30) > 0:
+            flags.append("Hay cambios posteriores a la entrega registrada")
+        if value(32) > 0:
+            flags.append("Hay cambios masivos repentinos para revisar en contexto")
+        if value(47) > 0:
+            flags.append("Hay actividad sobre archivos protegidos o internos")
+        if value(49) > 0:
+            flags.append("Hay discontinuidades temporales relevantes")
+        integrity = metrics.get(48, {}).get("value")
+        if isinstance(integrity, str) and integrity != "continua":
+            flags.append("La cadena hash no es continua")
+        if penalty > 0:
+            flags.append(f"Penalizacion contextual aplicada: {self._round(penalty)} puntos")
+        return flags
+
+    def _evidence(self, metric: dict | None) -> str:
+        if not metric:
+            return "Metrica no disponible."
+        unit = f" {metric.get('unit')}" if metric.get("unit") else ""
+        return f"{metric.get('name')}: {metric.get('value')}{unit}"
+
+    def _numeric_value(self, value) -> float | None:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value.replace(",", "."))
+            except ValueError:
+                return None
+        return None
+
+    def _cap(self, value: float | None, full_score_at: float) -> float:
+        if value is None:
+            return 0
+        return max(0, min(100, (value / max(1, full_score_at)) * 100))
+
+    def _percent_score(self, value: float | None) -> float:
+        if value is None:
+            return 0
+        return max(0, min(100, value))
+
+    def _inverse_count(self, value: float | None, zero_at: float) -> float:
+        if value is None:
+            return 100
+        return max(0, min(100, 100 - (value / max(1, zero_at)) * 100))
+
+    def _inverse_percent(self, value: float | None, zero_at: float) -> float:
+        if value is None:
+            return 50
+        return max(0, min(100, 100 - (value / max(1, zero_at)) * 100))
+
+    def _percent_or_neutral(self, metric: dict | None) -> float:
+        if not metric:
+            return 50
+        if metric.get("reliability") == "limited":
+            return 55
+        return self._percent_score(self._numeric_value(metric.get("value")))
+
+    def _band(self, value: float | None, low: float, high: float) -> float:
+        if value is None:
+            return 0
+        if value < low:
+            return max(0, (value / max(low, 0.1)) * 70)
+        if value <= high:
+            return 100
+        return max(0, 100 - ((value - high) / max(high, 1)) * 60)
 
     def _integrity(self, content: str, events: list[dict], invalid_lines: list[dict]) -> dict:
         if not content.strip():
@@ -408,11 +640,42 @@ class SubmissionReviewService:
 
     def _event_file(self, event: dict) -> str | None:
         if isinstance(event.get("file"), str):
-            return event["file"].replace("\\", "/").lstrip("./")
+            return self._normalize_path(event["file"])
         data = event.get("data")
         if isinstance(data, dict) and isinstance(data.get("file"), str):
-            return data["file"].replace("\\", "/").lstrip("./")
+            return self._normalize_path(data["file"])
         return None
+
+    def _normalize_path(self, file: str) -> str:
+        return file.replace("\\", "/").lstrip("./")
+
+    def _is_work_source_file(self, file: str) -> bool:
+        return self._normalize_path(file).startswith("src/")
+
+    def _protected_edit_sequences(self, events: list[dict]) -> list[dict]:
+        ordered = sorted([event for event in events if event["time"] is not None], key=lambda event: event["time"])
+        sequences = []
+        protected_open = None
+        for event in ordered:
+            if event["type"] == "active_editor_changed" and event["file"]:
+                protected_open = event if self._is_protected(event["file"]) else None
+                continue
+            if (
+                protected_open
+                and event["type"] in {"file_changed", "file_saved", "file_created", "file_deleted"}
+                and event["time"] - protected_open["time"] <= PROTECTED_EDIT_WINDOW_MS
+                and (not event["file"] or event["file"] == protected_open["file"])
+            ):
+                sequences.append({"opened": protected_open, "change": event, "file": protected_open["file"]})
+                protected_open = None
+            if protected_open and event["time"] - protected_open["time"] > PROTECTED_EDIT_WINDOW_MS:
+                protected_open = None
+        return sequences
+
+    def _protected_edit_detail(self, sequences: list[dict]) -> str:
+        if not sequences:
+            return "No hay apertura de archivo protegido seguida por cambio/guardado sospechoso."
+        return "; ".join(f"{sequence['file']}: {sequence['opened']['type']} -> {sequence['change']['type']}" for sequence in sequences)
 
     def _event_lines(self, event: dict) -> list[int]:
         data = event.get("data")

@@ -89,8 +89,8 @@ class ActivityReviewDashboardService:
                     "summary": self._summary_values(review),
                     "agencyMetrics": self._metric_values(review),
                     "integrityStatus": review["integrity"].get("status", "not_available"),
-                    "agencyLevel": review["summary"].get("agency", {}).get("level", "unknown"),
-                    "agencyScore": review["summary"].get("agency", {}).get("score"),
+                    "agencyLevel": review["agencyMetrics"].get("observableAgency", {}).get("level", "unknown"),
+                    "agencyScore": review["agencyMetrics"].get("observableAgency", {}).get("score"),
                 }
             )
 
@@ -115,7 +115,7 @@ class ActivityReviewDashboardService:
             key: review["summary"].get(key)
             for key in SUMMARY_NUMERIC_KEYS
         }
-        values["agencyScore"] = review["summary"].get("agency", {}).get("score")
+        values["agencyScore"] = review["agencyMetrics"].get("observableAgency", {}).get("score")
         return values
 
     def _metric_values(self, review: dict) -> list[dict]:
@@ -147,17 +147,17 @@ class ActivityReviewDashboardService:
         }
 
     def _agency_stats(self, reviews: list[dict]) -> dict:
-        scores = [review["summary"].get("agency", {}).get("score") for review in reviews]
+        scores = [review["agencyMetrics"].get("observableAgency", {}).get("score") for review in reviews]
         levels = Counter(
-            str(review["summary"].get("agency", {}).get("level", "unknown"))
+            str(review["agencyMetrics"].get("observableAgency", {}).get("level", "unknown"))
             for review in reviews
         )
         positives = Counter()
         concerns = Counter()
         for review in reviews:
-            agency = review["summary"].get("agency", {})
-            positives.update(agency.get("positives") or [])
-            concerns.update(agency.get("concerns") or [])
+            agency = review["agencyMetrics"].get("observableAgency", {})
+            positives.update(agency.get("strengths") or [])
+            concerns.update(agency.get("flags") or [])
         return {
             "score": self._stats(scores),
             "levels": dict(levels),

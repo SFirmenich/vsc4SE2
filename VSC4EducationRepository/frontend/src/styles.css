@@ -439,6 +439,11 @@ tbody tr {
   white-space: normal;
 }
 
+.mutedText {
+  color: #64748b;
+  line-height: 1.5;
+}
+
 .messageItem p {
   color: #253244;
   line-height: 1.5;

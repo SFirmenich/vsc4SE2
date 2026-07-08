@@ -153,6 +153,22 @@ export interface AgencyMetricGroup {
   metrics: AgencyMetric[];
 }
 
+export interface ObservableAgencyDimension {
+  name: string;
+  score: number;
+  weight: number;
+  evidence: string[];
+}
+
+export interface ObservableAgencyAssessment {
+  score: number;
+  level: "muy alta" | "alta" | "media" | "baja" | "insuficiente";
+  confidence: "alta" | "media" | "limitada";
+  dimensions: ObservableAgencyDimension[];
+  strengths: string[];
+  flags: string[];
+}
+
 export interface SubmissionReview {
   submissionId: number;
   studentId: string;
@@ -165,6 +181,7 @@ export interface SubmissionReview {
   agencyMetrics: {
     studentId: string;
     groups: AgencyMetricGroup[];
+    observableAgency: ObservableAgencyAssessment;
   };
   integrity: {
     status: "valid" | "invalid" | "incomplete" | "not_available";

@@ -11,6 +11,7 @@ import type {
   Course,
   CourseGroup,
   Metrics,
+  ObservableAgencyAssessment,
   Submission,
   SubmissionAnalysisRow,
   SubmissionDetail,
@@ -489,7 +490,7 @@ const SUMMARY_ANALYSIS_METRICS: { key: string; title: string; unit?: string; kin
   { key: "agentResponses", title: "Respuestas del agente" },
   { key: "commits", title: "Commits" },
   { key: "heartbeatGaps", title: "Cortes de heartbeat" },
-  { key: "agencyScore", title: "Puntaje de agencia", kind: "dot" },
+  { key: "agencyScore", title: "Puntaje de agencia observable", kind: "dot" },
 ];
 
 function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | null; loading: boolean; error: string }) {
@@ -586,7 +587,7 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
 
   result.push(
     categoricalMetric("integrityStatus", "Integridad", "Control de entrega", rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: integrityLabel(row.integrityStatus) }))),
-    categoricalMetric("agencyLevel", "Nivel de agencia", "Agencia", rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: row.agencyLevel }))),
+    categoricalMetric("agencyLevel", "Nivel de agencia observable", "Agencia", rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: row.agencyLevel }))),
   );
 
   const grouped = new Map<string, AnalysisMetricSeries>();
@@ -739,7 +740,7 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
         <div className="metrics">
           <Metric label="Entregas revisadas" value={`${dashboard.reviewedSubmissionCount}/${dashboard.submissionCount}`} />
           <Metric label="Estudiantes" value={dashboard.studentCount} />
-          <Metric label="Agencia promedio" value={formatStat(dashboard.agency.score.avg)} />
+          <Metric label="Agencia observable promedio" value={`${formatStat(dashboard.agency.score.avg)}/100`} />
           <Metric label="Con agentes" value={`${Math.round(dashboard.agentUse.withAgentInteractionsRatio * 100)}%`} />
         </div>
         <div className="metrics">
@@ -752,7 +753,7 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
 
       <div className="twoColumns">
         <section className="tablePanel">
-          <h2>Distribucion de agencia</h2>
+          <h2>Distribucion de agencia observable</h2>
           <DistributionTable values={dashboard.agency.levels} />
         </section>
         <section className="tablePanel">
@@ -764,7 +765,7 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
       {(dashboard.agency.topPositives.length > 0 || dashboard.agency.topConcerns.length > 0) && (
         <div className="twoColumns">
           <section className="tablePanel">
-            <h2>Senales frecuentes</h2>
+            <h2>Fortalezas frecuentes</h2>
             <CountList values={dashboard.agency.topPositives} />
           </section>
           <section className="tablePanel">
@@ -887,9 +888,62 @@ function formatCounts(values: Record<string, number>) {
   return Object.entries(values).map(([label, count]) => `${label}: ${count}`).join(", ");
 }
 
+function ObservableAgencyPanel(props: { agency: ObservableAgencyAssessment | undefined }) {
+  const agency = props.agency;
+  if (!agency) {
+    return <EmptyState text="No hay evaluacion de agencia observable disponible." />;
+  }
+  return (
+    <>
+      <section className="tablePanel">
+        <h2>Agencia observable</h2>
+        <p className="mutedText">
+          Score compuesto 0-100 calculado desde continuidad, edicion efectiva,
+          relevancia, gestion del proceso, iteracion, validacion y flags
+          contextuales. Apoya el juicio docente; no es una calificacion ni prueba
+          de autoria.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Dimension</th>
+              <th>Score</th>
+              <th>Peso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {agency.dimensions.map((dimension) => (
+              <tr key={dimension.name}>
+                <td>{dimension.name}</td>
+                <td>{dimension.score}/100</td>
+                <td>{dimension.weight}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <div className="twoColumns">
+        <section className="tablePanel">
+          <h2>Fortalezas principales</h2>
+          {agency.strengths.length ? (
+            <ul className="signalList">{agency.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
+          ) : <p>No hay dimensiones por encima del umbral de fortaleza.</p>}
+        </section>
+        <section className="tablePanel">
+          <h2>Indicadores para revisar</h2>
+          {agency.flags.length ? (
+            <ul className="signalList warningText">{agency.flags.map((item) => <li key={item}>{item}</li>)}</ul>
+          ) : <p>No hay alertas inmediatas.</p>}
+        </section>
+      </div>
+    </>
+  );
+}
+
 function SubmissionView(props: { submission: SubmissionDetail; review: SubmissionReview | null }) {
   const submission = props.submission;
   const review = props.review;
+  const observableAgency = review?.agencyMetrics.observableAgency;
   const [tab, setTab] = useState<"main" | "agents" | "metrics" | "integrity">("main");
   const [agentFilter, setAgentFilter] = useState("");
   const [eventFilter, setEventFilter] = useState("");
@@ -915,7 +969,8 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
         </div>
         {review && (
           <div className="metrics">
-            <Metric label="Agencia" value={`${review.summary.agency.level} (${review.summary.agency.score}/6)`} />
+            <Metric label="Agencia observable" value={observableAgency ? `${observableAgency.level} (${observableAgency.score}/100)` : "Sin datos"} />
+            <Metric label="Confianza" value={observableAgency?.confidence ?? "Sin datos"} />
             <Metric label="Lineas unicas" value={review.summary.uniqueLinesTouched} />
             <Metric label="Tiempo activo" value={`${review.summary.activeMinutes} min`} />
             <Metric label="Integridad" value={integrityLabel(review.integrity.status)} />
@@ -933,20 +988,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
       {tab === "main" && (
         <>
           {review && (
-            <div className="twoColumns">
-              <section className="tablePanel">
-                <h2>Senales de agencia</h2>
-                {review.summary.agency.positives.length ? (
-                  <ul className="signalList">{review.summary.agency.positives.map((item) => <li key={item}>{item}</li>)}</ul>
-                ) : <p>No hay senales positivas calculadas.</p>}
-              </section>
-              <section className="tablePanel">
-                <h2>Indicadores para revisar</h2>
-                {review.summary.agency.concerns.length ? (
-                  <ul className="signalList warningText">{review.summary.agency.concerns.map((item) => <li key={item}>{item}</li>)}</ul>
-                ) : <p>No hay alertas inmediatas.</p>}
-              </section>
-            </div>
+            <ObservableAgencyPanel agency={observableAgency} />
           )}
           <div className="twoColumns">
             <section className="tablePanel">
