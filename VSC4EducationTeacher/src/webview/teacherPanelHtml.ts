@@ -101,7 +101,7 @@ function renderActivityMode() {
       <div class="grid">
         <button class="mode-card" id="start-activity"><strong>Start new learning activity</strong><span>Choose a working folder and scaffold the activity files.</span></button>
         <button class="mode-card" id="open-activity"><strong>Work on an existing learning activity</strong><span>Open a folder that already contains or will contain the activity definition.</span></button>
-        <button class="mode-card" id="current-activity"><strong>Work in current directory</strong><span>Use the workspace folder already open in VS Code.</span></button>
+        <button class="mode-card" id="current-activity"><strong>Work on current workspace</strong><span>Use the workspace folder already open in VS Code.</span></button>
       </div>\`;
     document.getElementById('start-activity').addEventListener('click', () => post('startActivity'));
     document.getElementById('open-activity').addEventListener('click', () => post('openActivity'));
@@ -198,7 +198,7 @@ function renderReviewMode() {
       <div class="grid">
         <button class="mode-card" id="create-review"><strong>Create a new review workspace</strong><span>Create learning-activity-definition and submissions folders.</span></button>
         <button class="mode-card" id="open-review"><strong>Open a review workspace</strong><span>Continue reviewing submissions from an existing workspace.</span></button>
-        <button class="mode-card" id="current-review"><strong>Work in current directory</strong><span>Use the workspace folder already open in VS Code.</span></button>
+        <button class="mode-card" id="current-review"><strong>Work on current workspace</strong><span>Use the workspace folder already open in VS Code.</span></button>
       </div>\`;
     document.getElementById('create-review').addEventListener('click', () => post('createReviewWorkspace'));
     document.getElementById('open-review').addEventListener('click', () => post('openReviewWorkspace'));
@@ -255,6 +255,7 @@ function renderSubmissionDashboard(reviewModel) {
     <div id="review-dashboard" data-student="\${esc(firstStudent)}">
       <nav>
         <button class="secondary submission-tab" data-tab="report">Report</button>
+        <button class="secondary submission-tab" data-tab="agency-metrics">Agency metrics</button>
         <button class="secondary submission-tab" data-tab="evidence">Evidence</button>
         <button class="secondary submission-tab" data-tab="git">Git</button>
         <button class="secondary submission-tab" data-tab="agents">Agent</button>
@@ -269,6 +270,7 @@ function renderSubmissionDashboard(reviewModel) {
         <div><label for="file-filter">File</label><input id="file-filter" placeholder="path fragment"></div>
       </div>
       <section id="report" class="active"></section>
+      <section id="agency-metrics"></section>
       <section id="evidence"></section>
       <section id="git"></section>
       <section id="agents"></section>
@@ -303,6 +305,7 @@ function bindSubmissionReview() {
         \${metric('Agent messages', summary?.agentInteractions ?? 0)}
       </div>
       <div class="grid"><div class="card"><h3>Agency signals</h3>\${signalList(agency.positives, 'No positive signals calculated.')}</div><div class="card"><h3>Review flags</h3>\${signalList(agency.concerns, 'No immediate flags.')}</div></div>\`;
+    byId('agency-metrics').innerHTML = renderAgencyMetrics(reviewModel.agencyMetrics.find((value) => value.studentId === selectedStudent));
     byId('evidence').innerHTML = renderEvidenceTimeline(events);
     byId('git').innerHTML = \`<h2>Git repository</h2><p>Detected: \${reviewModel.submission.hasGit ? 'yes' : 'no'}</p>\` + reviewModel.commits.map((commit) => \`<div class="card"><strong><code>\${esc(commit.hash?.slice(0, 10))}</code> \${esc(commit.message)}</strong><br><span class="muted">\${esc(commit.author)} - \${esc(commit.timestamp)}</span><br><button data-commit="\${esc(commit.hash)}">Show changed files</button></div>\`).join('');
     byId('agents').innerHTML = \`<h2>Agent conversations</h2>\` + item.agentInteractions.map((interaction) => \`<div class="card"><strong>\${esc(interaction.actor)}\${interaction.agent ? ' - ' + esc(interaction.agent) : ''}</strong><br><span class="muted">\${esc(interaction.timestamp)}</span><p>\${esc(interaction.message)}</p></div>\`).join('') + (item.interactionErrors.length ? \`<pre class="warning">\${pretty(item.interactionErrors)}</pre>\` : '');
@@ -315,6 +318,51 @@ function bindSubmissionReview() {
   }
   function signalList(values, empty) {
     return Array.isArray(values) && values.length ? \`<ul>\${values.map((value) => \`<li>\${esc(value)}</li>\`).join('')}</ul>\` : \`<p class="muted">\${esc(empty)}</p>\`;
+  }
+  function renderAgencyMetrics(metrics) {
+    if (!metrics?.groups?.length) return '<h2>Agency metrics</h2><p>No metrics available for this contribution.</p>';
+    const totals = metrics.groups.reduce((acc, group) => {
+      group.metrics.forEach((metric) => {
+        acc.total += 1;
+        if (metric.priority) acc.priority += 1;
+        acc[metric.reliability] = (acc[metric.reliability] ?? 0) + 1;
+      });
+      return acc;
+    }, { total: 0, priority: 0, direct: 0, estimated: 0, limited: 0 });
+    return \`
+      <h2>Agency metrics</h2>
+      <p class="muted">Calculated from the imported event log for \${esc(metrics.studentId)}. Prioritized metrics are marked for first-pass review.</p>
+      <div class="grid">
+        \${metricCard('Metrics', esc(totals.total), \`\${esc(totals.priority)} prioritized\`)}
+        \${metricCard('Direct', esc(totals.direct), 'computed directly from events')}
+        \${metricCard('Estimated', esc(totals.estimated), 'uses event-derived heuristics')}
+        \${metricCard('Limited', esc(totals.limited), 'needs extra context to read strongly')}
+      </div>
+      \${metrics.groups.map(renderMetricGroup).join('')}\`;
+  }
+  function renderMetricGroup(group) {
+    return \`<div class="card agency-group">
+      <h3>\${esc(group.dimension)}</h3>
+      <table>
+        <thead><tr><th>N</th><th>Metric</th><th>Value</th><th>Evidence</th><th>How to read it</th></tr></thead>
+        <tbody>\${group.metrics.map(renderAgencyMetric).join('')}</tbody>
+      </table>
+    </div>\`;
+  }
+  function renderAgencyMetric(metric) {
+    const badge = metric.priority ? '<span class="badge">Priority</span>' : '';
+    const reliability = \`<span class="reliability \${esc(metric.reliability)}">\${esc(metric.reliability)}</span>\`;
+    const value = \`\${esc(metric.value)}\${metric.unit ? ' ' + esc(metric.unit) : ''}\`;
+    return \`<tr>
+      <td><code>\${esc(metric.id)}</code></td>
+      <td><strong>\${esc(metric.name)}</strong> \${badge}<br><span class="muted">\${reliability}</span></td>
+      <td><strong>\${value}</strong></td>
+      <td><span class="muted">\${esc(metric.detail)}</span><br><small>\${esc(metric.evidenceCount)} source events/signals</small></td>
+      <td>\${esc(metric.interpretation)}</td>
+    </tr>\`;
+  }
+  function metricCard(label, value, detail) {
+    return \`<div class="card metric"><span class="muted metric-label">\${label}</span><strong>\${value}</strong><small>\${detail}</small></div>\`;
   }
   function renderEvidenceTimeline(events) {
     if (!events.length) return '<h2>Evidence timeline</h2><p>No matching events.</p>';

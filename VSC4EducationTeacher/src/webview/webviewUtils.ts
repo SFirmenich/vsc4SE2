@@ -39,6 +39,9 @@ export function webviewDocument(
     button { border: 1px solid var(--vscode-button-border, transparent); color: var(--vscode-button-foreground); background: var(--vscode-button-background); padding: 7px 12px; cursor: pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
     button.secondary { color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); }
+    button.mode-card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 86px; padding: 14px 16px; text-align: left; white-space: normal; }
+    button.mode-card strong { display: block; font-size: 15px; line-height: 1.25; }
+    button.mode-card span { display: block; color: var(--vscode-button-foreground); font-size: 12px; font-weight: 400; line-height: 1.35; opacity: 0.82; }
     input, textarea, select { box-sizing: border-box; width: 100%; padding: 7px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); }
     textarea { min-height: 90px; resize: vertical; font-family: var(--vscode-editor-font-family); }
     label { display: block; margin: 10px 0 4px; font-weight: 600; }
