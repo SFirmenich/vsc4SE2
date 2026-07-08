@@ -26,6 +26,7 @@ function bindCommon() {
   document.querySelectorAll('[data-open]').forEach((button) => button.addEventListener('click', () => post('openFile', { path: button.dataset.open })));
   document.querySelectorAll('[data-create-file]').forEach((button) => button.addEventListener('click', () => post('createFile', { kind: button.dataset.createFile })));
   document.querySelectorAll('[data-import-legacy]').forEach((button) => button.addEventListener('click', () => post('importLegacyMaterial', { importKind: button.dataset.importLegacy })));
+  document.querySelectorAll('[data-copy-migration-prompt]').forEach((button) => button.addEventListener('click', () => post('copyMigrationPrompt')));
   document.querySelectorAll('[data-reveal]').forEach((button) => button.addEventListener('click', () => post('revealPath', { path: button.dataset.reveal })));
   document.querySelectorAll('[data-register-task]').forEach((button) => button.addEventListener('click', () => post('registerTask', { taskFile: button.dataset.registerTask })));
 }
@@ -101,7 +102,7 @@ function renderReady() {
           <div class="row">\${openButton(task.file, 'Edit Markdown')}<button data-register-task="\${esc(task.file)}">Add to activity</button></div>
         </div>\`).join('')}\` : ''}
     <h2>Project files</h2>
-    <div class="row"><button data-create-file="theory">Create theory file</button><button data-import-legacy="practice">Import legacy practice</button><button data-import-legacy="theory">Import theory material</button><button data-reveal="theory" class="secondary">Reveal theory folder</button><button data-reveal="starter" class="secondary">Reveal starter project</button></div>
+    <div class="row"><button data-create-file="theory">Create theory file</button><button data-import-legacy="practice">Import legacy practice</button><button data-import-legacy="theory">Import theory material</button><button data-copy-migration-prompt>Copy migration prompt</button><button data-reveal="theory" class="secondary">Reveal theory folder</button><button data-reveal="starter" class="secondary">Reveal starter project</button></div>
     <table><thead><tr><th>File</th><th>Kind</th><th>Status</th><th></th></tr></thead><tbody>
       \${status.files.map((file) => \`<tr><td><code>\${esc(file.path)}</code></td><td>\${esc(file.kind)}</td><td class="\${file.exists ? '' : 'error'}">\${file.exists ? (file.referenced ? 'referenced' : 'present') : 'missing'}</td><td>\${file.exists ? openButton(file.path) : ''}</td></tr>\`).join('')}
     </tbody></table>

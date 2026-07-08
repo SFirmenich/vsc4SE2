@@ -136,6 +136,9 @@ export class TeacherPanel {
         case "importLegacyMaterial":
           if (message.importKind) await this.importLegacyMaterial(message.importKind);
           break;
+        case "copyMigrationPrompt":
+          await this.copyMigrationPrompt();
+          break;
         case "addTask":
           await this.addNextTask();
           break;
@@ -292,6 +295,32 @@ export class TeacherPanel {
       suffix += 1;
     }
     return candidate;
+  }
+
+  private async copyMigrationPrompt(): Promise<void> {
+    await vscode.env.clipboard.writeText(this.migrationPrompt());
+    void vscode.window.showInformationMessage("Migration prompt copied to clipboard");
+  }
+
+  private migrationPrompt(): string {
+    return `You are helping me migrate legacy teaching material into a VSCode4Education teacher activity project.
+
+Workspace root: ${this.root}
+
+Use the files under imports/ as source material only:
+- imports/theory/ contains legacy theory material, slides, notes, PDFs, DOCX files, or references.
+- imports/practice/ contains legacy practice statements, exercises, examples, tests, solutions, or assignment material.
+
+Create or update the canonical activity files from that material:
+1. Create student-facing Markdown theory files under theory/. Split them into coherent, reusable files with clear names. Do not copy irrelevant administrative text.
+2. Create task Markdown files under tasks/ as task-01.md, task-02.md, etc. Each task should have a clear objective, instructions, deliverables, acceptance criteria, and expected evidence.
+3. Propose and create a suitable starter project structure under starter/. Include only files students should receive at import time: scaffolding, starter code, data files, tests, or configuration that support the tasks.
+4. Update manifest.json so manifest.tasks[*].id is stable, each task points to its tasks/task-N.md file, and task order/dependencies match the learning sequence.
+5. Keep teacher-only source material inside imports/. Do not move imports/ content into the portable activity unless you intentionally transform it into theory/, tasks/, starter/, agent/, rubrics/, or signatures/.
+6. Preserve the VSCode4Education compatibility contract: portable activity files are manifest.json, theory/, tasks/, agent/instructions.md, starter/, rubrics/, and signatures/. Task IDs must not depend on array position.
+7. Do not embed full solutions in student-facing task or agent instructions unless the activity explicitly requires solution files as hidden/teacher-only material.
+
+Before editing, inspect the current manifest.json and existing theory/, tasks/, starter/, agent/, rubrics/, and imports/ folders. After editing, summarize the files created or changed and any assumptions you made.`;
   }
 
   private async addNextTask(): Promise<void> {

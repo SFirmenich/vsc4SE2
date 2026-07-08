@@ -63,7 +63,6 @@ activity/
 |-- agent/
 |   `-- instructions.md
 |-- starter/
-|   `-- proyecto-base/
 `-- signatures/
 ```
 
@@ -77,7 +76,7 @@ Required compatibility points:
 - `manifest.tasks[*].id` is stable and is the canonical task reference.
 - Task IDs must not be interpreted by array position.
 - Task files and other package references are relative paths inside the package.
-- `starter/proyecto-base/` is copied to the student workspace root.
+- `starter/` is copied to the student workspace root.
 - Academic package contents are preserved under `.vsc4education/`.
 - `agent/instructions.md` remains the canonical source for generated agent
   instructions.

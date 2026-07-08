@@ -28,8 +28,7 @@ workspace used to author a portable learning activity package.
 - \`theory/\` contains student-facing theory and support material.
 - \`agent/instructions.md\` contains the pedagogical agent instructions that will
   be packaged for students.
-- \`starter/\` contains the files copied into \`src/\` in each student
-  workspace.
+- \`starter/\` contains the starter project copied into each student workspace.
 - \`rubrics/\` contains evaluation rubrics.
 - \`signatures/\` contains generated package hashes or related metadata.
 
