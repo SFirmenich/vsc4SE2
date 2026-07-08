@@ -20,6 +20,7 @@
       "name": "Run extension: Professors",
       "type": "extensionHost",
       "request": "launch",
+      "preLaunchTask": "Teacher: clean compile",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationTeacher",
         "--extensions-dir=${env:USERPROFILE}/.vscode/extensions"
@@ -33,6 +34,7 @@
       "name": "Run both extensions: Same window",
       "type": "extensionHost",
       "request": "launch",
+      "preLaunchTask": "Teacher: clean compile",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationStudents",
         "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationTeacher",

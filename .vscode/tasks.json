@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Teacher: clean compile",
+      "type": "shell",
+      "command": "if (Test-Path out) { Remove-Item -Recurse -Force out }; npm.cmd run compile",
+      "options": {
+        "cwd": "${workspaceFolder}/VSC4EducationTeacher"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Students: compile",
+      "type": "shell",
+      "command": "npm.cmd run compile",
+      "options": {
+        "cwd": "${workspaceFolder}/VSC4EducationStudents"
+      },
+      "problemMatcher": "$tsc"
+    }
+  ]
+}
