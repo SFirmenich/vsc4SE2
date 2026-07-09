@@ -12,6 +12,7 @@ compatible.
 - [Activity format](activity-format.md)
 - [Events and evidence model](events.md)
 - [Security, privacy, and limitations](security-limitations.md)
+- [C4 architecture model](design/README.md)
 
 ## Authoring And Review
 
