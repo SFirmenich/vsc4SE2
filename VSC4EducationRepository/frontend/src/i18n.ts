@@ -22,6 +22,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "Agent responses": "Respuestas del agente",
     "Agent use": "Uso de agentes",
     "Alerts": "Advertencias",
+    "Active time": "Tiempo activo",
     "Average events": "Eventos promedio",
     "Average observable agency": "Agencia observable promedio",
     "Back": "Volver",
@@ -39,6 +40,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "Courses": "Asignaturas",
     "Courses, activities, and submissions": "Asignaturas, actividades y entregas",
     "Description": "Descripcion",
+    "Dashboard": "Dashboard",
     "Dimension": "Dimension",
     "Download ZIP": "Descargar ZIP",
     "Duration": "Duracion",
@@ -138,6 +140,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "Student messages": "Mensajes estudiante",
     "Avg.": "Prom.",
     "Median": "Mediana",
+    "Min": "Min",
+    "Max": "Max",
+    "N": "N",
     "Observable agency help": "Score compuesto 0-100 calculado desde continuidad, edicion efectiva, relevancia, gestion del proceso, iteracion, validacion y flags contextuales. Apoya el juicio docente; no es una calificacion ni prueba de autoria.",
     "Score": "Score",
     "Reading issues": "Problemas de lectura",
@@ -304,7 +309,7 @@ export function setLocale(locale: Locale): void {
 export function t(key: string, ...values: Array<string | number>): string {
   const template = translations[currentLocale][key] ?? key;
   return values.reduce<string>(
-    (text, value, index) => text.replaceAll(`{${index}}`, String(value)),
+    (text, value, index) => text.split(`{${index}}`).join(String(value)),
     template,
   );
 }

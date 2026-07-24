@@ -426,7 +426,7 @@ function ActivityView(props: {
                   <th>{t("Events")}</th>
                   <th>{t("Agent")}</th>
                   <th>Git</th>
-                  <th>Warnings</th>
+                  <th>{t("Warnings")}</th>
                   <th>{t("Imported")}</th>
                 </tr>
               </thead>
@@ -848,13 +848,13 @@ function StatsTable(props: { rows: [string, ActivityReviewDashboard["summary"][s
         <tr>
           <th>{t("Metric")}</th>
           <th>{t("Avg.")}</th>
-          <th>Min</th>
+          <th>{t("Min")}</th>
           <th>P25</th>
           <th>{t("Median")}</th>
           <th>P75</th>
           <th>P90</th>
-          <th>Max</th>
-          <th>N</th>
+          <th>{t("Max")}</th>
+          <th>{t("N")}</th>
         </tr>
       </thead>
       <tbody>
@@ -1110,7 +1110,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
               <table>
                 <thead>
                   <tr>
-                    <th>N</th>
+                    <th>{t("N")}</th>
                     <th>{t("Metric")}</th>
                     <th>{t("Value")}</th>
                     <th>{t("Evidence")}</th>
