@@ -17,12 +17,13 @@ import type {
   SubmissionDetail,
   SubmissionReview,
 } from "./types";
-import { t } from "./i18n";
+import { getLocale, locales, setLocale, t, type Locale } from "./i18n";
 import "./styles.css";
 
 type View = "courses" | "course" | "activity" | "submission";
 
 function App() {
+  const [locale, setLocaleState] = useState<Locale>(() => getLocale());
   const [view, setView] = useState<View>("courses");
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseGroups, setCourseGroups] = useState<CourseGroup[]>([]);
@@ -131,7 +132,7 @@ function App() {
 
   async function importActivity(file: File, courseGroupId: string) {
     if (!courseGroupId) {
-      setMessage("Elegí una comisión para asociar la actividad.");
+      setMessage(t("Choose a group to associate the activity."));
       return;
     }
     const imported = await uploadZip<ActivityVersion>("/activities/import-zip/", file, { courseGroupId });
@@ -148,7 +149,7 @@ function App() {
       return;
     }
     if (!courseGroupId) {
-      setMessage("Elegí una comisión para asociar la entrega.");
+      setMessage(t("Choose a group to associate the submission."));
       return;
     }
     await uploadZip<Submission>(`/activity-versions/${selectedActivity.id}/submissions/import-zip/`, file, { courseGroupId, submissionName });
@@ -170,6 +171,10 @@ function App() {
   }
 
   useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  useEffect(() => {
     loadCourses().catch((error) => setMessage(errorMessage(error)));
   }, []);
 
@@ -181,6 +186,13 @@ function App() {
           <p>{subtitle(view, selectedCourse, selectedActivity, selectedSubmission)}</p>
         </div>
         <div className="headerActions">
+          <LanguageSelector
+            locale={locale}
+            onChange={(nextLocale) => {
+              setLocale(nextLocale);
+              setLocaleState(nextLocale);
+            }}
+          />
           {view !== "courses" && (
             <button className="ghostButton" onClick={goBack}>
               <ArrowLeft size={17} /> {t("Back")}
@@ -296,7 +308,7 @@ function CourseActivitiesView(props: {
 }) {
   return (
     <>
-      <SectionHeader icon={<BookOpen size={20} />} title={`Learning activities for ${props.course.name}`} actionLabel={t("Add activity")} onAction={props.onAdd} />
+      <SectionHeader icon={<BookOpen size={20} />} title={t("Learning activities for {0}", props.course.name)} actionLabel={t("Add activity")} onAction={props.onAdd} />
       {props.addPanel === "activity" && <ZipUploadPanel label={t("Activity ZIP")} groups={props.groups} onUpload={props.onUpload} />}
       <div className="listPanel">
         {props.activities.map((activity) => (
@@ -461,6 +473,19 @@ function ActivityView(props: {
   );
 }
 
+function LanguageSelector(props: { locale: Locale; onChange: (locale: Locale) => void }) {
+  return (
+    <label className="languageSelect">
+      <span>{t("Language")}</span>
+      <select value={props.locale} onChange={(event) => props.onChange(event.target.value as Locale)}>
+        {locales.map((locale) => (
+          <option key={locale.code} value={locale.code}>{locale.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 type AnalysisChartKind = "bar" | "dot" | "category";
 
 type AnalysisPoint = {
@@ -479,24 +504,24 @@ type AnalysisMetricSeries = {
 };
 
 const SUMMARY_ANALYSIS_METRICS: { key: string; title: string; unit?: string; kind?: AnalysisChartKind }[] = [
-  { key: "activeMinutes", title: t("Active time"), unit: "min" },
-  { key: "uniqueLinesTouched", title: t("Unique lines changed") },
-  { key: "filesModified", title: t("Modified files") },
-  { key: "fileChangeEvents", title: t("File change events") },
-  { key: "saves", title: t("Saves") },
-  { key: "tasksStarted", title: t("Tasks started") },
-  { key: "tasksCompleted", title: t("Tasks completed") },
-  { key: "agentInteractions", title: t("Agent interactions") },
-  { key: "studentAgentMessages", title: t("Student messages to agent") },
-  { key: "agentResponses", title: t("Agent responses") },
+  { key: "activeMinutes", title: "Active time", unit: "min" },
+  { key: "uniqueLinesTouched", title: "Unique lines changed" },
+  { key: "filesModified", title: "Modified files" },
+  { key: "fileChangeEvents", title: "File change events" },
+  { key: "saves", title: "Saves" },
+  { key: "tasksStarted", title: "Tasks started" },
+  { key: "tasksCompleted", title: "Tasks completed" },
+  { key: "agentInteractions", title: "Agent interactions" },
+  { key: "studentAgentMessages", title: "Student messages to agent" },
+  { key: "agentResponses", title: "Agent responses" },
   { key: "commits", title: "Commits" },
-  { key: "heartbeatGaps", title: t("Heartbeat gaps") },
-  { key: "agencyScore", title: t("Observable agency score"), kind: "dot" },
+  { key: "heartbeatGaps", title: "Heartbeat gaps" },
+  { key: "agencyScore", title: "Observable agency score", kind: "dot" },
 ];
 
 function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | null; loading: boolean; error: string }) {
   const [selectedMetric, setSelectedMetric] = useState<AnalysisMetricSeries | null>(null);
-  const metrics = useMemo(() => buildAnalysisMetrics(props.analysis?.submissions ?? []), [props.analysis]);
+  const metrics = buildAnalysisMetrics(props.analysis?.submissions ?? []);
 
   if (props.loading) {
     return <EmptyState text={t("Calculating submission analysis...")} />;
@@ -517,7 +542,7 @@ function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | 
         <div className="metrics">
           <Metric label={t("Reviewed submissions")} value={`${props.analysis.reviewedSubmissionCount}/${props.analysis.submissionCount}`} />
           <Metric label={t("Charts")} value={metrics.length} />
-          <Metric label={t("Priority metrics")} value={metrics.filter((metric) => metric.dimension.includes("Prioritarias")).length} />
+          <Metric label={t("Priority metrics")} value={metrics.filter((metric) => metric.dimension.startsWith("Priority - ")).length} />
           <Metric label={t("Warnings")} value={props.analysis.warnings.length} />
         </div>
       </section>
@@ -525,8 +550,8 @@ function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | 
       <section className="analysisGrid" aria-label={t("Submission analysis")}> 
         {metrics.map((metric) => (
           <button className="analysisCard" key={metric.key} onClick={() => setSelectedMetric(metric)}>
-            <strong>{metric.title}</strong>
-            <small>{metric.dimension}</small>
+            <strong>{t(metric.title)}</strong>
+            <small>{t(metric.dimension)}</small>
             <AnalysisChart metric={metric} size="mini" />
           </button>
         ))}
@@ -538,7 +563,7 @@ function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | 
           {props.analysis.warnings.map((warning) => (
             <div className="warningItem" key={`${warning.submissionId}-${warning.code}`}>
               <strong>{warning.studentId} - {warning.code}</strong>
-              <span>{warning.message}</span>
+              <span>{t(warning.message)}</span>
             </div>
           ))}
         </section>
@@ -549,8 +574,8 @@ function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | 
           <dialog className="chartDialog" open aria-labelledby="chartDialogTitle" onClick={(event) => event.stopPropagation()}>
             <div className="dialogHeader">
               <div>
-                <h2 id="chartDialogTitle">{selectedMetric.title}</h2>
-                <p>{selectedMetric.dimension}{selectedMetric.unit ? ` - ${selectedMetric.unit}` : ""}</p>
+                <h2 id="chartDialogTitle">{t(selectedMetric.title)}</h2>
+                <p>{t(selectedMetric.dimension)}{selectedMetric.unit ? ` - ${t(selectedMetric.unit)}` : ""}</p>
               </div>
               <button className="iconButton" onClick={() => setSelectedMetric(null)} title={t("Close")}> 
                 <X size={17} />
@@ -579,7 +604,7 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
         key: `summary:${metric.key}`,
         title: metric.title,
         unit: metric.unit,
-        dimension: "Resumen observable",
+        dimension: "Observable summary",
         kind: metric.kind ?? inferNumericChartKind(metric.title, metric.unit),
         points,
       });
@@ -600,7 +625,7 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
           key,
           title: metric.name,
           unit: metric.unit,
-          dimension: `${metric.priority ? "Prioritarias - " : ""}${group.dimension}`,
+          dimension: metric.priority ? `Priority - ${group.dimension}` : group.dimension,
           kind: typeof metric.value === "number" ? inferNumericChartKind(metric.name, metric.unit) : "category",
           points: [],
         };
@@ -659,7 +684,7 @@ function NumericChart(props: { metric: AnalysisMetricSeries; width: number; heig
   const ticks = y.ticks(props.detailed ? 6 : 3);
 
   return (
-    <svg className="analysisChart" viewBox={`0 0 ${props.width} ${props.height}`} role="img" aria-label={props.metric.title}>
+    <svg className="analysisChart" viewBox={`0 0 ${props.width} ${props.height}`} role="img" aria-label={t(props.metric.title)}>
       {props.detailed && ticks.map((tick) => (
         <g key={tick}>
           <line x1={margin.left} x2={props.width - margin.right} y1={y(tick)} y2={y(tick)} className="chartGridLine" />
@@ -703,12 +728,12 @@ function CategoryChart(props: { metric: AnalysisMetricSeries; width: number; hei
     .padding(0.22);
 
   return (
-    <svg className="analysisChart" viewBox={`0 0 ${props.width} ${props.height}`} role="img" aria-label={props.metric.title}>
+    <svg className="analysisChart" viewBox={`0 0 ${props.width} ${props.height}`} role="img" aria-label={t(props.metric.title)}>
       {counts.map((item) => (
         <g key={item.label}>
-          {props.detailed && <text x={margin.left - 10} y={(y(item.label) ?? 0) + y.bandwidth() / 2} className="chartAxisText" textAnchor="end" dominantBaseline="middle">{item.label}</text>}
+          {props.detailed && <text x={margin.left - 10} y={(y(item.label) ?? 0) + y.bandwidth() / 2} className="chartAxisText" textAnchor="end" dominantBaseline="middle">{t(item.label)}</text>}
           <rect x={margin.left} y={y(item.label)} width={Math.max(1, x(item.count) - margin.left)} height={Math.max(1, y.bandwidth())} className="chartBar alt">
-            <title>{item.label}: {item.count}</title>
+            <title>{t(item.label)}: {item.count}</title>
           </rect>
           {props.detailed && <text x={x(item.count) + 8} y={(y(item.label) ?? 0) + y.bandwidth() / 2} className="chartAxisText" dominantBaseline="middle">{item.count}</text>}
         </g>
@@ -729,10 +754,10 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
     return <EmptyState text={t("Calculating submission dashboard...")} />;
   }
   if (props.error) {
-    return <section className="tablePanel warningPanel"><h2>No se pudo cargar el dashboard</h2><p>{props.error}</p></section>;
+    return <section className="tablePanel warningPanel"><h2>{t("Could not load dashboard")}</h2><p>{props.error}</p></section>;
   }
   if (!dashboard) {
-    return <EmptyState text="Abri el tab Dashboard para calcular las metricas agregadas." />;
+    return <EmptyState text={t("Open the Dashboard tab to calculate aggregate metrics.")} />;
   }
 
   return (
@@ -754,11 +779,11 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
 
       <div className="twoColumns">
         <section className="tablePanel">
-          <h2>Distribucion de agencia observable</h2>
+          <h2>{t("Observable agency distribution")}</h2>
           <DistributionTable values={dashboard.agency.levels} />
         </section>
         <section className="tablePanel">
-          <h2>Integridad</h2>
+          <h2>{t("Integrity")}</h2>
           <DistributionTable values={dashboard.integrity} />
         </section>
       </div>
@@ -766,27 +791,27 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
       {(dashboard.agency.topPositives.length > 0 || dashboard.agency.topConcerns.length > 0) && (
         <div className="twoColumns">
           <section className="tablePanel">
-            <h2>Fortalezas frecuentes</h2>
+            <h2>{t("Frequent strengths")}</h2>
             <CountList values={dashboard.agency.topPositives} />
           </section>
           <section className="tablePanel">
-            <h2>Indicadores frecuentes para revisar</h2>
+            <h2>{t("Frequent indicators to review")}</h2>
             <CountList values={dashboard.agency.topConcerns} />
           </section>
         </div>
       )}
 
       <section className="tablePanel">
-        <h2>Resumen agregado</h2>
+        <h2>{t("Aggregate summary")}</h2>
         <StatsTable
           rows={[
-            ["Tiempo activo", dashboard.summary.activeMinutes, "min"],
+            [t("Active time"), dashboard.summary.activeMinutes, "min"],
             [t("Unique lines"), dashboard.summary.uniqueLinesTouched, ""],
             [t("Modified files"), dashboard.summary.filesModified, ""],
             [t("File changes"), dashboard.summary.fileChangeEvents, ""],
-            ["Interacciones con agente", dashboard.summary.agentInteractions, ""],
-            ["Mensajes estudiante", dashboard.agentUse.studentMessages, ""],
-            ["Respuestas agente", dashboard.agentUse.agentResponses, ""],
+            [t("Agent interactions"), dashboard.summary.agentInteractions, ""],
+            [t("Student messages"), dashboard.agentUse.studentMessages, ""],
+            [t("Agent responses"), dashboard.agentUse.agentResponses, ""],
           ]}
         />
       </section>
@@ -795,8 +820,8 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
         <h2>{t("Metrics by dimension")}</h2>
         {dashboard.metricGroups.map((group) => (
           <div className="metricGroup" key={group.dimension}>
-            <h3>{group.dimension}</h3>
-            <StatsTable rows={group.metrics.map((metric) => [metric.name, metric.stats, metric.unit ?? "", metric])} />
+            <h3>{t(group.dimension)}</h3>
+            <StatsTable rows={group.metrics.map((metric) => [t(metric.name), metric.stats, metric.unit ?? "", metric])} />
           </div>
         ))}
       </section>
@@ -807,7 +832,7 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
           {dashboard.warnings.map((warning) => (
             <div className="warningItem" key={`${warning.submissionId}-${warning.code}`}>
               <strong>{warning.studentId} - {warning.code}</strong>
-              <span>{warning.message}</span>
+              <span>{t(warning.message)}</span>
             </div>
           ))}
         </section>
@@ -822,10 +847,10 @@ function StatsTable(props: { rows: [string, ActivityReviewDashboard["summary"][s
       <thead>
         <tr>
           <th>{t("Metric")}</th>
-          <th>Prom.</th>
+          <th>{t("Avg.")}</th>
           <th>Min</th>
           <th>P25</th>
-          <th>Mediana</th>
+          <th>{t("Median")}</th>
           <th>P75</th>
           <th>P90</th>
           <th>Max</th>
@@ -874,7 +899,7 @@ function CountList(props: { values: { label: string; count: number }[] }) {
   if (!props.values.length) {
     return <p>{t("No data.")}</p>;
   }
-  return <ul className="signalList">{props.values.map((item) => <li key={item.label}>{item.label}: {item.count}</li>)}</ul>;
+  return <ul className="signalList">{props.values.map((item) => <li key={item.label}>{t(item.label)}: {item.count}</li>)}</ul>;
 }
 
 function formatStat(value: number | undefined, unit = "") {
@@ -886,7 +911,19 @@ function formatStat(value: number | undefined, unit = "") {
 }
 
 function formatCounts(values: Record<string, number>) {
-  return Object.entries(values).map(([label, count]) => `${label}: ${count}`).join(", ");
+  return Object.entries(values).map(([label, count]) => `${t(label)}: ${count}`).join(", ");
+}
+
+function formatMetricValue(value: string | number) {
+  return typeof value === "string" ? t(value) : value;
+}
+
+function translateSignal(value: string) {
+  const separator = value.indexOf(":");
+  if (separator < 0) {
+    return t(value);
+  }
+  return `${t(value.slice(0, separator))}${value.slice(separator)}`;
 }
 
 function ObservableAgencyPanel(props: { agency: ObservableAgencyAssessment | undefined }) {
@@ -898,24 +935,19 @@ function ObservableAgencyPanel(props: { agency: ObservableAgencyAssessment | und
     <>
       <section className="tablePanel">
         <h2>{t("Observable agency")}</h2>
-        <p className="mutedText">
-          Composite 0-100 score calculated from continuity, effective editing,
-          relevance, process management, iteration, validation, and contextual
-          flags. It supports teacher judgment; it is not a grade or proof
-          of authorship.
-        </p>
+        <p className="mutedText">{t("Observable agency help")}</p>
         <table>
           <thead>
             <tr>
               <th>{t("Dimension")}</th>
-              <th>Score</th>
+              <th>{t("Score")}</th>
               <th>{t("Weight")}</th>
             </tr>
           </thead>
           <tbody>
             {agency.dimensions.map((dimension) => (
               <tr key={dimension.name}>
-                <td>{dimension.name}</td>
+                <td>{t(dimension.name)}</td>
                 <td>{dimension.score}/100</td>
                 <td>{dimension.weight}%</td>
               </tr>
@@ -927,13 +959,13 @@ function ObservableAgencyPanel(props: { agency: ObservableAgencyAssessment | und
         <section className="tablePanel">
           <h2>{t("Main strengths")}</h2>
           {agency.strengths.length ? (
-            <ul className="signalList">{agency.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
+            <ul className="signalList">{agency.strengths.map((item) => <li key={item}>{translateSignal(item)}</li>)}</ul>
           ) : <p>{t("No dimensions are above the strength threshold.")}</p>}
         </section>
         <section className="tablePanel">
           <h2>{t("Indicators to review")}</h2>
           {agency.flags.length ? (
-            <ul className="signalList warningText">{agency.flags.map((item) => <li key={item}>{item}</li>)}</ul>
+            <ul className="signalList warningText">{agency.flags.map((item) => <li key={item}>{t(item)}</li>)}</ul>
           ) : <p>{t("No immediate alerts.")}</p>}
         </section>
       </div>
@@ -966,12 +998,12 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
           <Metric label={t("Events")} value={submission.event_count} />
           <Metric label={t("Agent interactions")} value={submission.agent_interaction_count} />
           <Metric label="Git" value={submission.has_git ? t("Yes") : t("No")} />
-          <Metric label="Warnings" value={submission.warning_count} />
+          <Metric label={t("Warnings")} value={submission.warning_count} />
         </div>
         {review && (
           <div className="metrics">
-            <Metric label={t("Observable agency")} value={observableAgency ? `${observableAgency.level} (${observableAgency.score}/100)` : t("No data.")} />
-            <Metric label={t("Confidence")} value={observableAgency?.confidence ?? t("No data.")} />
+            <Metric label={t("Observable agency")} value={observableAgency ? `${t(observableAgency.level)} (${observableAgency.score}/100)` : t("No data.")} />
+            <Metric label={t("Confidence")} value={observableAgency?.confidence ? t(observableAgency.confidence) : t("No data.")} />
             <Metric label={t("Unique lines")} value={review.summary.uniqueLinesTouched} />
             <Metric label={t("Active time")} value={`${review.summary.activeMinutes} min`} />
             <Metric label={t("Integrity")} value={integrityLabel(review.integrity.status)} />
@@ -1062,7 +1094,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
           ) : <EmptyState text={t("No agent conversations are recorded for this submission.")} />}
           {(review?.agentInteractionErrors.length ?? 0) > 0 && (
             <div className="warningBlock">
-              <strong>Problemas de lectura</strong>
+              <strong>{t("Reading issues")}</strong>
               {review?.agentInteractionErrors.map((error) => <span key={error}>{error}</span>)}
             </div>
           )}
@@ -1074,7 +1106,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
           <h2>{t("Agency metrics")}</h2>
           {review ? review.agencyMetrics.groups.map((group) => (
             <div className="metricGroup" key={group.dimension}>
-              <h3>{group.dimension}</h3>
+              <h3>{t(group.dimension)}</h3>
               <table>
                 <thead>
                   <tr>
@@ -1089,16 +1121,16 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
                   {group.metrics.map((metric) => (
                     <tr key={metric.id}>
                       <td><code>{metric.id}</code></td>
-                      <td><strong>{metric.name}</strong>{metric.priority && <span className="badge">Prioritaria</span>}<br /><small className={`reliability ${metric.reliability}`}>{metric.reliability}</small></td>
-                      <td><strong>{metric.value}{metric.unit ? ` ${metric.unit}` : ""}</strong></td>
-                      <td>{metric.detail}<br /><small>{metric.evidenceCount} {t("events/signals")}</small></td>
-                      <td>{metric.interpretation}</td>
+                      <td><strong>{t(metric.name)}</strong>{metric.priority && <span className="badge">{t("Priority")}</span>}<br /><small className={`reliability ${metric.reliability}`}>{t(metric.reliability)}</small></td>
+                      <td><strong>{formatMetricValue(metric.value)}{metric.unit ? ` ${t(metric.unit)}` : ""}</strong></td>
+                      <td>{t(metric.detail)}<br /><small>{metric.evidenceCount} {t("events/signals")}</small></td>
+                      <td>{t(metric.interpretation)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )) : <EmptyState text="No se pudieron cargar las metricas profundas." />}
+          )) : <EmptyState text={t("Deep metrics could not be loaded.")} />}
         </section>
       )}
 
@@ -1126,7 +1158,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
             <div className="eventList">
               {filteredEvents.slice(0, 80).map((event, index) => <pre key={index}>{JSON.stringify(event, null, 2)}</pre>)}
             </div>
-            {filteredEvents.length > 80 && <p>Mostrando los primeros 80 eventos filtrados.</p>}
+            {filteredEvents.length > 80 && <p>{t("Showing the first 80 filtered events.")}</p>}
           </section>
         </div>
       )}
@@ -1147,10 +1179,10 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
 }
 
 function integrityLabel(status: string) {
-  if (status === "valid") return "Valida";
-  if (status === "invalid") return "Invalida";
-  if (status === "incomplete") return "Incompleta";
-  return "No disponible";
+  if (status === "valid") return t("valid");
+  if (status === "invalid") return t("invalid");
+  if (status === "incomplete") return t("incomplete");
+  return t("not available");
 }
 
 function distributionLabel(value: string) {
@@ -1222,7 +1254,7 @@ function EmptyState(props: { text: string }) {
 
 function subtitle(view: View, course: Course | null, activity: ActivityVersion | null, submission: Submission | null) {
   if (view === "submission" && submission) {
-    return submission.name ? `Detalle de entrega - ${submission.name}` : "Detalle de entrega";
+    return submission.name ? t("Submission detail - {0}", submission.name) : t("Submission detail");
   }
   if (view === "activity" && activity) {
     return `${activity.activityId}@${activity.version}`;

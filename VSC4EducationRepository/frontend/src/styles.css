@@ -56,8 +56,28 @@ p {
 }
 
 .headerActions {
+  align-items: center;
   display: flex;
   gap: 10px;
+}
+
+.languageSelect {
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.languageSelect span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.languageSelect select {
+  min-height: 38px;
+  min-width: 118px;
+  width: auto;
 }
 
 .page {
