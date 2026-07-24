@@ -16,6 +16,7 @@ compatible.
 
 ## Authoring And Review
 
+- [Professor user manual](professor-manual.md)
 - [Complete activity authoring guide](activity-authoring-guide.md)
 - [Teacher activity authoring](teacher-activity-authoring.md)
 - [Submission review](submission-review.md)
