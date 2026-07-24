@@ -17,9 +17,11 @@
     "onCommand:teacherActivity.openCreationMode",
     "onCommand:teacherActivity.openCreationModeV2",
     "onCommand:teacherActivity.openRevisionMode",
+    "onCommand:teacherActivity.openRevisionModeV2",
     "onWebviewPanel:learningActivityTeacherCreation",
     "onWebviewPanel:learningActivityTeacherCreationV2",
     "onWebviewPanel:learningActivityTeacherRevision",
+    "onWebviewPanel:learningActivityTeacherRevisionV2",
     "onWebviewPanel:learningActivityTeachPanel"
   ],
   "main": "./out/src/extension.js",
@@ -36,6 +38,10 @@
       {
         "command": "teacherActivity.openRevisionMode",
         "title": "%command.openRevisionMode%"
+      },
+      {
+        "command": "teacherActivity.openRevisionModeV2",
+        "title": "%command.openRevisionModeV2%"
       }
     ]
   },

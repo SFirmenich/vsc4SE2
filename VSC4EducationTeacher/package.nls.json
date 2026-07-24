@@ -3,5 +3,6 @@
   "extension.description": "Author, validate, export, and review Learning Activity Tracker packages.",
   "command.openCreationMode": "VSC4Education: Open creation mode",
   "command.openCreationModeV2": "VSC4Education: Open creation mode V2",
-  "command.openRevisionMode": "VSC4Education: Open revision mode"
+  "command.openRevisionMode": "VSC4Education: Open revision mode",
+  "command.openRevisionModeV2": "VSC4Education: Open revision mode V2"
 }
