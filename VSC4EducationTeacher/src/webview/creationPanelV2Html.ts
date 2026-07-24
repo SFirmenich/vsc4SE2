@@ -33,6 +33,16 @@ export function creationPanelV2Html(
   <link nonce="${scriptNonce}" rel="stylesheet" href="${vuetifyCssUri.toString()}">
   <style>
     :root { color-scheme: light dark; }
+    html,
+    body,
+    #app {
+      width: 100%;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       color: var(--vscode-foreground);
@@ -45,6 +55,12 @@ export function creationPanelV2Html(
       color: var(--vscode-foreground);
       background: var(--vscode-editor-background);
     }
+    .v-application,
+    .v-application__wrap,
+    .app-shell {
+      width: 100%;
+      min-width: 0;
+    }
     .app-shell { min-height: 100vh; background: var(--vscode-editor-background); }
     .topbar {
       position: sticky;
@@ -53,21 +69,52 @@ export function creationPanelV2Html(
       border-bottom: 1px solid var(--vscode-panel-border);
       background: var(--vscode-editor-background);
     }
-    .content { max-width: 1180px; margin: 0 auto; padding: 22px; }
+    .content {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      margin: 0;
+      padding: 22px;
+    }
     .activity-workspace {
       width: 100%;
+      max-width: 100%;
+      min-width: 0;
       margin: 0 auto;
-      box-sizing: border-box;
     }
     .tab-shell,
     .tab-content,
     .tab-panel,
     .tab-content .v-card {
       width: 100%;
-      box-sizing: border-box;
+      max-width: 100%;
+      min-width: 0;
     }
     .tab-content {
       display: block;
+      min-width: 0;
+    }
+    .tab-panel > .v-card,
+    .tab-panel > .v-row {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .v-row {
+      max-width: 100%;
+      min-width: 0;
+    }
+    .v-table {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .v-table table {
+      min-width: 760px;
+    }
+    .v-list,
+    .v-list-item {
+      max-width: 100%;
       min-width: 0;
     }
     .v-card, .v-sheet {
