@@ -5,7 +5,10 @@ import { ActivityPackageService } from "../services/ActivityPackageService";
 import { ActivityProjectService } from "../services/ActivityProjectService";
 import { ActivityStatusService } from "../services/ActivityStatusService";
 import { EvidenceCryptoService } from "../services/EvidenceCryptoService";
-import { ActivityManifest } from "../types/ActivityManifest";
+import {
+  ActivityManifest,
+  RepositoryEventServerConfiguration
+} from "../types/ActivityManifest";
 import { pathExists } from "../utils/fs";
 import { resolveInside } from "../utils/paths";
 import { VALID_ID } from "../utils/validation";
@@ -25,7 +28,16 @@ interface CreateActivityPayload {
 
 type LegacyImportKind = "practice" | "theory";
 
-const ROOT_KEY = "teacherPanelV2.activityRoot";
+interface EventServerConfigurationPayload {
+  enabled: boolean;
+  baseUrl?: string;
+  activityVersionId?: number | string;
+  ingestionToken?: string;
+  publicSigningKeyUrl?: string;
+  expectedSigningKeyId?: string;
+  expectedPublicKeySha256?: string;
+  requireReceipts?: boolean;
+}
 
 export class CreationPanelV2 {
   private static current: CreationPanelV2 | undefined;
@@ -51,8 +63,7 @@ export class CreationPanelV2 {
     );
     const instance = new CreationPanelV2(
       panel,
-      context.extensionUri,
-      context.globalState
+      context.extensionUri
     );
     this.current = instance;
     panel.onDidDispose(() => {
@@ -75,8 +86,7 @@ export class CreationPanelV2 {
           };
           const instance = new CreationPanelV2(
             panel,
-            context.extensionUri,
-            context.globalState
+            context.extensionUri
           );
           this.current = instance;
           panel.onDidDispose(() => {
@@ -94,7 +104,6 @@ export class CreationPanelV2 {
   private constructor(
     private readonly panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
-    private readonly globalState: vscode.Memento,
     private readonly projects = new ActivityProjectService(),
     private readonly statusService = new ActivityStatusService(),
     private readonly packages = new ActivityPackageService(),
@@ -171,6 +180,7 @@ export class CreationPanelV2 {
     path?: string;
     kind?: "task" | "theory" | "rubric";
     importKind?: LegacyImportKind;
+    configuration?: EventServerConfigurationPayload;
   }): Promise<void> {
     try {
       switch (message.type) {
@@ -216,6 +226,11 @@ export class CreationPanelV2 {
         case "exportTeacher":
           await this.exportTeacher();
           break;
+        case "saveEventServerConfiguration":
+          if (message.configuration) {
+            await this.saveEventServerConfiguration(message.configuration);
+          }
+          break;
       }
     } catch (error) {
       await this.panel.webview.postMessage({ type: "ready" });
@@ -238,7 +253,6 @@ export class CreationPanelV2 {
       return;
     }
     this.activityRoot = selected[0].fsPath;
-    await this.storeRoot(this.activityRoot);
     this.addFolderToWorkspace(this.activityRoot, "Learning Activity");
     await this.refresh();
   }
@@ -257,7 +271,6 @@ export class CreationPanelV2 {
     }
     const root = selected[0].fsPath;
     this.activityRoot = root;
-    await this.storeRoot(root);
     await this.initializeDefaultActivity(root);
     this.addFolderToWorkspace(root, "Learning Activity");
     this.panel.dispose();
@@ -273,7 +286,6 @@ export class CreationPanelV2 {
       return;
     }
     this.activityRoot = root;
-    await this.storeRoot(root);
     await this.refresh();
   }
 
@@ -549,6 +561,50 @@ Create or update the canonical activity files from that material while preservin
     await this.refresh();
   }
 
+  private async saveEventServerConfiguration(
+    payload: EventServerConfigurationPayload
+  ): Promise<void> {
+    const root = this.requireActivityRoot();
+    const manifest = await this.projects.load(root);
+    const eventServer: RepositoryEventServerConfiguration = {
+      enabled: Boolean(payload.enabled),
+      baseUrl: this.cleanString(payload.baseUrl)
+    };
+    if (eventServer.enabled && !eventServer.baseUrl) {
+      throw new Error("Event server base URL is required when enabled");
+    }
+    const activityVersionId = Number(payload.activityVersionId);
+    if (Number.isFinite(activityVersionId) && activityVersionId > 0) {
+      eventServer.activityVersionId = activityVersionId;
+    }
+    const ingestionToken = this.cleanString(payload.ingestionToken);
+    if (ingestionToken) eventServer.ingestionToken = ingestionToken;
+    const publicSigningKeyUrl = this.cleanString(payload.publicSigningKeyUrl);
+    if (publicSigningKeyUrl) eventServer.publicSigningKeyUrl = publicSigningKeyUrl;
+    const expectedSigningKeyId = this.cleanString(payload.expectedSigningKeyId);
+    if (expectedSigningKeyId) eventServer.expectedSigningKeyId = expectedSigningKeyId;
+    const expectedPublicKeySha256 = this.cleanString(
+      payload.expectedPublicKeySha256
+    );
+    if (expectedPublicKeySha256) {
+      eventServer.expectedPublicKeySha256 = expectedPublicKeySha256;
+    }
+    if (payload.requireReceipts) {
+      eventServer.requireReceipts = true;
+    }
+    manifest.repository = {
+      ...(manifest.repository ?? {}),
+      eventServer
+    };
+    await this.projects.save(root, manifest);
+    void vscode.window.showInformationMessage("Event server configuration saved");
+    await this.refresh();
+  }
+
+  private cleanString(value: unknown): string {
+    return typeof value === "string" ? value.trim() : "";
+  }
+
   private requireActivityRoot(): string {
     if (!this.activityRoot) throw new Error("Open or create a learning activity first");
     return this.activityRoot;
@@ -569,10 +625,19 @@ Create or update the canonical activity files from that material while preservin
   }
 
   private async hydrateRoot(): Promise<void> {
-    if (this.activityRoot) return;
     const workspaceRoot = await this.findWorkspaceFolderWithFile("manifest.json");
-    const storedRoot = await this.validStoredRoot();
-    this.activityRoot = workspaceRoot ?? storedRoot;
+    if (workspaceRoot) {
+      this.activityRoot = workspaceRoot;
+      return;
+    }
+    if (!vscode.workspace.workspaceFolders?.length) {
+      this.activityRoot = undefined;
+      return;
+    }
+    if (this.activityRoot && (await pathExists(path.join(this.activityRoot, "manifest.json")))) {
+      return;
+    }
+    this.activityRoot = undefined;
   }
 
   private async findWorkspaceFolderWithFile(
@@ -584,17 +649,6 @@ Create or update the canonical activity files from that material while preservin
       }
     }
     return undefined;
-  }
-
-  private async storeRoot(root: string): Promise<void> {
-    await this.globalState.update(ROOT_KEY, root);
-  }
-
-  private async validStoredRoot(): Promise<string | undefined> {
-    const root = this.globalState.get<string>(ROOT_KEY);
-    return root && (await pathExists(path.join(root, "manifest.json")))
-      ? root
-      : undefined;
   }
 
   private async currentWorkspaceRoot(placeHolder: string): Promise<string | undefined> {
