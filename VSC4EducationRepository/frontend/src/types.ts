@@ -329,6 +329,18 @@ export interface ActivityEventReceipts {
   sessions: ActivityEventSession[];
 }
 
+export interface EventIngestionTokenResponse {
+  id: number;
+  token: string;
+  activityId: string;
+  version: string;
+  courseGroupId: number | null;
+  publicSigningKey: Record<string, unknown>;
+  expectedSigningKeyId: string;
+  expectedPublicKeySha256: string;
+  createdAt: string;
+}
+
 export interface Metrics {
   submissions: number;
   uniqueStudents: number;

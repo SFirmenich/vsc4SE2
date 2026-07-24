@@ -48,6 +48,10 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
   return response.json();
 }
 
+export function repositoryBaseUrl(): string {
+  return API_BASE.replace(/\/api\/?$/i, "").replace(/\/+$/, "");
+}
+
 export async function uploadZip<T>(path: string, file: File, extra: Record<string, string> = {}): Promise<T> {
   const form = new FormData();
   form.append("zip", file);

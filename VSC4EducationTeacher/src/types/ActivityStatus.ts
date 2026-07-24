@@ -35,6 +35,7 @@ export interface ActivityStatus {
   tasks: ActivityTaskStatus[];
   discoveredTasks: DiscoveredTaskStatus[];
   nextTaskNumber: number;
+  signaturesGenerated: boolean;
   validation?: ValidationResult;
   counts: {
     tasks: number;

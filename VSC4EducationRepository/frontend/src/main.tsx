@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as d3 from "d3";
-import { Activity, ArrowLeft, BarChart3, Bot, BookOpen, FileArchive, GraduationCap, Plus, RefreshCw, ShieldCheck, Upload, UserRound, X } from "lucide-react";
-import { getJson, getListJson, postJson, uploadZip } from "./api";
+import { Activity, ArrowLeft, BarChart3, Bot, BookOpen, Clipboard, FileArchive, GraduationCap, KeyRound, Plus, RefreshCw, ShieldCheck, Upload, UserRound, X } from "lucide-react";
+import { getJson, getListJson, postJson, repositoryBaseUrl, uploadZip } from "./api";
 import type {
   ActivityVersion,
   ActivityVersionDetail,
@@ -11,6 +11,7 @@ import type {
   ActivitySubmissionAnalysis,
   Course,
   CourseGroup,
+  EventIngestionTokenResponse,
   Metrics,
   ObservableAgencyAssessment,
   Submission,
@@ -499,13 +500,22 @@ function ActivityView(props: {
       )}
 
       {tab === "event-server" && (
-        <ActivityEventServerView receipts={eventReceipts} loading={eventReceiptsLoading} error={eventReceiptsError} onRefresh={loadEventReceipts} />
+        <ActivityEventServerView
+          activity={props.fallbackActivity}
+          groups={props.groups}
+          receipts={eventReceipts}
+          loading={eventReceiptsLoading}
+          error={eventReceiptsError}
+          onRefresh={loadEventReceipts}
+        />
       )}
     </>
   );
 }
 
 function ActivityEventServerView(props: {
+  activity: ActivityVersion;
+  groups: CourseGroup[];
   receipts: ActivityEventReceipts | null;
   loading: boolean;
   error: string;
@@ -513,8 +523,95 @@ function ActivityEventServerView(props: {
 }) {
   const receipts = props.receipts;
   const sessions = receipts?.sessions ?? [];
+  const [tokenName, setTokenName] = useState("Teacher panel");
+  const [courseGroupId, setCourseGroupId] = useState("");
+  const [token, setToken] = useState<EventIngestionTokenResponse | null>(null);
+  const [tokenError, setTokenError] = useState("");
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const baseUrl = repositoryBaseUrl();
+  const eventServerConfiguration = token ? {
+    enabled: true,
+    baseUrl,
+    activityVersionId: props.activity.id,
+    ingestionToken: token.token,
+    publicSigningKeyUrl: `${baseUrl}/api/integration/student/event-signing-key/`,
+    expectedSigningKeyId: token.expectedSigningKeyId,
+    expectedPublicKeySha256: token.expectedPublicKeySha256,
+    publicSigningKey: token.publicSigningKey,
+    requireReceipts: false,
+  } : null;
+  const configurationText = eventServerConfiguration
+    ? JSON.stringify(eventServerConfiguration, null, 2)
+    : "";
+
+  async function issueToken() {
+    setTokenLoading(true);
+    setTokenError("");
+    setCopied(false);
+    try {
+      setToken(await postJson<EventIngestionTokenResponse>(
+        `/activity-versions/${props.activity.id}/event-ingestion-token/`,
+        {
+          name: tokenName,
+          courseGroupId: courseGroupId ? Number(courseGroupId) : undefined,
+        },
+      ));
+    } catch (error) {
+      setTokenError(errorMessage(error));
+    } finally {
+      setTokenLoading(false);
+    }
+  }
+
+  async function copyConfiguration() {
+    if (!configurationText) {
+      return;
+    }
+    await navigator.clipboard.writeText(configurationText);
+    setCopied(true);
+  }
+
   return (
     <>
+      <section className="detailPanel">
+        <div>
+          <span className="eyebrow">{t("Teacher configuration")}</span>
+          <h2><KeyRound size={18} /> {t("Create Event Server settings")}</h2>
+          <p>{t("Generate an ingestion token for this activity version, then copy the JSON into the Teacher extension Event Server tab.")}</p>
+        </div>
+        <div className="eventConfigGrid">
+          <label>
+            <span>{t("Token name")}</span>
+            <input value={tokenName} onChange={(event) => setTokenName(event.target.value)} />
+          </label>
+          <label>
+            <span>{t("Course group")}</span>
+            <select value={courseGroupId} onChange={(event) => setCourseGroupId(event.target.value)}>
+              <option value="">{t("Any group")}</option>
+              {props.groups.map((group) => (
+                <option key={group.id} value={group.id}>{group.name}{group.term ? ` - ${group.term}` : ""}</option>
+              ))}
+            </select>
+          </label>
+          <button className="ghostButton" onClick={() => void issueToken()} disabled={tokenLoading}>
+            <KeyRound size={17} /> {tokenLoading ? t("Generating") : t("Generate config")}
+          </button>
+        </div>
+        {tokenError && <div className="inlineError">{tokenError}</div>}
+        {eventServerConfiguration && (
+          <div className="copyBlock">
+            <div className="copyBlockHeader">
+              <strong>{t("Configuration for manifest.repository.eventServer")}</strong>
+              <button className="ghostButton" onClick={() => void copyConfiguration()}>
+                <Clipboard size={17} /> {copied ? t("Copied") : t("Copy JSON")}
+              </button>
+            </div>
+            <pre>{configurationText}</pre>
+          </div>
+        )}
+      </section>
+
       <section className="detailPanel">
         <div>
           <span className="eyebrow">{t("Event server")}</span>

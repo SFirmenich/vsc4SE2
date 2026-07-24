@@ -269,6 +269,41 @@ select {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.eventConfigGrid {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+}
+
+.copyBlock {
+  border: 1px solid #dfe5ed;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.copyBlockHeader {
+  align-items: center;
+  background: #f9fafb;
+  border-bottom: 1px solid #dfe5ed;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.copyBlock pre {
+  background: #f8fafc;
+  margin: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.inlineError {
+  color: #9f1d1d;
+  font-weight: 700;
+}
+
 .metric {
   background: #f9fafb;
   border: 1px solid #dfe5ed;
@@ -700,6 +735,7 @@ tbody tr {
 
   .formPanel,
   .formPanel.horizontal,
+  .eventConfigGrid,
   .metrics,
   .twoColumns {
     grid-template-columns: 1fr;

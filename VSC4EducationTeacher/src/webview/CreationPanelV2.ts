@@ -530,10 +530,6 @@ Create or update the canonical activity files from that material while preservin
 
   private async generateSignatures(): Promise<void> {
     const root = this.requireActivityRoot();
-    const status = await this.statusService.inspect(root);
-    if (!status.validation?.valid) {
-      throw new Error("Fix validation errors before generating signatures");
-    }
     await this.evidence.ensureKeyPair(root);
     void vscode.window.showInformationMessage("Evidence signatures generated");
     await this.refresh();

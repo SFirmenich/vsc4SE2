@@ -10,6 +10,10 @@ import { Rubric } from "../types/Rubric";
 import { listFiles, pathExists, readJson } from "../utils/fs";
 import { isSafeRelativePath, resolveInside } from "../utils/paths";
 import { ActivityValidationService } from "./ActivityValidationService";
+import {
+  EVIDENCE_PRIVATE_KEY_PATH,
+  EVIDENCE_PUBLIC_KEY_PATH
+} from "./EvidenceCryptoService";
 
 export class ActivityStatusService {
   constructor(
@@ -26,6 +30,7 @@ export class ActivityStatusService {
         tasks: [],
         discoveredTasks: [],
         nextTaskNumber: 1,
+        signaturesGenerated: false,
         counts: {
           tasks: 0,
           theoryFiles: 0,
@@ -125,6 +130,7 @@ export class ActivityStatusService {
         taskFiles,
         (manifest?.tasks ?? []).map((task) => task.id)
       ),
+      signaturesGenerated: await this.signaturesGenerated(root),
       validation,
       counts: {
         tasks: tasks.length,
@@ -208,5 +214,12 @@ export class ActivityStatusService {
       referenced,
       size: exists ? (await fs.stat(target)).size : undefined
     };
+  }
+
+  private async signaturesGenerated(root: string): Promise<boolean> {
+    return (
+      (await pathExists(path.join(root, EVIDENCE_PUBLIC_KEY_PATH))) &&
+      (await pathExists(path.join(root, EVIDENCE_PRIVATE_KEY_PATH)))
+    );
   }
 }

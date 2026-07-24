@@ -170,6 +170,7 @@ const { createApp, ref, computed } = Vue;
 const { createVuetify } = Vuetify;
 
 const post = (type, data = {}) => vscode.postMessage({ type, ...data });
+const LOCAL_REPOSITORY_BASE_URL = 'http://127.0.0.1:8000';
 const emptyEventServer = () => ({
   enabled: false,
   baseUrl: '',
@@ -199,6 +200,10 @@ createApp({
     const hasActivity = computed(() => Boolean(model.value.activity));
     const initialized = computed(() => Boolean(model.value.activity?.initialized));
     const manifest = computed(() => model.value.activity?.manifest);
+    const canExport = computed(() => Boolean(
+      model.value.activity?.validation?.valid &&
+      model.value.activity?.signaturesGenerated
+    ));
     const counts = computed(() => model.value.activity?.counts ?? {
       tasks: 0,
       theoryFiles: 0,
@@ -220,6 +225,16 @@ createApp({
       busy.value = true;
       post(type, data);
     };
+    const fillLocalEventServerDefaults = () => {
+      const baseUrl = (eventServerForm.value.baseUrl || LOCAL_REPOSITORY_BASE_URL).replace(/\\/+$/, '');
+      eventServerForm.value = {
+        ...eventServerForm.value,
+        enabled: true,
+        baseUrl,
+        publicSigningKeyUrl: eventServerForm.value.publicSigningKeyUrl || baseUrl + '/api/integration/student/event-signing-key/',
+        requireReceipts: eventServerForm.value.requireReceipts === true
+      };
+    };
     const saveEventServer = () => run('saveEventServerConfiguration', {
       configuration: eventServerForm.value
     });
@@ -240,12 +255,14 @@ createApp({
       hasActivity,
       initialized,
       manifest,
+      canExport,
       counts,
       files,
       tasks,
       eventServerForm,
       validationGroups,
       run,
+      fillLocalEventServerDefaults,
       saveEventServer,
       post
     };
@@ -345,10 +362,11 @@ createApp({
               <v-card class="pa-5 my-4">
                 <div class="text-h6 mb-3">Export</div>
                 <div class="d-flex ga-2 flex-wrap">
-                  <v-btn color="primary" variant="tonal" @click="run('generateSignatures')" :disabled="!model.activity?.validation?.valid">Generate signatures</v-btn>
-                  <v-btn color="primary" @click="run('exportStudent')" :disabled="!model.activity?.validation?.valid">Export student ZIP</v-btn>
-                  <v-btn color="primary" @click="run('exportTeacher')" :disabled="!model.activity?.validation?.valid">Export teacher ZIP</v-btn>
+                  <v-btn color="primary" variant="tonal" @click="run('generateSignatures')">Generate signatures</v-btn>
+                  <v-btn color="primary" @click="run('exportStudent')" :disabled="!canExport">Export student ZIP</v-btn>
+                  <v-btn color="primary" @click="run('exportTeacher')" :disabled="!canExport">Export teacher ZIP</v-btn>
                 </div>
+                <p v-if="model.activity?.validation?.valid && !model.activity?.signaturesGenerated" class="muted mt-3">Generate signatures before exporting packages.</p>
               </v-card>
 
               <v-card class="pa-5 my-4">
@@ -431,6 +449,7 @@ createApp({
                   <div>
                     <div class="text-h6">Event Server</div>
                     <p class="muted">Configure <code>repository.eventServer</code> in <code>manifest.json</code>.</p>
+                    <p class="muted">Use Repository to issue the ingestion token for the imported activity version.</p>
                   </div>
                   <div>
                     <div class="field-label">
@@ -446,7 +465,7 @@ createApp({
                       Base URL
                       <button class="help-dot" type="button" title="Root HTTP URL of the repository service that receives event batches." aria-label="Base URL help">?</button>
                     </div>
-                    <v-text-field v-model="eventServerForm.baseUrl" placeholder="https://repository.example.edu" :disabled="!eventServerForm.enabled" hide-details="auto"></v-text-field>
+                    <v-text-field v-model="eventServerForm.baseUrl" placeholder="http://127.0.0.1:8000" :disabled="!eventServerForm.enabled" hide-details="auto"></v-text-field>
                   </v-col>
                   <v-col cols="12" md="4">
                     <div class="field-label">
@@ -492,6 +511,7 @@ createApp({
                   </v-col>
                 </v-row>
                 <div class="d-flex ga-2 flex-wrap">
+                  <v-btn variant="tonal" @click="fillLocalEventServerDefaults">Fill local defaults</v-btn>
                   <v-btn color="primary" :loading="busy" @click="saveEventServer">Save event server config</v-btn>
                   <v-btn variant="tonal" @click="run('openFile', { path: 'manifest.json' })">Open manifest.json</v-btn>
                 </div>
