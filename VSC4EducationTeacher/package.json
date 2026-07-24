@@ -15,7 +15,12 @@
   "activationEvents": [
     "onCommand:teacherActivity.openPanel",
     "onCommand:teacherActivity.openCreationMode",
-    "onCommand:teacherActivity.openRevisionMode"
+    "onCommand:teacherActivity.openCreationModeV2",
+    "onCommand:teacherActivity.openRevisionMode",
+    "onWebviewPanel:learningActivityTeacherCreation",
+    "onWebviewPanel:learningActivityTeacherCreationV2",
+    "onWebviewPanel:learningActivityTeacherRevision",
+    "onWebviewPanel:learningActivityTeachPanel"
   ],
   "main": "./out/src/extension.js",
   "contributes": {
@@ -23,6 +28,10 @@
       {
         "command": "teacherActivity.openCreationMode",
         "title": "%command.openCreationMode%"
+      },
+      {
+        "command": "teacherActivity.openCreationModeV2",
+        "title": "%command.openCreationModeV2%"
       },
       {
         "command": "teacherActivity.openRevisionMode",
@@ -40,7 +49,9 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
-    "d3": "^7.9.0"
+    "d3": "^7.9.0",
+    "vue": "^3.5.40",
+    "vuetify": "^3.12.11"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

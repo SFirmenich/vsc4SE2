@@ -68,6 +68,7 @@ export class TeacherPanel {
       panel,
       context.extensionUri,
       context.globalStorageUri.fsPath,
+      context.globalState,
       panelMode
     );
     instance.mode = panelMode;
@@ -89,6 +90,70 @@ export class TeacherPanel {
     await instance.refresh(true);
   }
 
+  static registerSerializers(context: vscode.ExtensionContext): vscode.Disposable[] {
+    return [
+      vscode.window.registerWebviewPanelSerializer(
+        "learningActivityTeacherCreation",
+        {
+          deserializeWebviewPanel: async (panel) => {
+            await this.revive(context, panel, "activity");
+          }
+        }
+      ),
+      vscode.window.registerWebviewPanelSerializer(
+        "learningActivityTeacherRevision",
+        {
+          deserializeWebviewPanel: async (panel) => {
+            await this.revive(context, panel, "review");
+          }
+        }
+      ),
+      vscode.window.registerWebviewPanelSerializer(
+        "learningActivityTeachPanel",
+        {
+          deserializeWebviewPanel: async (panel) => {
+            await this.revive(context, panel);
+          }
+        }
+      )
+    ];
+  }
+
+  private static async revive(
+    context: vscode.ExtensionContext,
+    panel: vscode.WebviewPanel,
+    mode?: PanelMode
+  ): Promise<void> {
+    panel.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [context.extensionUri]
+    };
+    const instance = new TeacherPanel(
+      panel,
+      context.extensionUri,
+      context.globalStorageUri.fsPath,
+      context.globalState,
+      mode
+    );
+    instance.mode = mode;
+    if (mode) {
+      this.currentByMode[mode] = instance;
+    } else {
+      this.current = instance;
+    }
+    panel.onDidDispose(() => {
+      instance.dispose();
+      if (mode) {
+        if (this.currentByMode[mode] === instance) {
+          this.currentByMode[mode] = undefined;
+        }
+      } else if (this.current === instance) {
+        this.current = undefined;
+      }
+    });
+    await instance.refresh(true);
+  }
+
   private static modeTitle(mode: PanelMode): string {
     return mode === "activity" ? "Creation" : "Revision";
   }
@@ -101,6 +166,7 @@ export class TeacherPanel {
     private readonly panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
     private readonly storageRoot: string,
+    private readonly globalState: vscode.Memento,
     private readonly fixedMode?: PanelMode,
     private readonly projects = new ActivityProjectService(),
     private readonly statusService = new ActivityStatusService(),
@@ -139,6 +205,9 @@ export class TeacherPanel {
         ) {
           this.scheduleRefresh();
         }
+      }),
+      vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        void this.hydrateRoots().then(() => this.scheduleRefresh());
       })
     );
   }
@@ -159,6 +228,7 @@ export class TeacherPanel {
   }
 
   private async refresh(replaceHtml = false): Promise<void> {
+    await this.hydrateRoots();
     const model = await this.model();
     if (replaceHtml || !this.panel.webview.html) {
       this.panel.webview.html = teacherPanelHtml(this.panel.webview, model, this.extensionUri);
@@ -258,7 +328,7 @@ export class TeacherPanel {
           await this.refresh();
           break;
         case "startActivity":
-          await this.selectActivityRoot("Start new learning activity");
+          await this.startNewActivity();
           break;
         case "openActivity":
           await this.selectActivityRoot("Work on existing learning activity");
@@ -364,8 +434,39 @@ export class TeacherPanel {
     if (!selected?.[0]) return;
     this.mode = "activity";
     this.activityRoot = selected[0].fsPath;
+    await this.storeRoot("teacherPanel.activityRoot", this.activityRoot);
     this.addFolderToWorkspace(this.activityRoot, "Learning Activity");
     await this.refresh();
+  }
+
+  private async startNewActivity(): Promise<void> {
+    const selected = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: false,
+      openLabel: "Start new learning activity",
+      title: "Select the folder for the new learning activity"
+    });
+    if (!selected?.[0]) return;
+    const root = selected[0].fsPath;
+    this.mode = "activity";
+    this.activityRoot = root;
+    await this.storeRoot("teacherPanel.activityRoot", root);
+    if (await pathExists(path.join(root, "manifest.json"))) {
+      throw new Error("This project already contains manifest.json");
+    }
+    const activityName = this.activityNameFromFolder(root);
+    await this.initializeActivityFiles(root, {
+      id: activityName.id,
+      title: activityName.title,
+      description: "",
+      version: "1.0.0",
+      type: "exercise",
+      firstTaskTitle: "First task"
+    });
+    this.addFolderToWorkspace(root, "Learning Activity");
+    this.panel.dispose();
+    void vscode.window.showInformationMessage("Activity initialized");
   }
 
   private async useCurrentActivityWorkspace(): Promise<void> {
@@ -375,6 +476,7 @@ export class TeacherPanel {
     if (!root) return;
     this.mode = "activity";
     this.activityRoot = root;
+    await this.storeRoot("teacherPanel.activityRoot", root);
     await this.refresh();
   }
 
@@ -390,6 +492,7 @@ export class TeacherPanel {
     this.mode = "review";
     this.reviewRoot = selected[0].fsPath;
     this.selectedSubmissionRoot = undefined;
+    await this.storeRoot("teacherPanel.reviewRoot", this.reviewRoot);
     await this.reviewWorkspaces.initialize(this.reviewRoot);
     this.addFolderToWorkspace(this.reviewRoot, "Submission Review");
     await this.refresh();
@@ -407,6 +510,7 @@ export class TeacherPanel {
     this.mode = "review";
     this.reviewRoot = selected[0].fsPath;
     this.selectedSubmissionRoot = undefined;
+    await this.storeRoot("teacherPanel.reviewRoot", this.reviewRoot);
     this.addFolderToWorkspace(this.reviewRoot, "Submission Review");
     await this.refresh();
   }
@@ -419,6 +523,7 @@ export class TeacherPanel {
     this.mode = "review";
     this.reviewRoot = root;
     this.selectedSubmissionRoot = undefined;
+    await this.storeRoot("teacherPanel.reviewRoot", root);
     await this.reviewWorkspaces.initialize(this.reviewRoot);
     await this.refresh();
   }
@@ -472,6 +577,15 @@ export class TeacherPanel {
   ): Promise<void> {
     const root = this.requireActivityRoot();
     if (!activity) throw new Error("Activity data is missing");
+    await this.initializeActivityFiles(root, activity);
+    await this.refresh();
+    void vscode.window.showInformationMessage("Activity initialized");
+  }
+
+  private async initializeActivityFiles(
+    root: string,
+    activity: CreateActivityPayload
+  ): Promise<void> {
     if (!VALID_ID.test(activity.id)) {
       throw new Error(
         "The activity ID may contain only letters, numbers, dots, hyphens, and underscores"
@@ -508,8 +622,20 @@ export class TeacherPanel {
       "utf8"
     );
     await this.projects.ensureAssessmentFiles(root, manifest);
-    await this.refresh();
-    void vscode.window.showInformationMessage("Activity initialized");
+  }
+
+  private activityNameFromFolder(root: string): { id: string; title: string } {
+    const basename = path.basename(root);
+    const id = basename
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^[^a-z0-9]+/i, "")
+      .replace(/[^a-z0-9]+$/i, "");
+    return {
+      id: VALID_ID.test(id) ? id : "learning-activity",
+      title: basename.trim() || "Learning Activity"
+    };
   }
 
   private async openFile(relativePath: string): Promise<void> {
@@ -748,6 +874,71 @@ Create or update the canonical activity files from that material while preservin
       return;
     }
     vscode.workspace.updateWorkspaceFolders(folders.length, 0, { uri, name });
+  }
+
+  private async hydrateRoots(): Promise<void> {
+    if ((this.fixedMode === "activity" || this.mode === "activity") && !this.activityRoot) {
+      const activityRoot =
+        (await this.findWorkspaceFolderWithFile("manifest.json")) ??
+        (await this.validStoredActivityRoot());
+      if (activityRoot) {
+        this.mode = "activity";
+        this.activityRoot = activityRoot;
+      }
+    }
+    if ((this.fixedMode === "review" || this.mode === "review") && !this.reviewRoot) {
+      const reviewRoot =
+        (await this.findReviewWorkspaceFolder()) ??
+        (await this.validStoredReviewRoot());
+      if (reviewRoot) {
+        this.mode = "review";
+        this.reviewRoot = reviewRoot;
+        this.selectedSubmissionRoot = undefined;
+      }
+    }
+  }
+
+  private async findWorkspaceFolderWithFile(
+    relativePath: string
+  ): Promise<string | undefined> {
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      if (await pathExists(path.join(folder.uri.fsPath, relativePath))) {
+        return folder.uri.fsPath;
+      }
+    }
+    return undefined;
+  }
+
+  private async findReviewWorkspaceFolder(): Promise<string | undefined> {
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      if (
+        (await pathExists(this.reviewWorkspaces.activityRoot(folder.uri.fsPath))) &&
+        (await pathExists(this.reviewWorkspaces.submissionsRoot(folder.uri.fsPath)))
+      ) {
+        return folder.uri.fsPath;
+      }
+    }
+    return undefined;
+  }
+
+  private async storeRoot(key: string, root: string): Promise<void> {
+    await this.globalState.update(key, root);
+  }
+
+  private async validStoredActivityRoot(): Promise<string | undefined> {
+    const root = this.globalState.get<string>("teacherPanel.activityRoot");
+    return root && (await pathExists(path.join(root, "manifest.json")))
+      ? root
+      : undefined;
+  }
+
+  private async validStoredReviewRoot(): Promise<string | undefined> {
+    const root = this.globalState.get<string>("teacherPanel.reviewRoot");
+    return root &&
+      (await pathExists(this.reviewWorkspaces.activityRoot(root))) &&
+      (await pathExists(this.reviewWorkspaces.submissionsRoot(root)))
+      ? root
+      : undefined;
   }
 
   private async currentWorkspaceRoot(placeHolder: string): Promise<string | undefined> {

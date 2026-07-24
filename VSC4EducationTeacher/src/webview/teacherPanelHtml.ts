@@ -33,8 +33,13 @@ export function teacherPanelHtml(
     <button class="secondary mode" data-mode="review">Submissions Review</button>
   </nav>`;
   const body = `<header>
-  <strong>${escapeHtml(title(model))}</strong>
-  <div class="muted" id="subtitle">${escapeHtml(subtitle(model))}</div>
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <strong>${escapeHtml(title(model))}</strong>
+      <div class="muted" id="subtitle">${escapeHtml(subtitle(model))}</div>
+    </div>
+    <button id="header-refresh" class="secondary">Refresh</button>
+  </div>
   ${navigation}
 </header>
 <main id="app"></main>`;
@@ -431,6 +436,7 @@ function render() {
   else renderReviewMode();
 }
 document.querySelectorAll('header [data-mode]').forEach((button) => button.addEventListener('click', () => post('selectMode', { mode: button.dataset.mode })));
+document.getElementById('header-refresh').addEventListener('click', () => post('refresh'));
 document.addEventListener('click', (event) => {
   const button = actionButtonFromEvent(event);
   if (button) runAction(button.dataset.action);
