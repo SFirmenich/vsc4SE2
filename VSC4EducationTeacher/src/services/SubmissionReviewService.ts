@@ -260,40 +260,40 @@ export class SubmissionReviewService {
     }
     if (input.fileChangeEvents >= 3 || input.uniqueLinesTouched >= 5) {
       score += 2;
-      positives.push("Hay ediciones sostenidas en archivos de trabajo");
+      positives.push("There is sustained editing in work files");
     } else if (input.fileChangeEvents > 0) {
       score += 1;
-      positives.push("Hay cambios propios registrados");
+      positives.push("Own changes are recorded");
     } else {
       concerns.push("No se registran cambios de archivo suficientes");
     }
     if (input.filesModified > 1) {
       score += 1;
-      positives.push("Trabajo distribuido en mas de un archivo");
+      positives.push("Work distributed across more than one file");
     }
     if (input.activeMinutes >= 10) {
       score += 1;
-      positives.push("Sesion de trabajo con duracion observable");
+      positives.push("Work session with observable duration");
     }
     if (input.tasksCompleted > 0) {
       score += 1;
-      positives.push("Cierre de tarea registrado");
+      positives.push("Task completion recorded");
     }
     if (input.studentMessages > 0 && input.agentMessages > 0) {
       score += 1;
-      positives.push("Uso dialogado del agente");
+      positives.push("Dialog-based agent use");
     }
     if (input.agentMessages > input.studentMessages * 3 && input.fileChangeEvents < 3) {
-      concerns.push("Mucha respuesta del agente con poca edicion posterior");
+      concerns.push("Many agent responses with little later editing");
       score -= 1;
     }
     if (input.heartbeatGaps > 0) {
-      concerns.push("Hay pausas largas entre eventos; revisar continuidad");
+      concerns.push("There are long pauses between events; review continuity");
     }
 
     return {
       score: Math.max(0, Math.min(6, score)),
-      level: score >= 5 ? "alta" : score >= 3 ? "media" : "baja",
+      level: score >= 5 ? "high" : score >= 3 ? "medium" : "low",
       positives,
       concerns
     };

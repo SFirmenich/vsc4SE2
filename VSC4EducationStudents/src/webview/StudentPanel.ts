@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { studentPanelStrings, t } from '../i18n';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { LEARNING_DIRECTORY } from '../utils/paths';
 import { getStudentPanelHtml } from './html';
@@ -42,7 +43,8 @@ export class StudentPanel {
 	private async initialize(): Promise<void> {
 		this.panel.webview.html = getStudentPanelHtml(
 			await this.activityService.getSnapshot(),
-			randomBytes(16).toString('base64')
+			randomBytes(16).toString('base64'),
+			studentPanelStrings()
 		);
 	}
 
@@ -82,33 +84,33 @@ export class StudentPanel {
 
 	private async openTaskFile(taskId: string | undefined): Promise<void> {
 		if (!taskId) {
-			throw new Error('No se indicó la tarea.');
+			throw new Error(t('No task was provided.'));
 		}
 		const snapshot = await this.activityService.getSnapshot();
 		if (!snapshot) {
-			throw new Error('No hay una actividad cargada.');
+			throw new Error(t('No activity is loaded.'));
 		}
 		const task = snapshot.manifest.tasks.find(item => item.id === taskId);
 		if (!task) {
-			throw new Error(`La tarea "${taskId}" no existe.`);
+			throw new Error(t('Task "{0}" does not exist.', taskId));
 		}
 		if (!task.file) {
-			throw new Error(`La tarea "${taskId}" no tiene un enunciado Markdown asociado.`);
+			throw new Error(t('Task "{0}" does not have an associated Markdown brief.', taskId));
 		}
 		if (path.isAbsolute(task.file)) {
-			throw new Error(`El enunciado de la tarea "${taskId}" no usa una ruta relativa válida.`);
+			throw new Error(t('The brief for task "{0}" does not use a valid relative path.', taskId));
 		}
 		const activityRoot = path.resolve(snapshot.root, LEARNING_DIRECTORY);
 		const target = path.resolve(activityRoot, task.file);
 		const relative = path.relative(activityRoot, target);
 		if (relative.startsWith('..') || path.isAbsolute(relative)) {
-			throw new Error(`El enunciado de la tarea "${taskId}" apunta fuera de la actividad.`);
+			throw new Error(t('The brief for task "{0}" points outside the activity.', taskId));
 		}
 		const uri = vscode.Uri.file(target);
 		try {
 			await vscode.workspace.fs.stat(uri);
 		} catch {
-			throw new Error(`No se encontró el enunciado de la tarea "${taskId}".`);
+			throw new Error(t('The brief for task "{0}" was not found.', taskId));
 		}
 		await vscode.commands.executeCommand('markdown.showPreview', uri);
 	}

@@ -20,7 +20,7 @@ export class StudentProfileService {
 		const currentContribution = active[this.rootKey(root)];
 		if (currentContribution && currentContribution !== contributionId) {
 			throw new Error(
-				`Este workspace ya está vinculado al estudiante "${currentContribution}".`
+				`This workspace is already linked to student "${currentContribution}".`
 			);
 		}
 		const profilePath = contributionPath(root, contributionId, 'profile.json');
@@ -56,7 +56,7 @@ export class StudentProfileService {
 	public async setActive(root: string, contributionId: string): Promise<void> {
 		const profilePath = contributionPath(root, contributionId, 'profile.json');
 		if (!await pathExists(profilePath)) {
-			throw new Error(`No existe la contribución "${contributionId}".`);
+			throw new Error(`Contribution "${contributionId}" does not exist.`);
 		}
 		const active = this.workspaceState.get<Record<string, string>>(ACTIVE_STUDENTS_KEY, {});
 		active[this.rootKey(root)] = contributionId;
@@ -66,7 +66,7 @@ export class StudentProfileService {
 	private normalizeId(value: string): string {
 		const normalized = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
 		if (!normalized || !/^[a-z0-9][a-z0-9._-]*$/.test(normalized)) {
-			throw new Error('El identificador del estudiante no es válido.');
+			throw new Error('The student identifier is not valid.');
 		}
 		return normalized;
 	}

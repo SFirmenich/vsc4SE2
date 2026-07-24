@@ -1,12 +1,15 @@
 import { ActivitySnapshot } from '../services/LearningActivityService';
+import { StudentPanelStrings } from '../i18n';
 
 export function getStudentPanelHtml(
 	snapshot: ActivitySnapshot | undefined,
-	nonce: string
+	nonce: string,
+	strings: StudentPanelStrings
 ): string {
 	const initialData = JSON.stringify(snapshot ?? null).replace(/</g, '\\u003c');
+	const encodedStrings = JSON.stringify(strings).replace(/</g, '\\u003c');
 	return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${strings.language}">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -68,6 +71,7 @@ export function getStudentPanelHtml(
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
 		let snapshot = ${initialData};
+		const s = ${encodedStrings};
 
 		function escapeHtml(value) {
 			return String(value ?? '')
@@ -88,10 +92,10 @@ export function getStudentPanelHtml(
 				app.innerHTML = \`
 					<div class="empty card">
 						<h1>Learning Activity Tracker</h1>
-						<p class="muted">No hay una actividad cargada en esta ventana.</p>
+						<p class="muted">\${escapeHtml(s.noActivity)}</p>
 						<div class="actions">
-							<button data-command="loadZip">Cargar ZIP</button>
-							<button class="secondary" data-command="loadUrl">Cargar desde URL</button>
+							<button data-command="loadZip">\${escapeHtml(s.loadZip)}</button>
+							<button class="secondary" data-command="loadUrl">\${escapeHtml(s.loadUrl)}</button>
 						</div>
 					</div>\`;
 				bindActions();
@@ -101,8 +105,8 @@ export function getStudentPanelHtml(
 				app.innerHTML = \`
 					<div class="empty card">
 						<h1>\${escapeHtml(snapshot.manifest.title)}</h1>
-						<p class="muted">Debes registrar tu identidad antes de empezar tareas o generar evidencias.</p>
-						<button data-command="registerStudent">Registrar estudiante</button>
+						<p class="muted">\${escapeHtml(s.registerRequired)}</p>
+						<button data-command="registerStudent">\${escapeHtml(s.registerStudent)}</button>
 					</div>\`;
 				bindActions();
 				return;
@@ -124,10 +128,10 @@ export function getStudentPanelHtml(
 						\${task.description ? \`<p>\${escapeHtml(task.description)}</p>\` : ''}
 						<div class="actions">
 							<div class="actions">
-								<button data-command="startTask" data-task-id="\${escapeHtml(task.id)}" \${canStart ? '' : 'disabled'}>Empezar tarea</button>
-								\${task.file ? \`<button class="secondary" data-command="openTaskFile" data-task-id="\${escapeHtml(task.id)}">Ver enunciado</button>\` : ''}
+								<button data-command="startTask" data-task-id="\${escapeHtml(task.id)}" \${canStart ? '' : 'disabled'}>\${escapeHtml(s.startTask)}</button>
+								\${task.file ? \`<button class="secondary" data-command="openTaskFile" data-task-id="\${escapeHtml(task.id)}">\${escapeHtml(s.viewTask)}</button>\` : ''}
 							</div>
-							<button data-command="finishTask" data-task-id="\${escapeHtml(task.id)}" \${canFinish ? '' : 'disabled'}>Terminar tarea</button>
+							<button data-command="finishTask" data-task-id="\${escapeHtml(task.id)}" \${canFinish ? '' : 'disabled'}>\${escapeHtml(s.finishTask)}</button>
 						</div>
 					</article>\`;
 			}).join('');
@@ -137,12 +141,12 @@ export function getStudentPanelHtml(
 					<div>
 						<h1>\${escapeHtml(snapshot.manifest.title)}</h1>
 						<p class="muted">\${escapeHtml(snapshot.manifest.description ?? '')}</p>
-						<p><strong>Estudiante:</strong> \${escapeHtml(snapshot.profile.displayName)} (\${escapeHtml(snapshot.profile.studentId)})</p>
+						<p><strong>\${escapeHtml(s.student)}:</strong> \${escapeHtml(snapshot.profile.displayName)} (\${escapeHtml(snapshot.profile.studentId)})</p>
 					</div>
-					<button data-command="exportSubmission">Exportar entrega</button>
+					<button data-command="exportSubmission">\${escapeHtml(s.exportSubmission)}</button>
 				</header>
 				<div class="grid">
-					<main><div class="section-title"><h2>Tareas</h2></div>\${tasks}</main>
+					<main><div class="section-title"><h2>\${escapeHtml(s.tasks)}</h2></div>\${tasks}</main>
 				</div>\`;
 			bindActions();
 		}

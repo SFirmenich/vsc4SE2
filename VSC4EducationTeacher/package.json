@@ -1,7 +1,7 @@
 {
   "name": "learning-activity-tracker-teacher",
-  "displayName": "Learning Activity Tracker - Teacher",
-  "description": "Author, validate, export, and review Learning Activity Tracker packages.",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
   "version": "0.1.0",
   "publisher": "vsc4education",
   "license": "MIT",
@@ -22,11 +22,11 @@
     "commands": [
       {
         "command": "teacherActivity.openCreationMode",
-        "title": "VSC4Education: Open creation mode"
+        "title": "%command.openCreationMode%"
       },
       {
         "command": "teacherActivity.openRevisionMode",
-        "title": "VSC4Education: Open revision mode"
+        "title": "%command.openRevisionMode%"
       }
     ]
   },

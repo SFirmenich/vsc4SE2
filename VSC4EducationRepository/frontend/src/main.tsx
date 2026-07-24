@@ -17,6 +17,7 @@ import type {
   SubmissionDetail,
   SubmissionReview,
 } from "./types";
+import { t } from "./i18n";
 import "./styles.css";
 
 type View = "courses" | "course" | "activity" | "submission";
@@ -123,7 +124,7 @@ function App() {
       term: form.get("term"),
       description: "",
     });
-    setMessage("Asignatura creada.");
+    setMessage(t("Course created."));
     setAddPanel(null);
     await loadCourses();
   }
@@ -134,7 +135,7 @@ function App() {
       return;
     }
     const imported = await uploadZip<ActivityVersion>("/activities/import-zip/", file, { courseGroupId });
-    setMessage("Actividad agregada.");
+    setMessage(t("Activity added."));
     setAddPanel(null);
     if (selectedCourse) {
       await openCourse(selectedCourse);
@@ -151,7 +152,7 @@ function App() {
       return;
     }
     await uploadZip<Submission>(`/activity-versions/${selectedActivity.id}/submissions/import-zip/`, file, { courseGroupId, submissionName });
-    setMessage("Entrega agregada.");
+    setMessage(t("Submission added."));
     setAddPanel(null);
     await openActivity(selectedActivity);
   }
@@ -182,10 +183,10 @@ function App() {
         <div className="headerActions">
           {view !== "courses" && (
             <button className="ghostButton" onClick={goBack}>
-              <ArrowLeft size={17} /> Volver
+              <ArrowLeft size={17} /> {t("Back")}
             </button>
           )}
-          <button className="iconButton" onClick={() => loadCourses().catch((error) => setMessage(errorMessage(error)))} title="Actualizar">
+          <button className="iconButton" onClick={() => loadCourses().catch((error) => setMessage(errorMessage(error)))} title={t("Refresh")}>
             <RefreshCw size={17} />
           </button>
         </div>
@@ -252,19 +253,19 @@ function CoursesView(props: {
 }) {
   return (
     <>
-      <SectionHeader icon={<GraduationCap size={20} />} title="Asignaturas" actionLabel="Agregar asignatura" onAction={props.onAdd} />
+      <SectionHeader icon={<GraduationCap size={20} />} title={t("Courses")} actionLabel={t("Add course")} onAction={props.onAdd} />
       {props.addPanel === "course" && (
         <form className="formPanel" onSubmit={(event) => {
           event.preventDefault();
           props.onCreate(new FormData(event.currentTarget));
           event.currentTarget.reset();
         }}>
-          <input name="name" placeholder="Nombre de la asignatura" required />
-          <input name="code" placeholder="Código" />
-          <input name="description" placeholder="Descripción" />
-          <input name="groupName" placeholder="Comisión inicial" required />
-          <input name="term" placeholder="Periodo" />
-          <button>Guardar</button>
+          <input name="name" placeholder={t("Course name")} required />
+          <input name="code" placeholder={t("Code")} />
+          <input name="description" placeholder={t("Description")} />
+          <input name="groupName" placeholder={t("Initial group")} required />
+          <input name="term" placeholder={t("Term")} />
+          <button>{t("Save")}</button>
         </form>
       )}
       <div className="cardGrid">
@@ -272,14 +273,14 @@ function CoursesView(props: {
           const groups = props.groups.filter((group) => group.course === course.id);
           return (
             <button key={course.id} className="entityCard" onClick={() => props.onOpen(course)}>
-              <span className="eyebrow">{course.code || "Sin código"}</span>
+              <span className="eyebrow">{course.code || t("No code")}</span>
               <strong>{course.name}</strong>
-              <small>{groups.length} comisión{groups.length === 1 ? "" : "es"}</small>
+              <small>{groups.length} {groups.length === 1 ? t("group") : t("groups")}</small>
             </button>
           );
         })}
       </div>
-      {props.courses.length === 0 && <EmptyState text="No hay asignaturas todavía." />}
+      {props.courses.length === 0 && <EmptyState text={t("No courses yet.")} />}
     </>
   );
 }
@@ -295,8 +296,8 @@ function CourseActivitiesView(props: {
 }) {
   return (
     <>
-      <SectionHeader icon={<BookOpen size={20} />} title={`Learning activities de ${props.course.name}`} actionLabel="Agregar actividad" onAction={props.onAdd} />
-      {props.addPanel === "activity" && <ZipUploadPanel label="ZIP de actividad" groups={props.groups} onUpload={props.onUpload} />}
+      <SectionHeader icon={<BookOpen size={20} />} title={`Learning activities for ${props.course.name}`} actionLabel={t("Add activity")} onAction={props.onAdd} />
+      {props.addPanel === "activity" && <ZipUploadPanel label={t("Activity ZIP")} groups={props.groups} onUpload={props.onUpload} />}
       <div className="listPanel">
         {props.activities.map((activity) => (
           <button key={activity.id} className="listItem" onClick={() => props.onOpen(activity)}>
@@ -305,13 +306,13 @@ function CourseActivitiesView(props: {
               <span>{activity.activityId}@{activity.version}</span>
             </div>
             <div className="itemMeta">
-              <span>{(activity.courseGroups ?? []).map((group) => group.name).join(", ") || "Sin comisión"}</span>
-              <b>{activity.submissionCount} entregas</b>
+              <span>{(activity.courseGroups ?? []).map((group) => group.name).join(", ") || t("No group")}</span>
+              <b>{activity.submissionCount} {t("submissions")}</b>
             </div>
           </button>
         ))}
       </div>
-      {props.activities.length === 0 && <EmptyState text="Esta asignatura todavía no tiene actividades." />}
+      {props.activities.length === 0 && <EmptyState text={t("This course does not have activities yet.")} />}
     </>
   );
 }
@@ -371,17 +372,17 @@ function ActivityView(props: {
 
   return (
     <>
-      <SectionHeader icon={<FileArchive size={20} />} title={activity?.title ?? props.fallbackActivity.title} actionLabel="Agregar entrega" onAction={props.onAdd} />
+      <SectionHeader icon={<FileArchive size={20} />} title={activity?.title ?? props.fallbackActivity.title} actionLabel={t("Add submission")} onAction={props.onAdd} />
       <section className="detailPanel">
         <div>
           <span className="eyebrow">{props.fallbackActivity.activityId}@{props.fallbackActivity.version}</span>
-          <p>{activity?.description || props.fallbackActivity.description || "Sin descripción."}</p>
+          <p>{activity?.description || props.fallbackActivity.description || t("No description.")}</p>
         </div>
         <div className="metrics">
-          <Metric label="Entregas" value={props.metrics?.submissions ?? props.submissions.length} />
-          <Metric label="Estudiantes" value={props.metrics?.uniqueStudents ?? 0} />
-          <Metric label="Eventos promedio" value={(props.metrics?.averageEvents ?? 0).toFixed(1)} />
-          <Metric label="Con Git" value={`${Math.round((props.metrics?.withGitRatio ?? 0) * 100)}%`} />
+          <Metric label={t("Submissions")} value={props.metrics?.submissions ?? props.submissions.length} />
+          <Metric label={t("Students")} value={props.metrics?.uniqueStudents ?? 0} />
+          <Metric label={t("Average events")} value={(props.metrics?.averageEvents ?? 0).toFixed(1)} />
+          <Metric label={t("With Git")} value={`${Math.round((props.metrics?.withGitRatio ?? 0) * 100)}%`} />
         </div>
         {activity?.tasks.length ? (
           <div className="taskStrip">
@@ -392,29 +393,29 @@ function ActivityView(props: {
         ) : null}
       </section>
 
-      <nav className="tabs" aria-label="Actividad">
-        <button className={tab === "submissions" ? "active" : ""} onClick={() => setTab("submissions")}><Upload size={16} /> Entregas</button>
-        <button className={tab === "analysis" ? "active" : ""} onClick={openAnalysis}><BarChart3 size={16} /> Analisis de entregas</button>
-        <button className={tab === "dashboard" ? "active" : ""} onClick={openDashboard}><Activity size={16} /> Dashboard</button>
+      <nav className="tabs" aria-label={t("Activity")}>
+        <button className={tab === "submissions" ? "active" : ""} onClick={() => setTab("submissions")}><Upload size={16} /> {t("Submissions")}</button>
+        <button className={tab === "analysis" ? "active" : ""} onClick={openAnalysis}><BarChart3 size={16} /> {t("Submission analysis")}</button>
+        <button className={tab === "dashboard" ? "active" : ""} onClick={openDashboard}><Activity size={16} /> {t("Dashboard")}</button>
       </nav>
 
       {tab === "submissions" && (
         <>
-          {props.addPanel === "submission" && <ZipUploadPanel label="ZIP de entrega" groups={props.groups} includeName onUpload={props.onUpload} />}
+          {props.addPanel === "submission" && <ZipUploadPanel label={t("Submission ZIP")} groups={props.groups} includeName onUpload={props.onUpload} />}
           <section className="tablePanel">
-            <h2><Upload size={18} /> Entregas</h2>
+            <h2><Upload size={18} /> {t("Submissions")}</h2>
             <table>
               <thead>
                 <tr>
-                  <th>Nombre</th>
-                  <th>Estudiante</th>
-                  <th>Archivo</th>
-                  <th>Comision</th>
-                  <th>Eventos</th>
-                  <th>Agente</th>
+                  <th>{t("Name")}</th>
+                  <th>{t("Student")}</th>
+                  <th>{t("File")}</th>
+                  <th>{t("Group")}</th>
+                  <th>{t("Events")}</th>
+                  <th>{t("Agent")}</th>
                   <th>Git</th>
                   <th>Warnings</th>
-                  <th>Importada</th>
+                  <th>{t("Imported")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -430,21 +431,21 @@ function ActivityView(props: {
                           download={submission.originalZipName || undefined}
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {submission.originalZipName || "Descargar ZIP"}
+                          {submission.originalZipName || t("Download ZIP")}
                         </a>
                       ) : "-"}
                     </td>
-                    <td>{submission.courseGroup?.name ?? "Sin comision"}</td>
+                    <td>{submission.courseGroup?.name ?? t("No group")}</td>
                     <td>{submission.event_count}</td>
                     <td>{submission.agent_interaction_count}</td>
-                    <td>{submission.has_git ? "Si" : "No"}</td>
+                    <td>{submission.has_git ? t("Yes") : t("No")}</td>
                     <td>{submission.warning_count}</td>
                     <td>{new Date(submission.imported_at).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {props.submissions.length === 0 && <EmptyState text="Todavia no hay entregas para esta actividad." />}
+            {props.submissions.length === 0 && <EmptyState text={t("No submissions for this activity yet.")} />}
           </section>
         </>
       )}
@@ -478,19 +479,19 @@ type AnalysisMetricSeries = {
 };
 
 const SUMMARY_ANALYSIS_METRICS: { key: string; title: string; unit?: string; kind?: AnalysisChartKind }[] = [
-  { key: "activeMinutes", title: "Tiempo activo", unit: "min" },
-  { key: "uniqueLinesTouched", title: "Lineas unicas modificadas" },
-  { key: "filesModified", title: "Archivos modificados" },
-  { key: "fileChangeEvents", title: "Eventos de cambio de archivo" },
-  { key: "saves", title: "Guardados" },
-  { key: "tasksStarted", title: "Tareas iniciadas" },
-  { key: "tasksCompleted", title: "Tareas completadas" },
-  { key: "agentInteractions", title: "Interacciones con agente" },
-  { key: "studentAgentMessages", title: "Mensajes del estudiante al agente" },
-  { key: "agentResponses", title: "Respuestas del agente" },
+  { key: "activeMinutes", title: t("Active time"), unit: "min" },
+  { key: "uniqueLinesTouched", title: t("Unique lines changed") },
+  { key: "filesModified", title: t("Modified files") },
+  { key: "fileChangeEvents", title: t("File change events") },
+  { key: "saves", title: t("Saves") },
+  { key: "tasksStarted", title: t("Tasks started") },
+  { key: "tasksCompleted", title: t("Tasks completed") },
+  { key: "agentInteractions", title: t("Agent interactions") },
+  { key: "studentAgentMessages", title: t("Student messages to agent") },
+  { key: "agentResponses", title: t("Agent responses") },
   { key: "commits", title: "Commits" },
-  { key: "heartbeatGaps", title: "Cortes de heartbeat" },
-  { key: "agencyScore", title: "Puntaje de agencia observable", kind: "dot" },
+  { key: "heartbeatGaps", title: t("Heartbeat gaps") },
+  { key: "agencyScore", title: t("Observable agency score"), kind: "dot" },
 ];
 
 function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | null; loading: boolean; error: string }) {
@@ -498,30 +499,30 @@ function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | 
   const metrics = useMemo(() => buildAnalysisMetrics(props.analysis?.submissions ?? []), [props.analysis]);
 
   if (props.loading) {
-    return <EmptyState text="Calculando analisis de entregas..." />;
+    return <EmptyState text={t("Calculating submission analysis...")} />;
   }
   if (props.error) {
-    return <section className="tablePanel warningPanel"><h2>No se pudo cargar el analisis</h2><p>{props.error}</p></section>;
+    return <section className="tablePanel warningPanel"><h2>{t("Could not load analysis")}</h2><p>{props.error}</p></section>;
   }
   if (!props.analysis) {
-    return <EmptyState text="Abri el tab Analisis de entregas para calcular las metricas por entrega." />;
+    return <EmptyState text={t("Open the Submission analysis tab to calculate per-submission metrics.")} />;
   }
   if (!metrics.length) {
-    return <EmptyState text="No hay metricas suficientes para graficar." />;
+    return <EmptyState text={t("There are not enough metrics to chart.")} />;
   }
 
   return (
     <>
       <section className="detailPanel">
         <div className="metrics">
-          <Metric label="Entregas analizadas" value={`${props.analysis.reviewedSubmissionCount}/${props.analysis.submissionCount}`} />
-          <Metric label="Graficos" value={metrics.length} />
-          <Metric label="Metricas prioritarias" value={metrics.filter((metric) => metric.dimension.includes("Prioritarias")).length} />
-          <Metric label="Advertencias" value={props.analysis.warnings.length} />
+          <Metric label={t("Reviewed submissions")} value={`${props.analysis.reviewedSubmissionCount}/${props.analysis.submissionCount}`} />
+          <Metric label={t("Charts")} value={metrics.length} />
+          <Metric label={t("Priority metrics")} value={metrics.filter((metric) => metric.dimension.includes("Prioritarias")).length} />
+          <Metric label={t("Warnings")} value={props.analysis.warnings.length} />
         </div>
       </section>
 
-      <section className="analysisGrid" aria-label="Analisis de entregas">
+      <section className="analysisGrid" aria-label={t("Submission analysis")}> 
         {metrics.map((metric) => (
           <button className="analysisCard" key={metric.key} onClick={() => setSelectedMetric(metric)}>
             <strong>{metric.title}</strong>
@@ -533,7 +534,7 @@ function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | 
 
       {props.analysis.warnings.length > 0 && (
         <section className="tablePanel warningPanel">
-          <h2>Entregas sin analisis completo</h2>
+          <h2>{t("Submissions without complete analysis")}</h2>
           {props.analysis.warnings.map((warning) => (
             <div className="warningItem" key={`${warning.submissionId}-${warning.code}`}>
               <strong>{warning.studentId} - {warning.code}</strong>
@@ -551,7 +552,7 @@ function SubmissionAnalysisView(props: { analysis: ActivitySubmissionAnalysis | 
                 <h2 id="chartDialogTitle">{selectedMetric.title}</h2>
                 <p>{selectedMetric.dimension}{selectedMetric.unit ? ` - ${selectedMetric.unit}` : ""}</p>
               </div>
-              <button className="iconButton" onClick={() => setSelectedMetric(null)} title="Cerrar">
+              <button className="iconButton" onClick={() => setSelectedMetric(null)} title={t("Close")}> 
                 <X size={17} />
               </button>
             </div>
@@ -586,8 +587,8 @@ function buildAnalysisMetrics(rows: SubmissionAnalysisRow[]): AnalysisMetricSeri
   }
 
   result.push(
-    categoricalMetric("integrityStatus", "Integridad", "Control de entrega", rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: integrityLabel(row.integrityStatus) }))),
-    categoricalMetric("agencyLevel", "Nivel de agencia observable", "Agencia", rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: row.agencyLevel }))),
+    categoricalMetric("integrityStatus", t("Integrity"), t("Submission control"), rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: integrityLabel(row.integrityStatus) }))),
+    categoricalMetric("agencyLevel", t("Observable agency level"), t("Agency"), rows.map((row) => ({ id: row.submissionId, label: submissionChartLabel(row), value: row.agencyLevel }))),
   );
 
   const grouped = new Map<string, AnalysisMetricSeries>();
@@ -725,7 +726,7 @@ function shouldShowXAxisLabel(index: number, count: number) {
 function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | null; loading: boolean; error: string }) {
   const dashboard = props.dashboard;
   if (props.loading) {
-    return <EmptyState text="Calculando dashboard de entregas..." />;
+    return <EmptyState text={t("Calculating submission dashboard...")} />;
   }
   if (props.error) {
     return <section className="tablePanel warningPanel"><h2>No se pudo cargar el dashboard</h2><p>{props.error}</p></section>;
@@ -738,16 +739,16 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
     <>
       <section className="detailPanel">
         <div className="metrics">
-          <Metric label="Entregas revisadas" value={`${dashboard.reviewedSubmissionCount}/${dashboard.submissionCount}`} />
-          <Metric label="Estudiantes" value={dashboard.studentCount} />
-          <Metric label="Agencia observable promedio" value={`${formatStat(dashboard.agency.score.avg)}/100`} />
-          <Metric label="Con agentes" value={`${Math.round(dashboard.agentUse.withAgentInteractionsRatio * 100)}%`} />
+          <Metric label={t("Reviewed submissions")} value={`${dashboard.reviewedSubmissionCount}/${dashboard.submissionCount}`} />
+          <Metric label={t("Students")} value={dashboard.studentCount} />
+          <Metric label={t("Average observable agency")} value={`${formatStat(dashboard.agency.score.avg)}/100`} />
+          <Metric label={t("With agents")} value={`${Math.round(dashboard.agentUse.withAgentInteractionsRatio * 100)}%`} />
         </div>
         <div className="metrics">
-          <Metric label="Tiempo activo mediano" value={`${formatStat(dashboard.summary.activeMinutes?.median)} min`} />
-          <Metric label="Lineas unicas medianas" value={formatStat(dashboard.summary.uniqueLinesTouched?.median)} />
-          <Metric label="Archivos modificados mediana" value={formatStat(dashboard.summary.filesModified?.median)} />
-          <Metric label="Integridad valida" value={dashboard.integrity.valid ?? 0} />
+          <Metric label={t("Median active time")} value={`${formatStat(dashboard.summary.activeMinutes?.median)} min`} />
+          <Metric label={t("Median unique lines")} value={formatStat(dashboard.summary.uniqueLinesTouched?.median)} />
+          <Metric label={t("Median modified files")} value={formatStat(dashboard.summary.filesModified?.median)} />
+          <Metric label={t("Valid integrity")} value={dashboard.integrity.valid ?? 0} />
         </div>
       </section>
 
@@ -780,9 +781,9 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
         <StatsTable
           rows={[
             ["Tiempo activo", dashboard.summary.activeMinutes, "min"],
-            ["Lineas unicas", dashboard.summary.uniqueLinesTouched, ""],
-            ["Archivos modificados", dashboard.summary.filesModified, ""],
-            ["Cambios de archivo", dashboard.summary.fileChangeEvents, ""],
+            [t("Unique lines"), dashboard.summary.uniqueLinesTouched, ""],
+            [t("Modified files"), dashboard.summary.filesModified, ""],
+            [t("File changes"), dashboard.summary.fileChangeEvents, ""],
             ["Interacciones con agente", dashboard.summary.agentInteractions, ""],
             ["Mensajes estudiante", dashboard.agentUse.studentMessages, ""],
             ["Respuestas agente", dashboard.agentUse.agentResponses, ""],
@@ -791,7 +792,7 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
       </section>
 
       <section className="tablePanel">
-        <h2>Metricas por dimension</h2>
+        <h2>{t("Metrics by dimension")}</h2>
         {dashboard.metricGroups.map((group) => (
           <div className="metricGroup" key={group.dimension}>
             <h3>{group.dimension}</h3>
@@ -802,7 +803,7 @@ function ActivityDashboardView(props: { dashboard: ActivityReviewDashboard | nul
 
       {dashboard.warnings.length > 0 && (
         <section className="tablePanel warningPanel">
-          <h2>Entregas sin dashboard completo</h2>
+          <h2>{t("Submissions without complete dashboard")}</h2>
           {dashboard.warnings.map((warning) => (
             <div className="warningItem" key={`${warning.submissionId}-${warning.code}`}>
               <strong>{warning.studentId} - {warning.code}</strong>
@@ -820,7 +821,7 @@ function StatsTable(props: { rows: [string, ActivityReviewDashboard["summary"][s
     <table>
       <thead>
         <tr>
-          <th>Metrica</th>
+          <th>{t("Metric")}</th>
           <th>Prom.</th>
           <th>Min</th>
           <th>P25</th>
@@ -856,7 +857,7 @@ function StatsTable(props: { rows: [string, ActivityReviewDashboard["summary"][s
 function DistributionTable(props: { values: Record<string, number> }) {
   const entries = Object.entries(props.values);
   if (!entries.length) {
-    return <p>Sin datos.</p>;
+    return <p>{t("No data.")}</p>;
   }
   return (
     <table>
@@ -871,7 +872,7 @@ function DistributionTable(props: { values: Record<string, number> }) {
 
 function CountList(props: { values: { label: string; count: number }[] }) {
   if (!props.values.length) {
-    return <p>Sin datos.</p>;
+    return <p>{t("No data.")}</p>;
   }
   return <ul className="signalList">{props.values.map((item) => <li key={item.label}>{item.label}: {item.count}</li>)}</ul>;
 }
@@ -891,24 +892,24 @@ function formatCounts(values: Record<string, number>) {
 function ObservableAgencyPanel(props: { agency: ObservableAgencyAssessment | undefined }) {
   const agency = props.agency;
   if (!agency) {
-    return <EmptyState text="No hay evaluacion de agencia observable disponible." />;
+    return <EmptyState text={t("No observable agency assessment is available.")} />;
   }
   return (
     <>
       <section className="tablePanel">
-        <h2>Agencia observable</h2>
+        <h2>{t("Observable agency")}</h2>
         <p className="mutedText">
-          Score compuesto 0-100 calculado desde continuidad, edicion efectiva,
-          relevancia, gestion del proceso, iteracion, validacion y flags
-          contextuales. Apoya el juicio docente; no es una calificacion ni prueba
-          de autoria.
+          Composite 0-100 score calculated from continuity, effective editing,
+          relevance, process management, iteration, validation, and contextual
+          flags. It supports teacher judgment; it is not a grade or proof
+          of authorship.
         </p>
         <table>
           <thead>
             <tr>
-              <th>Dimension</th>
+              <th>{t("Dimension")}</th>
               <th>Score</th>
-              <th>Peso</th>
+              <th>{t("Weight")}</th>
             </tr>
           </thead>
           <tbody>
@@ -924,16 +925,16 @@ function ObservableAgencyPanel(props: { agency: ObservableAgencyAssessment | und
       </section>
       <div className="twoColumns">
         <section className="tablePanel">
-          <h2>Fortalezas principales</h2>
+          <h2>{t("Main strengths")}</h2>
           {agency.strengths.length ? (
             <ul className="signalList">{agency.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
-          ) : <p>No hay dimensiones por encima del umbral de fortaleza.</p>}
+          ) : <p>{t("No dimensions are above the strength threshold.")}</p>}
         </section>
         <section className="tablePanel">
-          <h2>Indicadores para revisar</h2>
+          <h2>{t("Indicators to review")}</h2>
           {agency.flags.length ? (
             <ul className="signalList warningText">{agency.flags.map((item) => <li key={item}>{item}</li>)}</ul>
-          ) : <p>No hay alertas inmediatas.</p>}
+          ) : <p>{t("No immediate alerts.")}</p>}
         </section>
       </div>
     </>
@@ -961,28 +962,28 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
       <SectionHeader icon={<UserRound size={20} />} title={submission.name || submission.student.display_name || submission.student.institutional_id} />
       <section className="detailPanel">
         <div className="metrics">
-          {submission.name && <Metric label="Nombre" value={submission.name} />}
-          <Metric label="Eventos" value={submission.event_count} />
-          <Metric label="Interacciones agente" value={submission.agent_interaction_count} />
-          <Metric label="Git" value={submission.has_git ? "Si" : "No"} />
+          {submission.name && <Metric label={t("Name")} value={submission.name} />}
+          <Metric label={t("Events")} value={submission.event_count} />
+          <Metric label={t("Agent interactions")} value={submission.agent_interaction_count} />
+          <Metric label="Git" value={submission.has_git ? t("Yes") : t("No")} />
           <Metric label="Warnings" value={submission.warning_count} />
         </div>
         {review && (
           <div className="metrics">
-            <Metric label="Agencia observable" value={observableAgency ? `${observableAgency.level} (${observableAgency.score}/100)` : "Sin datos"} />
-            <Metric label="Confianza" value={observableAgency?.confidence ?? "Sin datos"} />
-            <Metric label="Lineas unicas" value={review.summary.uniqueLinesTouched} />
-            <Metric label="Tiempo activo" value={`${review.summary.activeMinutes} min`} />
-            <Metric label="Integridad" value={integrityLabel(review.integrity.status)} />
+            <Metric label={t("Observable agency")} value={observableAgency ? `${observableAgency.level} (${observableAgency.score}/100)` : t("No data.")} />
+            <Metric label={t("Confidence")} value={observableAgency?.confidence ?? t("No data.")} />
+            <Metric label={t("Unique lines")} value={review.summary.uniqueLinesTouched} />
+            <Metric label={t("Active time")} value={`${review.summary.activeMinutes} min`} />
+            <Metric label={t("Integrity")} value={integrityLabel(review.integrity.status)} />
           </div>
         )}
       </section>
 
-      <nav className="tabs" aria-label="Entrega">
-        <button className={tab === "main" ? "active" : ""} onClick={() => setTab("main")}><Activity size={16} /> Principal</button>
-        <button className={tab === "agents" ? "active" : ""} onClick={() => setTab("agents")}><Bot size={16} /> Uso de agentes</button>
-        <button className={tab === "metrics" ? "active" : ""} onClick={() => setTab("metrics")}><Upload size={16} /> Metricas</button>
-        <button className={tab === "integrity" ? "active" : ""} onClick={() => setTab("integrity")}><ShieldCheck size={16} /> Integridad</button>
+      <nav className="tabs" aria-label={t("Submission")}> 
+        <button className={tab === "main" ? "active" : ""} onClick={() => setTab("main")}><Activity size={16} /> {t("Main")}</button>
+        <button className={tab === "agents" ? "active" : ""} onClick={() => setTab("agents")}><Bot size={16} /> {t("Agent use")}</button>
+        <button className={tab === "metrics" ? "active" : ""} onClick={() => setTab("metrics")}><Upload size={16} /> {t("Metrics")}</button>
+        <button className={tab === "integrity" ? "active" : ""} onClick={() => setTab("integrity")}><ShieldCheck size={16} /> {t("Integrity")}</button>
       </nav>
 
       {tab === "main" && (
@@ -992,22 +993,22 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
           )}
           <div className="twoColumns">
             <section className="tablePanel">
-              <h2>Tareas</h2>
+              <h2>{t("Tasks")}</h2>
               <table>
                 <thead>
                   <tr>
-                    <th>Tarea</th>
-                    <th>Estado</th>
-                    <th>Duracion</th>
-                    <th>Guardados</th>
-                    <th>Archivos</th>
+                    <th>{t("Task")}</th>
+                    <th>{t("Status")}</th>
+                    <th>{t("Duration")}</th>
+                    <th>{t("Saves")}</th>
+                    <th>{t("Files")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {submission.task_states.map((task) => (
                     <tr key={task.id}>
                       <td>{task.task_id}</td>
-                      <td>{task.status || "Sin estado"}</td>
+                      <td>{task.status || t("No status")}</td>
                       <td>{task.duration_seconds ? `${Math.round(task.duration_seconds / 60)} min` : "-"}</td>
                       <td>{task.save_count}</td>
                       <td>{task.modified_files_count}</td>
@@ -1018,12 +1019,12 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
             </section>
 
             <section className="tablePanel">
-              <h2>Eventos</h2>
+              <h2>{t("Events")}</h2>
               <table>
                 <thead>
                   <tr>
-                    <th>Tipo</th>
-                    <th>Cantidad</th>
+                    <th>{t("Type")}</th>
+                    <th>{t("Count")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1043,22 +1044,22 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
       {tab === "agents" && (
         <section className="tablePanel">
           <div className="panelHeader">
-            <h2><Bot size={18} /> Conversaciones con agentes</h2>
-            <input value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} placeholder="Filtrar por actor, agente, tarea o texto" />
+            <h2><Bot size={18} /> {t("Agent conversations")}</h2>
+            <input value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} placeholder={t("Filter by actor, agent, task, or text")} />
           </div>
           {filteredInteractions.length ? (
             <div className="conversationList">
               {filteredInteractions.map((interaction, index) => (
                 <article className={`messageItem ${interaction.actor}`} key={`${interaction.timestamp}-${index}`}>
                   <div>
-                    <strong>{interaction.actor === "student" ? "Estudiante" : interaction.agent || "Agente"}</strong>
+                    <strong>{interaction.actor === "student" ? t("Student") : interaction.agent || t("Agent")}</strong>
                     <span>{interaction.timestamp}{interaction.taskId ? ` - ${interaction.taskId}` : ""}</span>
                   </div>
                   <p>{interaction.message}</p>
                 </article>
               ))}
             </div>
-          ) : <EmptyState text="No hay conversaciones de agente registradas para esta entrega." />}
+          ) : <EmptyState text={t("No agent conversations are recorded for this submission.")} />}
           {(review?.agentInteractionErrors.length ?? 0) > 0 && (
             <div className="warningBlock">
               <strong>Problemas de lectura</strong>
@@ -1070,7 +1071,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
 
       {tab === "metrics" && (
         <section className="tablePanel">
-          <h2>Metricas de agencia</h2>
+          <h2>{t("Agency metrics")}</h2>
           {review ? review.agencyMetrics.groups.map((group) => (
             <div className="metricGroup" key={group.dimension}>
               <h3>{group.dimension}</h3>
@@ -1078,10 +1079,10 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
                 <thead>
                   <tr>
                     <th>N</th>
-                    <th>Metrica</th>
-                    <th>Valor</th>
-                    <th>Evidencia</th>
-                    <th>Lectura</th>
+                    <th>{t("Metric")}</th>
+                    <th>{t("Value")}</th>
+                    <th>{t("Evidence")}</th>
+                    <th>{t("Reading")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1090,7 +1091,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
                       <td><code>{metric.id}</code></td>
                       <td><strong>{metric.name}</strong>{metric.priority && <span className="badge">Prioritaria</span>}<br /><small className={`reliability ${metric.reliability}`}>{metric.reliability}</small></td>
                       <td><strong>{metric.value}{metric.unit ? ` ${metric.unit}` : ""}</strong></td>
-                      <td>{metric.detail}<br /><small>{metric.evidenceCount} eventos/senales</small></td>
+                      <td>{metric.detail}<br /><small>{metric.evidenceCount} {t("events/signals")}</small></td>
                       <td>{metric.interpretation}</td>
                     </tr>
                   ))}
@@ -1104,23 +1105,23 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
       {tab === "integrity" && (
         <div className="twoColumns">
           <section className={`tablePanel integrityPanel ${review?.integrity.status ?? "not_available"}`}>
-            <h2><ShieldCheck size={18} /> Cadena hash</h2>
+            <h2><ShieldCheck size={18} /> {t("Hash chain")}</h2>
             <div className="integrityStatus">
               <strong>{integrityLabel(review?.integrity.status ?? "not_available")}</strong>
-              <span>{review?.integrity.message ?? "No hay datos de integridad disponibles."}</span>
+              <span>{review?.integrity.message ?? t("No integrity data is available.")}</span>
             </div>
             <table>
               <tbody>
-                <tr><th>Entradas verificadas</th><td>{review?.integrity.checkedEntries ?? 0}</td></tr>
-                <tr><th>Primera linea invalida</th><td>{review?.integrity.firstInvalidLine ?? "-"}</td></tr>
-                <tr><th>Lineas JSONL invalidas</th><td>{review?.eventParseErrors.length ?? 0}</td></tr>
+                <tr><th>{t("Verified entries")}</th><td>{review?.integrity.checkedEntries ?? 0}</td></tr>
+                <tr><th>{t("First invalid line")}</th><td>{review?.integrity.firstInvalidLine ?? "-"}</td></tr>
+                <tr><th>{t("Invalid JSONL lines")}</th><td>{review?.eventParseErrors.length ?? 0}</td></tr>
               </tbody>
             </table>
           </section>
           <section className="tablePanel">
             <div className="panelHeader">
-              <h2>Eventos crudos</h2>
-              <input value={eventFilter} onChange={(event) => setEventFilter(event.target.value)} placeholder="Filtrar eventos" />
+              <h2>{t("Raw events")}</h2>
+              <input value={eventFilter} onChange={(event) => setEventFilter(event.target.value)} placeholder={t("Filter events")} />
             </div>
             <div className="eventList">
               {filteredEvents.slice(0, 80).map((event, index) => <pre key={index}>{JSON.stringify(event, null, 2)}</pre>)}
@@ -1132,7 +1133,7 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
 
       {submission.warnings.length > 0 && (
         <section className="tablePanel warningPanel">
-          <h2>Advertencias</h2>
+          <h2>{t("Alerts")}</h2>
           {submission.warnings.map((warning) => (
             <div className="warningItem" key={warning.id}>
               <strong>{warning.code}</strong>
@@ -1176,8 +1177,8 @@ function ZipUploadPanel(props: { label: string; groups: CourseGroup[]; includeNa
     <section className="formPanel horizontal">
       {props.includeName && (
         <label>
-          Nombre
-          <input value={submissionName} onChange={(event) => setSubmissionName(event.target.value)} placeholder="Grupo A, Solucion oficial..." />
+          {t("Name")}
+          <input value={submissionName} onChange={(event) => setSubmissionName(event.target.value)} placeholder={t("Group A, official solution...")} />
         </label>
       )}
       <label>
@@ -1194,11 +1195,11 @@ function ZipUploadPanel(props: { label: string; groups: CourseGroup[]; includeNa
         />
       </label>
       <label>
-        Comisión
+        {t("Group")}
         <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
-          <option value="">Elegir comisión</option>
+          <option value="">{t("Choose group")}</option>
           {props.groups.map((group) => (
-            <option key={group.id} value={group.id}>{group.name}{group.term ? ` · ${group.term}` : ""}</option>
+            <option key={group.id} value={group.id}>{group.name}{group.term ? ` - ${group.term}` : ""}</option>
           ))}
         </select>
       </label>
@@ -1229,7 +1230,7 @@ function subtitle(view: View, course: Course | null, activity: ActivityVersion |
   if (view === "course" && course) {
     return course.code ? `${course.name} · ${course.code}` : course.name;
   }
-  return "Asignaturas, actividades y entregas";
+  return t("Courses, activities, and submissions");
 }
 
 function mergeGroups(current: CourseGroup[], incoming: CourseGroup[]) {

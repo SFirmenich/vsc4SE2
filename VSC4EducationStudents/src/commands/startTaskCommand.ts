@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { t } from '../i18n';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { runCommand } from './commandUtils';
 
@@ -16,7 +17,7 @@ export function registerStartTaskCommand(
 				return;
 			}
 			await activityService.startTask(selectedTaskId);
-			await vscode.window.showInformationMessage(`Tarea iniciada: ${selectedTaskId}`);
+			await vscode.window.showInformationMessage(t('Task started: {0}', selectedTaskId));
 		})
 	);
 }
@@ -26,17 +27,17 @@ async function pickTask(
 ): Promise<string | undefined> {
 	const snapshot = await activityService.getSnapshot();
 	if (!snapshot) {
-		throw new Error('No hay una actividad cargada.');
+		throw new Error(t('No activity is loaded.'));
 	}
 	if (!snapshot.profile || !snapshot.state) {
-		throw new Error('Debes registrar al estudiante antes de empezar una tarea.');
+		throw new Error(t('Register the student before starting a task.'));
 	}
 	const state = snapshot.state;
 	const selected = await vscode.window.showQuickPick(
 		snapshot.manifest.tasks
 			.filter(task => state.tasks[task.id]?.status === 'pending')
 			.map(task => ({ label: task.title, description: task.id, taskId: task.id })),
-		{ placeHolder: 'Selecciona la tarea que quieres empezar' }
+		{ placeHolder: t('Select the task you want to start') }
 	);
 	return selected?.taskId;
 }

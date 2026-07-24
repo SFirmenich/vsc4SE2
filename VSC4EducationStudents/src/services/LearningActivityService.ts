@@ -191,12 +191,12 @@ export class LearningActivityService {
 		const configuration = await readJson<ActivityConfiguration>(
 			activityConfigurationPath(this.root)
 		);
-		let gitStatus = configuration.gitEnabled ? 'Sin cambios' : 'Git deshabilitado';
+		let gitStatus = configuration.gitEnabled ? 'No changes' : 'Git disabled';
 		if (configuration.gitEnabled) {
 			try {
-				gitStatus = (await new GitService(this.root).getStatus()) || 'Sin cambios';
+				gitStatus = (await new GitService(this.root).getStatus()) || 'No changes';
 			} catch (error) {
-				gitStatus = `No disponible: ${this.errorMessage(error)}`;
+				gitStatus = `Unavailable: ${this.errorMessage(error)}`;
 			}
 		}
 		if (!profile) {
@@ -268,13 +268,13 @@ export class LearningActivityService {
 		const context = await this.requireStudentContext();
 		const state = await context.stateService.load();
 		if (!(taskId in state.tasks)) {
-			throw new Error(`La tarea "${taskId}" no existe.`);
+			throw new Error(`Task "${taskId}" does not exist.`);
 		}
 		if (state.currentTaskId) {
-			throw new Error(`Ya está activa la tarea "${state.currentTaskId}".`);
+			throw new Error(`Task "${state.currentTaskId}" is already active.`);
 		}
 		if (state.tasks[taskId].status === 'completed') {
-			throw new Error(`La tarea "${taskId}" ya está terminada.`);
+			throw new Error(`Task "${taskId}" is already finished.`);
 		}
 		let startCommit: string | undefined;
 		if (state.git.enabled) {
@@ -298,7 +298,7 @@ export class LearningActivityService {
 		const state = await context.stateService.load();
 		const task = state.tasks[taskId];
 		if (!task || state.currentTaskId !== taskId || task.status !== 'active' || !task.startedAt) {
-			throw new Error(`La tarea "${taskId}" no está activa.`);
+			throw new Error(`Task "${taskId}" is not active.`);
 		}
 		const gitService = new GitService(context.root);
 		const finishedAt = new Date().toISOString();
@@ -364,7 +364,7 @@ export class LearningActivityService {
 	private async requireStudentContext(): Promise<StudentContext> {
 		const context = await this.getStudentContext(true);
 		if (!context) {
-			throw new Error('Debes registrar al estudiante antes de continuar.');
+			throw new Error('Register the student before continuing.');
 		}
 		return context;
 	}
@@ -374,14 +374,14 @@ export class LearningActivityService {
 		const profile = await this.profiles.getActive(root);
 		if (!profile) {
 			if (required) {
-				throw new Error('Debes registrar al estudiante antes de continuar.');
+				throw new Error('Register the student before continuing.');
 			}
 			return undefined;
 		}
 		const stateService = new ActivityStateService(root, profile);
 		if (!await stateService.exists()) {
 			if (required) {
-				throw new Error('La contribución activa no tiene estado inicializado.');
+				throw new Error('The active contribution does not have initialized state.');
 			}
 			return undefined;
 		}
@@ -395,7 +395,7 @@ export class LearningActivityService {
 
 	private requireRoot(): string {
 		if (!this.root) {
-			throw new Error('No hay una actividad cargada.');
+			throw new Error('No activity is loaded.');
 		}
 		return this.root;
 	}

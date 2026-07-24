@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { t } from '../i18n';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { runCommand } from './commandUtils';
 
@@ -10,28 +11,28 @@ export function registerStudentCommand(
 ): vscode.Disposable {
 	return vscode.commands.registerCommand(REGISTER_STUDENT_COMMAND, () => runCommand(async () => {
 		const studentId = await vscode.window.showInputBox({
-			title: 'Registrar estudiante',
-			prompt: 'Identificador institucional',
+			title: t('Register student'),
+			prompt: t('Institutional identifier'),
 			ignoreFocusOut: true,
-			validateInput: value => value.trim() ? undefined : 'El identificador es obligatorio.'
+			validateInput: value => value.trim() ? undefined : t('The identifier is required.')
 		});
 		if (!studentId) {
 			return;
 		}
 		const firstName = await vscode.window.showInputBox({
-			title: 'Registrar estudiante',
-			prompt: 'Nombre',
+			title: t('Register student'),
+			prompt: t('First name'),
 			ignoreFocusOut: true,
-			validateInput: value => value.trim() ? undefined : 'El nombre es obligatorio.'
+			validateInput: value => value.trim() ? undefined : t('First name is required.')
 		});
 		if (!firstName) {
 			return;
 		}
 		const lastName = await vscode.window.showInputBox({
-			title: 'Registrar estudiante',
-			prompt: 'Apellido',
+			title: t('Register student'),
+			prompt: t('Last name'),
 			ignoreFocusOut: true,
-			validateInput: value => value.trim() ? undefined : 'El apellido es obligatorio.'
+			validateInput: value => value.trim() ? undefined : t('Last name is required.')
 		});
 		if (!lastName) {
 			return;
@@ -42,7 +43,7 @@ export function registerStudentCommand(
 			lastName
 		});
 		await vscode.window.showInformationMessage(
-			`Estudiante activo: ${profile.displayName} (${profile.studentId})`
+			t('Active student: {0} ({1})', profile.displayName, profile.studentId)
 		);
 	}));
 }

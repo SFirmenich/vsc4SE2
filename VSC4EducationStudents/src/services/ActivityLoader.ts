@@ -74,7 +74,7 @@ export class ActivityLoader {
 				}
 			}
 		}
-		throw new Error('El ZIP no contiene manifest.json en su raíz.');
+		throw new Error('The ZIP does not contain manifest.json at its root.');
 	}
 
 	private async copyStarter(packageRoot: string, destination: string): Promise<void> {
@@ -91,19 +91,19 @@ export class ActivityLoader {
 
 	private normalizeManifest(value: unknown): ActivityManifest {
 		if (!value || typeof value !== 'object') {
-			throw new Error('manifest.json debe contener un objeto JSON.');
+			throw new Error('manifest.json must contain a JSON object.');
 		}
 		const manifest = value as Record<string, unknown>;
 		if (typeof manifest.id !== 'string' || typeof manifest.title !== 'string') {
-			throw new Error('manifest.json requiere los campos string "id" y "title".');
+			throw new Error('manifest.json requires string fields "id" and "title".');
 		}
-		this.validateIdentifier(manifest.id, 'El identificador de actividad');
+		this.validateIdentifier(manifest.id, 'The activity identifier');
 		if (!Array.isArray(manifest.tasks) || manifest.tasks.length === 0) {
-			throw new Error('manifest.json requiere al menos una tarea.');
+			throw new Error('manifest.json requires at least one task.');
 		}
 		const tasks = manifest.tasks.map((task, index) => this.normalizeTask(task, index));
 		if (new Set(tasks.map(task => task.id)).size !== tasks.length) {
-			throw new Error('Los identificadores de tareas deben ser únicos.');
+			throw new Error('Task identifiers must be unique.');
 		}
 		return {
 			id: manifest.id,
@@ -119,13 +119,13 @@ export class ActivityLoader {
 			return { id: value, title: value };
 		}
 		if (!value || typeof value !== 'object') {
-			throw new Error(`La tarea en la posición ${index} no es válida.`);
+			throw new Error(`The task at position ${index} is not valid.`);
 		}
 		const task = value as Record<string, unknown>;
 		if (typeof task.id !== 'string' || typeof task.title !== 'string') {
-			throw new Error(`La tarea en la posición ${index} requiere "id" y "title".`);
+			throw new Error(`The task at position ${index} requires "id" and "title".`);
 		}
-		this.validateIdentifier(task.id, `El identificador de tarea en la posición ${index}`);
+		this.validateIdentifier(task.id, `The task identifier at position ${index}`);
 		return {
 			id: task.id,
 			title: task.title,
@@ -137,7 +137,7 @@ export class ActivityLoader {
 	private validateIdentifier(identifier: string, label: string): void {
 		if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(identifier)) {
 			throw new Error(
-				`${label} sólo puede contener letras, números, puntos, guiones y guiones bajos.`
+				`${label} can only contain letters, numbers, dots, hyphens, and underscores.`
 			);
 		}
 	}

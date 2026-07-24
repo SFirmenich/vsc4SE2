@@ -1,7 +1,7 @@
 {
   "name": "learning-activity-tracker-student",
-  "displayName": "Learning Activity Tracker - Student",
-  "description": "Load programming activities, track student work, manage Git evidence, and generate local AI-agent context.",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.120.0"
@@ -24,61 +24,61 @@
     "commands": [
       {
         "command": "learningActivity.loadFromZip",
-        "title": "Learning Activity: Load Activity from ZIP"
+        "title": "%command.loadFromZip%"
       },
       {
         "command": "learningActivity.loadFromUrl",
-        "title": "Learning Activity: Load Activity from URL"
+        "title": "%command.loadFromUrl%"
       },
       {
         "command": "learningActivity.openPanel",
-        "title": "Learning Activity: Open Student Panel"
+        "title": "%command.openPanel%"
       },
       {
         "command": "learningActivity.registerStudent",
-        "title": "Learning Activity: Register Student"
+        "title": "%command.registerStudent%"
       },
       {
         "command": "learningActivity.startTask",
-        "title": "Learning Activity: Start Task"
+        "title": "%command.startTask%"
       },
       {
         "command": "learningActivity.finishTask",
-        "title": "Learning Activity: Finish Task"
+        "title": "%command.finishTask%"
       },
       {
         "command": "learningActivity.exportSubmission",
-        "title": "Learning Activity: Export Submission"
+        "title": "%command.exportSubmission%"
       }
     ],
     "configuration": {
-      "title": "Learning Activity Tracker",
+      "title": "%configuration.title%",
       "properties": {
         "learningActivity.heartbeatIntervalSeconds": {
           "type": "number",
           "default": 30,
           "minimum": 5,
-          "description": "Intervalo, en segundos, entre eventos heartbeat."
+          "description": "%configuration.heartbeatIntervalSeconds%"
         },
         "learningActivity.autoOpenPanelAfterLoad": {
           "type": "boolean",
           "default": true,
-          "description": "Abre automáticamente el panel después de cargar una actividad."
+          "description": "%configuration.autoOpenPanelAfterLoad%"
         },
         "learningActivity.enableGitIntegration": {
           "type": "boolean",
           "default": true,
-          "description": "Inicializa y gestiona un repositorio Git local para la actividad."
+          "description": "%configuration.enableGitIntegration%"
         },
         "learningActivity.trackTextChanges": {
           "type": "boolean",
           "default": true,
-          "description": "Registra metadatos de cambios de texto sin guardar su contenido."
+          "description": "%configuration.trackTextChanges%"
         },
         "learningActivity.trackTerminalOpen": {
           "type": "boolean",
           "default": true,
-          "description": "Registra la apertura de terminales integrados."
+          "description": "%configuration.trackTerminalOpen%"
         }
       }
     }

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../i18n";
 import { FeedbackService } from "../services/FeedbackService";
 import { ImportedSubmission } from "../types/Submission";
 
@@ -10,11 +11,11 @@ export function exportFeedbackCommand(
     const submission =
       context.workspaceState.get<ImportedSubmission>("activeSubmission");
     if (!submission) {
-      void vscode.window.showWarningMessage("Import a submission first");
+      void vscode.window.showWarningMessage(t("Import a submission first"));
       return;
     }
     const destination = await vscode.window.showSaveDialog({
-      filters: { "ZIP archive": ["zip"] },
+      filters: { [t("ZIP archive")]: ["zip"] },
       defaultUri: vscode.Uri.file(`${submission.id}-feedback.zip`)
     });
     if (!destination) return;
@@ -23,6 +24,6 @@ export function exportFeedbackCommand(
       submission.id,
       destination.fsPath
     );
-    void vscode.window.showInformationMessage("Feedback exported");
+    void vscode.window.showInformationMessage(t("Feedback exported"));
   };
 }

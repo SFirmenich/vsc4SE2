@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { t } from '../i18n';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { runCommand } from './commandUtils';
 
@@ -14,11 +15,11 @@ export function registerFinishTaskCommand(
 			const snapshot = await activityService.getSnapshot();
 			const selectedTaskId = taskId ?? snapshot?.state?.currentTaskId;
 			if (!selectedTaskId) {
-				throw new Error('No hay ninguna tarea activa.');
+				throw new Error(t('There is no active task.'));
 			}
 			const metadata = await activityService.finishTask(selectedTaskId);
 			await vscode.window.showInformationMessage(
-				`Tarea terminada: ${selectedTaskId} (${metadata.durationMinutes} min)`
+				t('Task finished: {0} ({1} min)', selectedTaskId, metadata.durationMinutes)
 			);
 		})
 	);

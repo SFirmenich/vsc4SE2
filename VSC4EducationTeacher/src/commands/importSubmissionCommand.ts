@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../i18n";
 import { SubmissionImportService } from "../services/SubmissionImportService";
 import { SubmissionReviewPanel } from "../webview/SubmissionReviewPanel";
 
@@ -17,7 +18,7 @@ function addProjectToWorkspace(projectPath: string): void {
   }
   vscode.workspace.updateWorkspaceFolders(folders.length, 0, {
     uri: projectUri,
-    name: "Imported Submission"
+    name: t("Imported Submission")
   });
 }
 
@@ -30,23 +31,23 @@ export function importSubmissionCommand(
       canSelectFiles: true,
       canSelectFolders: false,
       canSelectMany: false,
-      filters: { "ZIP archive": ["zip"] },
-      openLabel: "Import submission"
+      filters: { [t("ZIP archive")]: ["zip"] },
+      openLabel: t("Import submission")
     });
     if (!selected?.[0]) return;
     const destination = await vscode.window.showOpenDialog({
       canSelectFiles: false,
       canSelectFolders: true,
       canSelectMany: false,
-      openLabel: "Extract submission here",
-      title: "Select a folder for the imported submission"
+      openLabel: t("Extract submission here"),
+      title: t("Select a folder for the imported submission")
     });
     if (!destination?.[0]) return;
     await vscode.workspace.fs.createDirectory(context.globalStorageUri);
     const submission = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: "Importing student submission",
+        title: t("Importing student submission"),
         cancellable: false
       },
       () =>
@@ -60,7 +61,7 @@ export function importSubmissionCommand(
     );
     addProjectToWorkspace(submission.projectPath);
     void vscode.window.showInformationMessage(
-      "Submission imported and added to the current workspace for inspection."
+      t("Submission imported and added to the current workspace for inspection.")
     );
   };
 }

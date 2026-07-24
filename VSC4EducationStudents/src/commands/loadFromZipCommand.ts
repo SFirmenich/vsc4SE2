@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as vscode from 'vscode';
 
+import { t } from '../i18n';
 import { ActivityLoader } from '../services/ActivityLoader';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { StudentPanel } from '../webview/StudentPanel';
@@ -17,8 +18,8 @@ export function registerLoadFromZipCommand(
 			canSelectFiles: true,
 			canSelectFolders: false,
 			canSelectMany: false,
-			filters: { 'Actividad ZIP': ['zip'] },
-			title: 'Selecciona una actividad'
+			filters: { [t('Activity ZIP')]: ['zip'] },
+			title: t('Select an activity')
 		});
 		if (!selected?.[0]) {
 			return;
@@ -36,20 +37,21 @@ export async function loadSelectedZip(
 		canSelectFiles: false,
 		canSelectFolders: true,
 		canSelectMany: false,
-		openLabel: 'Usar como proyecto de trabajo',
-		title: 'Selecciona la carpeta de destino'
+		openLabel: t('Use as working project'),
+		title: t('Select the destination folder')
 	});
 	if (!destination?.[0]) {
 		return;
 	}
 	const destinationEntries = await fs.readdir(destination[0].fsPath);
+	const continueLabel = t('Continue');
 	if (destinationEntries.length > 0) {
 		const confirmation = await vscode.window.showWarningMessage(
-			'La carpeta de destino no está vacía. La actividad puede sobrescribir archivos con el mismo nombre.',
+			t('The destination folder is not empty. The activity may overwrite files with the same name.'),
 			{ modal: true },
-			'Continuar'
+			continueLabel
 		);
-		if (confirmation !== 'Continuar') {
+		if (confirmation !== continueLabel) {
 			return;
 		}
 	}
@@ -57,7 +59,7 @@ export async function loadSelectedZip(
 	const loaded = await vscode.window.withProgress(
 		{
 			location: vscode.ProgressLocation.Notification,
-			title: 'Cargando actividad...',
+			title: t('Loading activity...'),
 			cancellable: false
 		},
 		() => loader.load(
@@ -79,18 +81,18 @@ export async function loadSelectedZip(
 	}
 	if (!loaded.gitAvailable && configuration.get<boolean>('enableGitIntegration', true)) {
 		await vscode.window.showWarningMessage(
-			'Git no está disponible. La actividad continuará sin integración Git.'
+			t('Git is not available. The activity will continue without Git integration.')
 		);
 	} else if (loaded.repositoryMode === 'created') {
 		await vscode.window.showInformationMessage(
-			'Se inicializó un nuevo repositorio Git para la actividad.'
+			t('A new Git repository was initialized for the activity.')
 		);
 	} else if (loaded.repositoryMode === 'existing') {
 		await vscode.window.showInformationMessage(
-			'Se reutilizó el repositorio Git existente y se conservó su historial.'
+			t('The existing Git repository was reused and its history was preserved.')
 		);
 	}
-	await vscode.window.showInformationMessage(`Actividad cargada: ${loaded.manifest.title}`);
+	await vscode.window.showInformationMessage(t('Activity loaded: {0}', loaded.manifest.title));
 	await vscode.commands.executeCommand('learningActivity.registerStudent');
 	if (configuration.get<boolean>('autoOpenPanelAfterLoad', true)) {
 		StudentPanel.show(activityService);

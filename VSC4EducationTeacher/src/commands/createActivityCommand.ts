@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { ActivityProjectService } from "../services/ActivityProjectService";
 import { ActivityManifest } from "../types/ActivityManifest";
+import { t } from "../i18n";
 import { pathExists } from "../utils/fs";
 import { VALID_ID } from "../utils/validation";
 import { ActivityDesignerPanel } from "../webview/ActivityDesignerPanel";
@@ -55,74 +56,74 @@ export function createActivityCommand(
       canSelectFolders: true,
       canSelectFiles: false,
       canSelectMany: false,
-      openLabel: "Select activity parent directory"
+      openLabel: t("Select activity parent directory")
     });
     if (!folder?.[0]) {
       return;
     }
     await waitForWindowFocus();
 
-    const wizardTitle = "Create Learning Activity";
+    const wizardTitle = t("Create Learning Activity");
     const totalSteps = 5;
     const id = await input({
       title: wizardTitle,
-      prompt: `Activity identifier. Parent folder: ${folder[0].fsPath}`,
+      prompt: t("Activity identifier. Parent folder: {0}", folder[0].fsPath),
       step: 1,
       totalSteps,
       validate: (value) =>
         VALID_ID.test(value.trim())
           ? undefined
-          : "Use only letters, numbers, dots, hyphens, and underscores"
+          : t("Use only letters, numbers, dots, hyphens, and underscores")
     });
     if (!id) {
-      void vscode.window.showInformationMessage("Activity creation cancelled");
+      void vscode.window.showInformationMessage(t("Activity creation cancelled"));
       return;
     }
 
     const activityRoot = path.join(folder[0].fsPath, id.trim());
     if (await pathExists(activityRoot)) {
       const choice = await vscode.window.showWarningMessage(
-        `The folder "${activityRoot}" already exists.`,
+        t("The folder \"{0}\" already exists.", activityRoot),
         { modal: true },
-        "Use existing folder"
+        t("Use existing folder")
       );
-      if (choice !== "Use existing folder") {
+      if (choice !== t("Use existing folder")) {
         return;
       }
     }
 
     const title = await input({
       title: wizardTitle,
-      prompt: "Activity title",
+      prompt: t("Activity title"),
       step: 2,
       totalSteps,
-      validate: (value) => (value.trim() ? undefined : "Title is required")
+      validate: (value) => (value.trim() ? undefined : t("Title is required"))
     });
     if (!title) return;
     const description = await input({
       title: wizardTitle,
-      prompt: "Activity description",
+      prompt: t("Activity description"),
       step: 3,
       totalSteps
     });
     if (description === undefined) return;
     const version = await input({
       title: wizardTitle,
-      prompt: "Activity version",
+      prompt: t("Activity version"),
       value: "1.0.0",
       step: 4,
       totalSteps,
-      validate: (value) => (value.trim() ? undefined : "Version is required")
+      validate: (value) => (value.trim() ? undefined : t("Version is required"))
     });
     if (!version) return;
     const type = await vscode.window.showQuickPick(
       [
-        { label: "Exercise", value: "exercise" as const },
-        { label: "Project", value: "project" as const }
+        { label: t("Exercise"), value: "exercise" as const },
+        { label: t("Project"), value: "project" as const }
       ],
       {
       title: `${wizardTitle} (5/${totalSteps})`,
-      placeHolder: "Activity type",
+      placeHolder: t("Activity type"),
       ignoreFocusOut: true
       }
     );
@@ -149,7 +150,7 @@ export function createActivityCommand(
     const root = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: `Creating activity "${manifest.title}"`,
+        title: t("Creating activity \"{0}\"", manifest.title),
         cancellable: false
       },
       async () => {
@@ -169,7 +170,7 @@ export function createActivityCommand(
     await context.workspaceState.update("activeActivityRoot", root);
     await ActivityDesignerPanel.show(root);
     void vscode.window.showInformationMessage(
-      `Activity created at ${root}`
+      t("Activity created at {0}", root)
     );
   };
 }

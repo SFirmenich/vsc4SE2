@@ -13,29 +13,29 @@ const TRACE_INSTRUCTIONS_MARKER = '<!-- VSC4EDUCATION_AGENT_TRACE_V1 -->';
 function getTraceInstructions(profile: StudentProfile): string {
 	return `${TRACE_INSTRUCTIONS_MARKER}
 
-## Registro obligatorio de interacciones
+## Required interaction logging
 
-Estudiante activo: **${profile.displayName}** (\`${profile.studentId}\`).
+Active student: **${profile.displayName}** (\`${profile.studentId}\`).
 
-Debes registrar la conversación en \`.vsc4education/contributions/${profile.contributionId}/agent-interactions.jsonl\`.
+You must record the conversation in \`.vsc4education/contributions/${profile.contributionId}/agent-interactions.jsonl\`.
 
-Antes de responder, añade una línea JSON por el mensaje del estudiante y otra por tu respuesta, respetando el orden cronológico. No guardes bloques multilínea: cada entrada debe ocupar exactamente una línea.
+Before answering, add one JSON line for the student's message and one JSON line for your response, preserving chronological order. Do not store multiline blocks: each entry must occupy exactly one line.
 
-Formato para el estudiante:
-
-\`\`\`json
-{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"Mensaje del estudiante"}
-\`\`\`
-
-Formato para el agente:
+Student format:
 
 \`\`\`json
-{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"chatGPT","message":"Respuesta del agente"}
+{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"Student message"}
 \`\`\`
 
-El campo \`agent\` es obligatorio cuando \`actor\` es \`agent\` y debe ser uno de: \`chatGPT\`, \`claude\` o \`copilot\`.
+Agent format:
 
-No reescribas, borres ni reordenes entradas existentes. Escapa saltos de línea y comillas para mantener JSON válido. Este registro depende del cumplimiento del agente, ya que la extensión no accede a APIs privadas de conversación.
+\`\`\`json
+{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"chatGPT","message":"Agent response"}
+\`\`\`
+
+The \`agent\` field is required when \`actor\` is \`agent\` and must be one of: \`chatGPT\`, \`claude\`, or \`copilot\`.
+
+Do not rewrite, delete, or reorder existing entries. Escape line breaks and quotes to keep JSON valid. This log depends on agent compliance because the extension does not access private conversation APIs.
 `;
 }
 
@@ -94,7 +94,7 @@ export class AgentInstructionsService {
 			await fs.writeFile(masterPath, `${baseInstructions.trimEnd()}\n`, 'utf8');
 		} else {
 			throw new Error(
-				'La actividad no contiene .vsc4education/agent/instructions.md.'
+				'The activity does not contain .vsc4education/agent/instructions.md.'
 			);
 		}
 		const canonical = `${baseInstructions.trimEnd()}\n\n${getTraceInstructions(this.profile)}`;
@@ -130,32 +130,32 @@ export class AgentInstructionsService {
 					`- ${event.timestamp}: ${event.event}${event.taskId ? ` [${event.taskId}]` : ''}`
 				)
 				.join('\n')
-			: '- Sin eventos recientes.';
-		const content = `# Contexto generado para agentes
+			: '- No recent events.';
+		const content = `# Generated Agent Context
 
-> Este archivo se genera automáticamente. No lo edites manualmente.
+> This file is generated automatically. Do not edit it manually.
 
-## Actividad
+## Activity
 
 **${manifest.title}**
 
-Tarea activa: ${state.currentTaskId ? `\`${state.currentTaskId}\`` : 'ninguna'}
+Active task: ${state.currentTaskId ? `\`${state.currentTaskId}\`` : 'none'}
 
-## Progreso
+## Progress
 
 ${progress}
 
-## Referencias
+## References
 
-- Instrucciones canónicas: \`AGENTS.md\`
-- Estudiante: **${this.profile.displayName}** (\`${this.profile.studentId}\`)
-- Estado: \`.vsc4education/contributions/${this.profile.contributionId}/state.json\`
-- Tarea actual: \`.vsc4education/contributions/${this.profile.contributionId}/current-task.json\`
-- Teoría: \`.vsc4education/theory/\`
-- Tareas: \`.vsc4education/tasks/\`
-- Interacciones: \`.vsc4education/contributions/${this.profile.contributionId}/agent-interactions.jsonl\`
+- Canonical instructions: \`AGENTS.md\`
+- Student: **${this.profile.displayName}** (\`${this.profile.studentId}\`)
+- State: \`.vsc4education/contributions/${this.profile.contributionId}/state.json\`
+- Current task: \`.vsc4education/contributions/${this.profile.contributionId}/current-task.json\`
+- Theory: \`.vsc4education/theory/\`
+- Tasks: \`.vsc4education/tasks/\`
+- Interactions: \`.vsc4education/contributions/${this.profile.contributionId}/agent-interactions.jsonl\`
 
-## Eventos recientes
+## Recent Events
 
 ${eventSummary}
 `;

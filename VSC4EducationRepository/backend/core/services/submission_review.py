@@ -274,82 +274,82 @@ class SubmissionReviewService:
             self._group(
                 "Presencia y continuidad",
                 [
-                    self._metric(1, False, "Tiempo total de sesion", self._round(session_minutes), "min", "Primer evento hasta ultimo evento.", "Duracion bruta del registro; no equivale por si sola a trabajo efectivo.", len(sorted_views), "direct"),
-                    self._metric(2, True, "Tiempo activo dentro de tareas", self._round(sum(item["minutes"] for item in task_durations)), "min", self._task_duration_detail(task_durations), "Tiempo entre inicio y cierre de tarea, estimado si falta cierre.", len(task_durations), "estimated" if any(item["estimated"] for item in task_durations) else "direct"),
-                    self._metric(3, True, "Tiempo con actividad observable", self._round(observable_minutes), "min", "Ventanas de 3 minutos con al menos una accion no pasiva.", "Filtra periodos donde solo hay heartbeat o presencia pasiva.", len(actions), "estimated"),
-                    self._metric(4, True, "Ratio de actividad efectiva", self._ratio(len(actions), heartbeat), None, "Acciones observables divididas por heartbeat.", "Un valor alto sugiere interaccion activa frente a presencia pasiva.", len(actions), "direct"),
+                    self._metric(1, False, "Total session time", self._round(session_minutes), "min", "First event to last event.", "Raw log duration; it does not by itself equal effective work.", len(sorted_views), "direct"),
+                    self._metric(2, True, "Active time inside tasks", self._round(sum(item["minutes"] for item in task_durations)), "min", self._task_duration_detail(task_durations), "Time between task start and finish, estimated if finish is missing.", len(task_durations), "estimated" if any(item["estimated"] for item in task_durations) else "direct"),
+                    self._metric(3, True, "Time with observable activity", self._round(observable_minutes), "min", "Three-minute windows with at least one non-passive action.", "Filters periods with only heartbeat or passive presence.", len(actions), "estimated"),
+                    self._metric(4, True, "Effective activity ratio", self._ratio(len(actions), heartbeat), None, "Observable actions divided by heartbeat.", "A high value suggests active interaction rather than passive presence.", len(actions), "direct"),
                 ],
             ),
             self._group(
-                "Intensidad de edicion",
+                "Editing intensity",
                 [
-                    self._metric(5, True, "Densidad de edicion en src", self._ratio(len(file_changes), observable_minutes), "cambios/min", "Eventos file_changed bajo src/ por minuto observable.", "Densidades extremas requieren revisar contexto.", len(file_changes), "estimated"),
-                    self._metric(6, True, "Proporcion de cambios efectivos en src", self._percent(len(effective_changes), len(file_changes)), "%", "file_changed bajo src/ con changeCount o lineas sobre total en src/.", "Distingue cambios materiales de ruido tecnico.", len(effective_changes), "direct"),
-                    self._metric(7, True, "Volumen total de cambios en src", change_volume, None, "Suma de data.changeCount en file_changed bajo src/.", "Volumen bruto; debe interpretarse junto con lineas y ritmo.", len(file_changes), "direct"),
-                    self._metric(8, False, "Lineas afectadas totales en src", total_lines, None, "Suma de rangos data.lines bajo src/.", "Aproxima alcance textual, contando repeticiones.", len(file_changes), "direct"),
-                    self._metric(9, True, "Lineas unicas modificadas en src", unique_lines, None, "Lineas archivo:numero distintas bajo src/.", "Evita contar varias visitas a la misma linea.", unique_lines, "direct"),
+                    self._metric(5, True, "Editing density in src", self._ratio(len(file_changes), observable_minutes), "changes/min", "file_changed events under src/ per observable minute.", "Extreme densities require contextual review.", len(file_changes), "estimated"),
+                    self._metric(6, True, "Share of effective changes in src", self._percent(len(effective_changes), len(file_changes)), "%", "file_changed under src/ with changeCount or lines over total in src/.", "Distinguishes material changes from technical noise.", len(effective_changes), "direct"),
+                    self._metric(7, True, "Total change volume in src", change_volume, None, "Sum of data.changeCount in file_changed under src/.", "Raw volume; interpret alongside lines and pace.", len(file_changes), "direct"),
+                    self._metric(8, False, "Total affected lines in src", total_lines, None, "Sum of data.lines ranges under src/.", "Approximates textual scope, counting repetitions.", len(file_changes), "direct"),
+                    self._metric(9, True, "Unique modified lines in src", unique_lines, None, "Distinct file:line entries under src/.", "Avoids counting repeated visits to the same line.", unique_lines, "direct"),
                 ],
             ),
             self._group(
-                "Relevancia de la intervencion",
+                "Intervention relevance",
                 [
-                    self._metric(11, False, "Concentracion de edicion por archivo", self._percent(top_file_count, len(file_changes)), "%", "Porcentaje de cambios en el archivo dominante.", "Muestra si el esfuerzo se concentra en un archivo.", len(file_changes), "direct"),
-                    self._metric(12, True, "Cobertura de archivos esperados", self._percent(len(expected_touched), len(expected)) if expected else "n/d", "%" if expected else None, f"{len(expected_touched)}/{len(expected)} archivos de tareas modificados." if expected else "El manifiesto no declara task.file.", "Una cobertura baja puede ser incompletitud o estrategia alternativa valida.", len(expected_touched), "direct" if expected else "limited"),
-                    self._metric(13, True, "Actividad fuera de src o no esperada", len(outside_src) + len(self._non_expected_events(work_file_views, expected)), None, "Acciones sobre rutas fuera de src/ o fuera de task.file cuando existe.", "Indicador de revision contextual; no suma como trabajo efectivo.", len(outside_src), "estimated" if expected else "limited"),
+                    self._metric(11, False, "Editing concentration by file", self._percent(top_file_count, len(file_changes)), "%", "Percentage of changes in the dominant file.", "Shows whether effort is concentrated in one file.", len(file_changes), "direct"),
+                    self._metric(12, True, "Expected file coverage", self._percent(len(expected_touched), len(expected)) if expected else "n/d", "%" if expected else None, f"{len(expected_touched)}/{len(expected)} task files modified." if expected else "The manifest does not declare task.file.", "Low coverage may indicate incompleteness or a valid alternative strategy.", len(expected_touched), "direct" if expected else "limited"),
+                    self._metric(13, True, "Activity outside src or not expected", len(outside_src) + len(self._non_expected_events(work_file_views, expected)), None, "Actions on paths outside src/ or outside task.file when present.", "Contextual review indicator; it does not count as effective work.", len(outside_src), "estimated" if expected else "limited"),
                 ],
             ),
             self._group(
-                "Gestion del proceso",
+                "Process management",
                 [
-                    self._metric(18, True, "Guardados por tarea", self._round(self._average(Counter(event["taskId"] or "outside task" for event in saves).values())), None, "Promedio de file_saved por tarea.", "Muchos guardados pueden indicar ciclos incrementales; cero puede depender de autoguardado.", len(saves), "direct"),
-                    self._metric(19, True, "Ratio cambios por guardado", self._ratio(len(effective_changes), len(saves)), None, "file_changed efectivos dividido por file_saved.", "Relaciona edicion con persistencia.", len(effective_changes) + len(saves), "direct"),
-                    self._metric(25, False, "Finalizacion explicita de tareas", self._percent(len(finishes), len(starts)), "%", f"{len(finishes)}/{max(1, len(starts))} tareas iniciadas tienen cierre.", "Senal de control del flujo pedagogico.", len(starts) + len(finishes), "direct"),
+                    self._metric(18, True, "Saves per task", self._round(self._average(Counter(event["taskId"] or "outside task" for event in saves).values())), None, "Average file_saved per task.", "Many saves may indicate incremental cycles; zero may depend on autosave.", len(saves), "direct"),
+                    self._metric(19, True, "Changes per save ratio", self._ratio(len(effective_changes), len(saves)), None, "Effective file_changed divided by file_saved.", "Relates editing to persistence.", len(effective_changes) + len(saves), "direct"),
+                    self._metric(25, False, "Explicit task completion", self._percent(len(finishes), len(starts)), "%", f"{len(finishes)}/{max(1, len(starts))} started tasks have a completion.", "Signal of pedagogical flow control.", len(starts) + len(finishes), "direct"),
                 ],
             ),
             self._group(
-                "Control de entrega",
+                "Submission control",
                 [
-                    self._metric(23, False, "Numero de exportaciones de entrega", len(exports), None, "count(submission_exported).", "Varias exportaciones pueden indicar iteracion o pruebas administrativas.", len(exports), "direct"),
-                    self._metric(30, True, "Cambios posteriores a la entrega", changes_after_export, None, "Cambios, guardados o creaciones tras la ultima exportacion registrada.", "Puede indicar que la ultima version del workspace no coincide con la entrega exportada.", changes_after_export, "direct" if exports else "limited"),
-                    self._metric(50, False, "Indice de trazabilidad de la entrega", self._percent(self._traceability_score(len(files_changed), len([file for file in files_changed if file in files_saved]), len(starts), len(finishes), len(exports), hash_discontinuities), 1), "%", "Combina archivos cambiados, guardados, cierres, exportacion e integridad hash.", "Resume cuan explicable es la entrega final desde el log.", len(events), "estimated"),
+                    self._metric(23, False, "Number of submission exports", len(exports), None, "count(submission_exported).", "Multiple exports may indicate iteration or administrative testing.", len(exports), "direct"),
+                    self._metric(30, True, "Changes after submission", changes_after_export, None, "Changes, saves, or creations after the last recorded export.", "May indicate that the latest workspace version does not match the exported submission.", changes_after_export, "direct" if exports else "limited"),
+                    self._metric(50, False, "Submission traceability index", self._percent(self._traceability_score(len(files_changed), len([file for file in files_changed if file in files_saved]), len(starts), len(finishes), len(exports), hash_discontinuities), 1), "%", "Combines changed files, saves, completions, exports, and hash integrity.", "Summarizes how explainable the final submission is from the log.", len(events), "estimated"),
                 ],
             ),
             self._group(
-                "Patrones de edicion",
+                "Editing patterns",
                 [
-                    self._metric(32, False, "Cambios masivos repentinos", len(massive_changes), None, "file_changed con mas de 20 lineas o changeCount mayor a 20.", "Senal para revisar pegado, formateo, generacion o reemplazos amplios.", len(massive_changes), "estimated"),
-                    self._metric(33, False, "Indice de edicion incremental", self._percent(len(incremental), len(effective_changes)), "%", "Cambios pequenos sobre cambios efectivos.", "Compatible con construccion paso a paso cuando es alto.", len(incremental), "estimated"),
-                    self._metric(35, False, "Pausas entre acciones activas", self._pause_detail(self._pauses([event for event in sorted_views if event["type"] != "heartbeat"])), None, "Diferencias entre acciones no-heartbeat.", "Las pausas pueden ser lectura, consulta, bloqueo o trabajo externo.", len(actions), "direct"),
+                    self._metric(32, False, "Sudden massive changes", len(massive_changes), None, "file_changed with more than 20 lines or changeCount greater than 20.", "Signal to review paste, formatting, generation, or broad replacements.", len(massive_changes), "estimated"),
+                    self._metric(33, False, "Incremental editing index", self._percent(len(incremental), len(effective_changes)), "%", "Small changes over effective changes.", "Compatible with step-by-step construction when high.", len(incremental), "estimated"),
+                    self._metric(35, False, "Pauses between active actions", self._pause_detail(self._pauses([event for event in sorted_views if event["type"] != "heartbeat"])), None, "Differences between non-heartbeat actions.", "Pauses may be reading, consultation, blockage, or external work.", len(actions), "direct"),
                 ],
             ),
             self._group(
                 "Exploracion y lectura",
                 [
-                    self._metric(37, True, "Numero de archivos consultados", len(files_consulted), None, "Archivos distintos en active_editor_changed.", "Mide amplitud de exploracion del proyecto.", len(files_consulted), "direct"),
-                    self._metric(38, False, "Ratio archivos consultados sobre modificados", self._ratio(len(files_consulted), len(files_changed)), None, "Archivos consultados dividido por archivos modificados.", "Valores altos sugieren busqueda de contexto o exploracion dispersa.", len(files_consulted) + len(files_changed), "direct"),
+                    self._metric(37, True, "Number of consulted files", len(files_consulted), None, "Distinct files in active_editor_changed.", "Measures breadth of project exploration.", len(files_consulted), "direct"),
+                    self._metric(38, False, "Consulted-to-modified files ratio", self._ratio(len(files_consulted), len(files_changed)), None, "Consulted files divided by modified files.", "High values suggest context search or dispersed exploration.", len(files_consulted) + len(files_changed), "direct"),
                 ],
             ),
             self._group(
-                "Validacion y pruebas",
+                "Validation and testing",
                 [
-                    self._metric(43, False, "Actividad sobre tests en src", len([event for event in work_file_views if event["file"] and TEST_PATTERN.search(event["file"]) and event["type"] in ACTION_EVENTS]), None, "Acciones bajo src/ sobre rutas de tests o archivos *.test/*.spec/test_*.py.", "Indica trabajo orientado a comprobar la solucion cuando aplica.", len(work_file_views), "estimated"),
-                    self._metric(44, False, "Actividad asociada a tarea de pruebas", len([event for event in views if event["taskId"] and TEST_TASK_PATTERN.search(event["taskId"]) and event["type"] in ACTION_EVENTS]), None, "Acciones en taskId relacionado con pruebas o validacion.", "Mide actividad visible en tareas de verificacion.", len(views), "estimated"),
+                    self._metric(43, False, "Activity on tests in src", len([event for event in work_file_views if event["file"] and TEST_PATTERN.search(event["file"]) and event["type"] in ACTION_EVENTS]), None, "Actions under src/ on test paths or *.test/*.spec/test_*.py files.", "Indicates work aimed at checking the solution when applicable.", len(work_file_views), "estimated"),
+                    self._metric(44, False, "Activity associated with a testing task", len([event for event in views if event["taskId"] and TEST_TASK_PATTERN.search(event["taskId"]) and event["type"] in ACTION_EVENTS]), None, "Actions in taskId related to testing or validation.", "Measures visible activity in verification tasks.", len(views), "estimated"),
                 ],
             ),
             self._group(
                 "Autonomia frente al sistema",
                 [
-                    self._metric(17, False, "Restauraciones automaticas del sistema", self._count(views, "agents_file_restored"), None, "count(agents_file_restored).", "Valores altos sugieren conflicto con archivos gestionados.", self._count(views, "agents_file_restored"), "direct"),
-                    self._metric(45, False, "Indice de autonomia de edicion", self._percent(len([event for event in views if event["type"] in {"file_changed", "file_saved", "file_created", "file_deleted", "active_editor_changed"}]), max(1, len(events) - heartbeat)), "%", "Acciones directas observables sobre eventos no-heartbeat.", "Separa interaccion humana observable de ruido sistemico.", len(events), "estimated"),
-                    self._metric(46, False, "Indice de dependencia sistemica", self._percent(len(systemic), len(events)), "%", "Heartbeat, restauraciones, protegidos o cambios sin efecto sobre total eventos.", "Si es alto, conviene filtrar antes de interpretar agencia.", len(systemic), "estimated"),
+                    self._metric(17, False, "Automatic system restorations", self._count(views, "agents_file_restored"), None, "count(agents_file_restored).", "High values suggest conflict with managed files.", self._count(views, "agents_file_restored"), "direct"),
+                    self._metric(45, False, "Editing autonomy index", self._percent(len([event for event in views if event["type"] in {"file_changed", "file_saved", "file_created", "file_deleted", "active_editor_changed"}]), max(1, len(events) - heartbeat)), "%", "Direct observable actions over non-heartbeat events.", "Separates observable human interaction from systemic noise.", len(events), "estimated"),
+                    self._metric(46, False, "Systemic dependency index", self._percent(len(systemic), len(events)), "%", "Heartbeat, restorations, protected files, or no-effect changes over total events.", "If high, filter before interpreting agency.", len(systemic), "estimated"),
                 ],
             ),
             self._group(
                 "Integridad y cumplimiento",
                 [
-                    self._metric(47, False, "Secuencias sospechosas sobre archivos protegidos", len(protected_sequences), None, self._protected_edit_detail(protected_sequences), "Apertura de archivo protegido seguida por cambio/guardado dentro de una ventana sospechosa. Indicador de revision, nunca acusacion automatica.", len(protected_sequences), "estimated"),
-                    self._metric(48, True, "Integridad de la cadena hash", "continua" if hash_discontinuities == 0 else f"{hash_discontinuities} discontinuidades", None, "Comprueba previousHash contra hash anterior.", "Afecta la confianza en la trazabilidad del log.", len(events), "direct"),
-                    self._metric(49, False, "Discontinuidades temporales", temporal_gaps, None, "Pausas de 15 minutos o mas entre acciones no-heartbeat.", "Ayuda a no sobreinterpretar ausencia de eventos.", temporal_gaps, "direct"),
+                    self._metric(47, False, "Suspicious sequences on protected files", len(protected_sequences), None, self._protected_edit_detail(protected_sequences), "Protected file opening followed by change/save within a suspicious window. Review indicator, never an automatic accusation.", len(protected_sequences), "estimated"),
+                    self._metric(48, True, "Hash chain integrity", "continuous" if hash_discontinuities == 0 else f"{hash_discontinuities} discontinuities", None, "Checks previousHash against the previous hash.", "Affects confidence in log traceability.", len(events), "direct"),
+                    self._metric(49, False, "Temporal discontinuities", temporal_gaps, None, "Pauses of 15 minutes or more between non-heartbeat actions.", "Helps avoid overinterpreting absence of events.", temporal_gaps, "direct"),
                 ],
             ),
         ]
@@ -385,7 +385,7 @@ class SubmissionReviewService:
 
         dimensions = [
             dimension(
-                "Continuidad",
+                "Continuity",
                 20,
                 [
                     (self._cap(value(2), 30), self._evidence(metric(2))),
@@ -395,7 +395,7 @@ class SubmissionReviewService:
                 ],
             ),
             dimension(
-                "Edicion efectiva",
+                "Effective editing",
                 25,
                 [
                     (self._percent_score(value(6)), self._evidence(metric(6))),
@@ -406,7 +406,7 @@ class SubmissionReviewService:
                 ],
             ),
             dimension(
-                "Relevancia",
+                "Relevance",
                 20,
                 [
                     (self._percent_or_neutral(metric(12)), self._evidence(metric(12))),
@@ -415,7 +415,7 @@ class SubmissionReviewService:
                 ],
             ),
             dimension(
-                "Gestion del proceso",
+                "Process management",
                 15,
                 [
                     (self._cap(value(18), 3), self._evidence(metric(18))),
@@ -425,7 +425,7 @@ class SubmissionReviewService:
                 ],
             ),
             dimension(
-                "Iteracion y refinamiento",
+                "Iteration and refinement",
                 10,
                 [
                     (self._cap(value(37), 5), self._evidence(metric(37))),
@@ -434,7 +434,7 @@ class SubmissionReviewService:
                 ],
             ),
             dimension(
-                "Validacion y entrega",
+                "Validation and submission",
                 10,
                 [
                     (self._cap(value(43), 3), self._evidence(metric(43))),
@@ -464,25 +464,25 @@ class SubmissionReviewService:
 
     def _agency_level(self, score: float) -> str:
         if score >= 85:
-            return "muy alta"
+            return "very high"
         if score >= 65:
-            return "alta"
+            return "high"
         if score >= 40:
-            return "media"
+            return "medium"
         if score >= 15:
-            return "baja"
-        return "insuficiente"
+            return "low"
+        return "insufficient"
 
     def _agency_confidence(self, metrics: list[dict]) -> str:
         evidence = sum(metric.get("evidenceCount") or 0 for metric in metrics)
         limited = len([metric for metric in metrics if metric.get("reliability") == "limited"])
         direct = len([metric for metric in metrics if metric.get("reliability") == "direct"])
         hash_value = next((metric.get("value") for metric in metrics if metric.get("id") == 48), None)
-        if evidence >= 30 and direct >= limited and hash_value == "continua":
-            return "alta"
+        if evidence >= 30 and direct >= limited and hash_value == "continuous":
+            return "high"
         if evidence >= 10 and limited < len(metrics) / 2:
-            return "media"
-        return "limitada"
+            return "medium"
+        return "limited"
 
     def _agency_penalty(self, metrics: dict[int, dict]) -> float:
         def value(metric_id: int) -> float:
@@ -497,7 +497,7 @@ class SubmissionReviewService:
         if systemic is not None and systemic > 50:
             penalty += 8
         integrity = metrics.get(48, {}).get("value")
-        if isinstance(integrity, str) and integrity != "continua":
+        if isinstance(integrity, str) and integrity != "continuous":
             penalty += 10
         return penalty
 
@@ -512,15 +512,15 @@ class SubmissionReviewService:
             return self._numeric_value(metrics.get(metric_id, {}).get("value")) or 0
 
         if value(30) > 0:
-            flags.append("Hay cambios posteriores a la entrega registrada")
+            flags.append("There are changes after the recorded submission")
         if value(32) > 0:
-            flags.append("Hay cambios masivos repentinos para revisar en contexto")
+            flags.append("There are sudden massive changes to review in context")
         if value(47) > 0:
-            flags.append("Hay actividad sobre archivos protegidos o internos")
+            flags.append("There is activity on protected or internal files")
         if value(49) > 0:
-            flags.append("Hay discontinuidades temporales relevantes")
+            flags.append("There are relevant temporal discontinuities")
         integrity = metrics.get(48, {}).get("value")
-        if isinstance(integrity, str) and integrity != "continua":
+        if isinstance(integrity, str) and integrity != "continuous":
             flags.append("La cadena hash no es continua")
         if penalty > 0:
             flags.append(f"Penalizacion contextual aplicada: {self._round(penalty)} puntos")
@@ -528,7 +528,7 @@ class SubmissionReviewService:
 
     def _evidence(self, metric: dict | None) -> str:
         if not metric:
-            return "Metrica no disponible."
+            return "Metric not available."
         unit = f" {metric.get('unit')}" if metric.get("unit") else ""
         return f"{metric.get('name')}: {metric.get('value')}{unit}"
 
@@ -705,15 +705,15 @@ class SubmissionReviewService:
         score = 0
         if input["tasks_started"] > 0:
             score += 1
-            positives.append("Inicio de tarea registrado")
+            positives.append("Task start recorded")
         if input["file_change_events"] >= 3 or input["unique_lines_touched"] >= 5:
             score += 2
-            positives.append("Hay ediciones sostenidas en archivos de trabajo")
+            positives.append("There is sustained editing in work files")
         elif input["file_change_events"] > 0:
             score += 1
-            positives.append("Hay cambios propios registrados")
+            positives.append("Own changes are recorded")
         else:
-            concerns.append("No se registran cambios de archivo suficientes")
+            concerns.append("Not enough file changes are recorded")
         if input["files_modified"] > 1:
             score += 1
             positives.append("Trabajo distribuido en mas de un archivo")
@@ -722,16 +722,16 @@ class SubmissionReviewService:
             positives.append("Sesion de trabajo con duracion observable")
         if input["tasks_completed"] > 0:
             score += 1
-            positives.append("Cierre de tarea registrado")
+            positives.append("Task completion recorded")
         if input["student_messages"] > 0 and input["agent_messages"] > 0:
             score += 1
             positives.append("Uso dialogado del agente")
         if input["agent_messages"] > input["student_messages"] * 3 and input["file_change_events"] < 3:
-            concerns.append("Mucha respuesta del agente con poca edicion posterior")
+            concerns.append("Many agent responses with little later editing")
             score -= 1
         if input["heartbeat_gaps"] > 0:
-            concerns.append("Hay pausas largas entre eventos; revisar continuidad")
-        return {"score": max(0, min(6, score)), "level": "alta" if score >= 5 else "media" if score >= 3 else "baja", "positives": positives, "concerns": concerns}
+            concerns.append("There are long pauses between events; review continuity")
+        return {"score": max(0, min(6, score)), "level": "high" if score >= 5 else "medium" if score >= 3 else "low", "positives": positives, "concerns": concerns}
 
     def _group(self, dimension: str, metrics: list[dict]) -> dict:
         return {"dimension": dimension, "metrics": metrics}
@@ -788,11 +788,11 @@ class SubmissionReviewService:
 
     def _pause_detail(self, values: list[float]) -> str:
         if not values:
-            return "Sin pausas calculables."
+            return "No calculable pauses."
         ordered = sorted(values)
         median = ordered[len(ordered) // 2]
         p90 = ordered[min(len(ordered) - 1, int(len(ordered) * 0.9))]
-        return f"mediana {median} min, p90 {p90} min, >5 min: {len([value for value in values if value > 5])}."
+        return f"median {median} min, p90 {p90} min, >5 min: {len([value for value in values if value > 5])}."
 
     def _after_last(self, exports: list[dict], events: list[dict]) -> int:
         last_export = exports[-1]["time"] if exports else None

@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { t } from '../i18n';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { ZipService } from '../services/ZipService';
 import { runCommand } from './commandUtils';
@@ -14,10 +15,10 @@ export function registerExportSubmissionCommand(
 	return vscode.commands.registerCommand(EXPORT_SUBMISSION_COMMAND, () => runCommand(async () => {
 		const snapshot = await activityService.getSnapshot();
 		if (!snapshot) {
-			throw new Error('No hay una actividad cargada.');
+			throw new Error(t('No activity is loaded.'));
 		}
 		if (!snapshot.profile || !snapshot.state) {
-			throw new Error('Debes registrar al estudiante antes de exportar.');
+			throw new Error(t('Register the student before exporting.'));
 		}
 		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 		const destination = await vscode.window.showSaveDialog({
@@ -25,8 +26,8 @@ export function registerExportSubmissionCommand(
 				path.dirname(snapshot.root),
 				`submission-${snapshot.state.activityId}-${snapshot.profile.studentId}-${timestamp}.zip`
 			)),
-			filters: { 'Entrega ZIP': ['zip'] },
-			saveLabel: 'Exportar entrega'
+			filters: { [t('Submission ZIP')]: ['zip'] },
+			saveLabel: t('Export submission')
 		});
 		if (!destination) {
 			return;
@@ -36,7 +37,7 @@ export function registerExportSubmissionCommand(
 			await vscode.window.withProgress(
 				{
 					location: vscode.ProgressLocation.Notification,
-					title: 'Exportando entrega...',
+					title: t('Exporting submission...'),
 					cancellable: false
 				},
 				() => zipService.create(snapshot.root, destination.fsPath)
@@ -44,6 +45,6 @@ export function registerExportSubmissionCommand(
 		} finally {
 			activityService.finishSubmissionExport();
 		}
-		await vscode.window.showInformationMessage(`Entrega exportada en ${destination.fsPath}`);
+		await vscode.window.showInformationMessage(t('Submission exported to {0}', destination.fsPath));
 	}));
 }

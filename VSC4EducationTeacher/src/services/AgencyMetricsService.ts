@@ -124,80 +124,80 @@ export class AgencyMetricsService {
 
     const groups: AgencyMetricGroup[] = [
       this.group("Presencia y continuidad", [
-        this.metric(1, false, "Tiempo total de sesion", this.round(sessionMinutes), "min", "Primer evento hasta ultimo evento.", "Duracion bruta del registro; no equivale por si sola a trabajo efectivo.", sorted.length, "direct"),
-        this.metric(2, true, "Tiempo activo dentro de tareas", this.round(this.sum(taskDurations.map((task) => task.minutes))), "min", this.taskDurationDetail(taskDurations), "Tiempo entre inicio y cierre de tarea, estimado hasta el ultimo evento de la tarea si falta cierre.", taskDurations.length, taskDurations.some((task) => task.estimated) ? "estimated" : "direct"),
-        this.metric(3, true, "Tiempo con actividad observable", this.round(observableMinutes), "min", "Ventanas de 3 minutos con al menos una accion no pasiva.", "Filtra periodos donde solo hay heartbeat o presencia pasiva.", actions.length, "estimated"),
-        this.metric(4, true, "Ratio de actividad efectiva", this.ratio(actions.length, heartbeat), undefined, "Acciones observables divididas por heartbeat.", "Un valor alto sugiere interaccion activa frente a presencia pasiva.", actions.length, "direct")
+        this.metric(1, false, "Total session time", this.round(sessionMinutes), "min", "First event to last event.", "Raw log duration; it does not by itself equal effective work.", sorted.length, "direct"),
+        this.metric(2, true, "Active time inside tasks", this.round(this.sum(taskDurations.map((task) => task.minutes))), "min", this.taskDurationDetail(taskDurations), "Time between task start and finish, estimated until the last task event if finish is missing.", taskDurations.length, taskDurations.some((task) => task.estimated) ? "estimated" : "direct"),
+        this.metric(3, true, "Time with observable activity", this.round(observableMinutes), "min", "Three-minute windows with at least one non-passive action.", "Filters periods with only heartbeat or passive presence.", actions.length, "estimated"),
+        this.metric(4, true, "Effective activity ratio", this.ratio(actions.length, heartbeat), undefined, "Observable actions divided by heartbeat.", "A high value suggests active interaction rather than passive presence.", actions.length, "direct")
       ]),
-      this.group("Intensidad de edicion", [
-        this.metric(5, true, "Densidad de edicion en src", this.ratio(fileChanges.length, observableMinutes), "cambios/min", "Eventos file_changed bajo src/ por minuto observable.", "Densidades extremas requieren revisar si hubo pegado, formato automatico o bloqueo.", fileChanges.length, "estimated"),
-        this.metric(6, true, "Proporcion de cambios efectivos en src", this.percent(effectiveChanges.length, fileChanges.length), "%", "file_changed bajo src/ con changeCount o lineas sobre total file_changed en src/.", "Distingue cambios materiales de ruido tecnico del editor.", effectiveChanges.length, "direct"),
-        this.metric(7, true, "Volumen total de cambios en src", changeVolume, undefined, "Suma de data.changeCount en file_changed bajo src/.", "Volumen bruto; debe interpretarse junto con lineas y ritmo.", fileChanges.length, "direct"),
-        this.metric(8, false, "Lineas afectadas totales en src", totalLineTouches, undefined, "Suma de rangos data.lines en src/.", "Aproxima alcance textual, contando repeticiones.", fileChanges.length, "direct"),
-        this.metric(9, true, "Lineas unicas modificadas en src", uniqueLineCount, undefined, "Lineas archivo:numero distintas en rangos de cambio bajo src/.", "Evita contar varias visitas a la misma linea.", uniqueLineCount, "direct"),
-        this.metric(10, true, "Dispersion de lineas modificadas en src", this.round(this.average(this.lineDispersions(fileChanges))), "lineas", "Promedio por archivo bajo src/ de max(linea)-min(linea)+1.", "Indica si la edicion se reparte o queda localizada.", uniqueLineCount, "estimated")
+      this.group("Editing intensity", [
+        this.metric(5, true, "Editing density in src", this.ratio(fileChanges.length, observableMinutes), "changes/min", "file_changed events under src/ per observable minute.", "Extreme densities require checking whether there was paste, automatic formatting, or blockage.", fileChanges.length, "estimated"),
+        this.metric(6, true, "Share of effective changes in src", this.percent(effectiveChanges.length, fileChanges.length), "%", "file_changed under src/ with changeCount or lines over total file_changed in src/.", "Distinguishes material changes from editor technical noise.", effectiveChanges.length, "direct"),
+        this.metric(7, true, "Total change volume in src", changeVolume, undefined, "Sum of data.changeCount in file_changed under src/.", "Raw volume; interpret alongside lines and pace.", fileChanges.length, "direct"),
+        this.metric(8, false, "Total affected lines in src", totalLineTouches, undefined, "Sum of data.lines ranges in src/.", "Approximates textual scope, counting repetitions.", fileChanges.length, "direct"),
+        this.metric(9, true, "Unique modified lines in src", uniqueLineCount, undefined, "Distinct file:line entries in change ranges under src/.", "Avoids counting repeated visits to the same line.", uniqueLineCount, "direct"),
+        this.metric(10, true, "Modified-line dispersion in src", this.round(this.average(this.lineDispersions(fileChanges))), "lines", "Per-file average under src/ of max(line)-min(line)+1.", "Indicates whether editing is spread out or localized.", uniqueLineCount, "estimated")
       ]),
-      this.group("Relevancia de la intervencion", [
-        this.metric(11, false, "Concentracion de edicion por archivo", this.percent(topFileCount, fileChanges.length), "%", this.topFileDetail(fileChangeDistribution), "Muestra si el esfuerzo se concentra en un archivo dominante.", fileChanges.length, "direct"),
-        this.metric(12, true, "Cobertura de archivos esperados", expectedFiles.size ? this.percent(expectedTouched.length, expectedFiles.size) : "n/d", expectedFiles.size ? "%" : undefined, expectedFiles.size ? `${expectedTouched.length}/${expectedFiles.size} archivos de tareas modificados.` : "El manifiesto no declara task.file para estimar cobertura.", "Una cobertura baja puede ser incompletitud o una estrategia alternativa valida.", expectedTouched.length, expectedFiles.size ? "direct" : "limited"),
-        this.metric(13, true, "Actividad fuera de src o no esperada", outsideSrcEvents.length + this.nonExpectedEvents(workFileEvents, expectedFiles).length, undefined, "Acciones sobre rutas fuera de src/ o fuera de task.file cuando existe esa lista.", "Indicador de revision contextual; no suma como trabajo efectivo.", outsideSrcEvents.length, expectedFiles.size ? "estimated" : "limited")
+      this.group("Intervention relevance", [
+        this.metric(11, false, "Editing concentration by file", this.percent(topFileCount, fileChanges.length), "%", this.topFileDetail(fileChangeDistribution), "Shows whether effort is concentrated in one dominant file.", fileChanges.length, "direct"),
+        this.metric(12, true, "Expected file coverage", expectedFiles.size ? this.percent(expectedTouched.length, expectedFiles.size) : "n/d", expectedFiles.size ? "%" : undefined, expectedFiles.size ? `${expectedTouched.length}/${expectedFiles.size} task files modified.` : "The manifest does not declare task.file to estimate coverage.", "Low coverage may indicate incompleteness or a valid alternative strategy.", expectedTouched.length, expectedFiles.size ? "direct" : "limited"),
+        this.metric(13, true, "Activity outside src or not expected", outsideSrcEvents.length + this.nonExpectedEvents(workFileEvents, expectedFiles).length, undefined, "Actions on paths outside src/ or outside task.file when that list exists.", "Contextual review indicator; it does not count as effective work.", outsideSrcEvents.length, expectedFiles.size ? "estimated" : "limited")
       ]),
-      this.group("Exploracion y toma de decisiones", [
-        this.metric(14, true, "Numero de archivos creados", created.length, undefined, "count(file_created).", "Crear archivos puede indicar exploracion, estructuracion o pruebas alternativas.", created.length, "direct"),
-        this.metric(15, true, "Creacion de variantes o copias", created.filter((event) => event.file && VARIANT_PATTERN.test(event.file)).length, undefined, "file_created con nombres tipo copy, copia, backup, old, v2, final o prueba.", "Puede senalar exploracion o incertidumbre segun volumen y contexto.", created.length, "estimated"),
-        this.metric(16, false, "Numero de archivos eliminados", deleted.length, undefined, "count(file_deleted).", "Puede reflejar limpieza o descarte; revisar si afecta a archivos protegidos.", deleted.length, "direct")
+      this.group("Exploration and decision making", [
+        this.metric(14, true, "Number of created files", created.length, undefined, "count(file_created).", "Creating files may indicate exploration, structuring, or alternative tests.", created.length, "direct"),
+        this.metric(15, true, "Variant or copy creation", created.filter((event) => event.file && VARIANT_PATTERN.test(event.file)).length, undefined, "file_created with names like copy, copia, backup, old, v2, final, or prueba.", "May signal exploration or uncertainty depending on volume and context.", created.length, "estimated"),
+        this.metric(16, false, "Number of deleted files", deleted.length, undefined, "count(file_deleted).", "May reflect cleanup or discard; review whether it affects protected files.", deleted.length, "direct")
       ]),
-      this.group("Gestion del proceso", [
-        this.metric(18, true, "Guardados por tarea", this.round(this.averageByTask(saves)), undefined, this.mapDetail(this.countBy(saves, (event) => event.taskId ?? "outside task")), "Muchos guardados pueden indicar ciclos incrementales; cero puede depender de autoguardado.", saves.length, "direct"),
-        this.metric(19, true, "Ratio cambios por guardado", this.ratio(effectiveChanges.length, saves.length), undefined, "file_changed efectivos dividido por file_saved.", "Relaciona edicion con persistencia.", effectiveChanges.length + saves.length, "direct"),
-        this.metric(20, true, "Tiempo hasta el primer cambio", this.round(this.firstLatency(taskStarts, fileChanges)), "min", "Primer file_changed posterior a task_started.", "Latencia alta puede ser lectura, planificacion o bloqueo.", fileChanges.length, taskStarts.length ? "direct" : "limited"),
-        this.metric(21, false, "Tiempo hasta el primer guardado", this.round(this.firstLatency(taskStarts, saves)), "min", "Primer file_saved posterior a task_started.", "Indica primer hito persistido cuando hay guardados explicitos.", saves.length, taskStarts.length ? "direct" : "limited"),
-        this.metric(25, false, "Finalizacion explicita de tareas", this.percent(taskFinishes.length, taskStarts.length), "%", `${taskFinishes.length}/${Math.max(1, taskStarts.length)} tareas iniciadas tienen cierre.`, "Senal de control del flujo pedagogico.", taskStarts.length + taskFinishes.length, "direct"),
-        this.metric(26, false, "Duracion relativa por tarea", this.taskShare(taskDurations), undefined, "Porcentaje del tiempo de tarea por taskId.", "Detecta desequilibrios o tareas cerradas sin tiempo observable.", taskDurations.length, taskDurations.some((task) => task.estimated) ? "estimated" : "direct"),
-        this.metric(27, false, "Actividad por tarea", this.mapDetail(actionsByTask), undefined, "Acciones agrupadas por taskId.", "Tareas con cierre formal pero sin accion visible requieren revision.", actions.length, "direct"),
-        this.metric(28, false, "Cambios posteriores a la finalizacion de tarea", changesAfterFinish, undefined, "file_changed posteriores a task_finished/task_completed del mismo taskId.", "Puede indicar revision posterior o desalineacion del flujo.", changesAfterFinish, "estimated"),
-        this.metric(29, false, "Actividad fuera de tarea", this.percent(offTaskAfterStart.offTask, offTaskAfterStart.total), "%", `${offTaskAfterStart.offTask}/${Math.max(1, offTaskAfterStart.total)} eventos accionables tras iniciar tareas no tienen taskId.`, "Ayuda a reconstruir trabajo libre o fuera del tracker.", offTaskAfterStart.offTask, "direct")
+      this.group("Process management", [
+        this.metric(18, true, "Saves per task", this.round(this.averageByTask(saves)), undefined, this.mapDetail(this.countBy(saves, (event) => event.taskId ?? "outside task")), "Many saves may indicate incremental cycles; zero may depend on autosave.", saves.length, "direct"),
+        this.metric(19, true, "Changes per save ratio", this.ratio(effectiveChanges.length, saves.length), undefined, "Effective file_changed divided by file_saved.", "Relates editing to persistence.", effectiveChanges.length + saves.length, "direct"),
+        this.metric(20, true, "Time to first change", this.round(this.firstLatency(taskStarts, fileChanges)), "min", "First file_changed after task_started.", "High latency may be reading, planning, or blockage.", fileChanges.length, taskStarts.length ? "direct" : "limited"),
+        this.metric(21, false, "Time to first save", this.round(this.firstLatency(taskStarts, saves)), "min", "First file_saved after task_started.", "Indicates the first persisted milestone when explicit saves exist.", saves.length, taskStarts.length ? "direct" : "limited"),
+        this.metric(25, false, "Explicit task completion", this.percent(taskFinishes.length, taskStarts.length), "%", `${taskFinishes.length}/${Math.max(1, taskStarts.length)} started tasks have a completion.`, "Signal of pedagogical flow control.", taskStarts.length + taskFinishes.length, "direct"),
+        this.metric(26, false, "Relative duration by task", this.taskShare(taskDurations), undefined, "Percentage of task time by taskId.", "Detects imbalances or tasks closed without observable time.", taskDurations.length, taskDurations.some((task) => task.estimated) ? "estimated" : "direct"),
+        this.metric(27, false, "Activity by task", this.mapDetail(actionsByTask), undefined, "Actions grouped by taskId.", "Tasks with formal completion but no visible action require review.", actions.length, "direct"),
+        this.metric(28, false, "Changes after task completion", changesAfterFinish, undefined, "file_changed after task_finished/task_completed for the same taskId.", "May indicate later revision or flow misalignment.", changesAfterFinish, "estimated"),
+        this.metric(29, false, "Activity outside task", this.percent(offTaskAfterStart.offTask, offTaskAfterStart.total), "%", `${offTaskAfterStart.offTask}/${Math.max(1, offTaskAfterStart.total)} actionable events after starting tasks do not have taskId.`, "Helps reconstruct free work or work outside the tracker.", offTaskAfterStart.offTask, "direct")
       ]),
-      this.group("Control de entrega", [
-        this.metric(22, false, "Latencia entre ultimo cambio y entrega", this.round(this.lastChangeToExportLatency(fileChanges, exports)), "min", "submission_exported menos ultimo file_changed anterior.", "Margen de revision antes de entregar.", exports.length, exports.length && fileChanges.length ? "direct" : "limited"),
-        this.metric(23, false, "Numero de exportaciones de entrega", exports.length, undefined, "count(submission_exported).", "Varias exportaciones pueden indicar iteracion o pruebas administrativas.", exports.length, "direct"),
-        this.metric(24, true, "Actividad entre exportaciones", this.activityBetweenExports(events, exports), undefined, "Acciones entre pares consecutivos de submission_exported.", "Cambios entre exportaciones sugieren refinamiento posterior.", exports.length, exports.length > 1 ? "direct" : "limited"),
-        this.metric(30, true, "Cambios posteriores a la entrega", changesAfterExport, undefined, "Cambios, guardados o creaciones tras la ultima exportacion registrada.", "Puede indicar que la ultima version del workspace no coincide con la entrega exportada.", changesAfterExport, exports.length ? "direct" : "limited"),
-        this.metric(31, false, "Secuencia edicion-guardado-finalizacion-exportacion", this.percent(sequenceScore, 1), "%", "Comprueba que existan cambios antes de guardado, cierre y exportacion en orden.", "Secuencia ordenada sugiere control del proceso.", actions.length, "estimated"),
-        this.metric(50, false, "Indice de trazabilidad de la entrega", this.percent(traceabilityScore, 1), "%", "Combina archivos cambiados, guardados, cierres, exportacion e integridad hash.", "Resume cuan explicable es la entrega final desde el log.", events.length, "estimated")
+      this.group("Submission control", [
+        this.metric(22, false, "Latency between last change and submission", this.round(this.lastChangeToExportLatency(fileChanges, exports)), "min", "submission_exported minus previous last file_changed.", "Review margin before submitting.", exports.length, exports.length && fileChanges.length ? "direct" : "limited"),
+        this.metric(23, false, "Number of submission exports", exports.length, undefined, "count(submission_exported).", "Multiple exports may indicate iteration or administrative testing.", exports.length, "direct"),
+        this.metric(24, true, "Activity between exports", this.activityBetweenExports(events, exports), undefined, "Actions between consecutive submission_exported pairs.", "Changes between exports suggest later refinement.", exports.length, exports.length > 1 ? "direct" : "limited"),
+        this.metric(30, true, "Changes after submission", changesAfterExport, undefined, "Changes, saves, or creations after the last recorded export.", "May indicate that the latest workspace version does not match the exported submission.", changesAfterExport, exports.length ? "direct" : "limited"),
+        this.metric(31, false, "Edit-save-complete-export sequence", this.percent(sequenceScore, 1), "%", "Checks that changes exist before save, completion, and export in order.", "Ordered sequence suggests process control.", actions.length, "estimated"),
+        this.metric(50, false, "Submission traceability index", this.percent(traceabilityScore, 1), "%", "Combines changed files, saves, completions, exports, and hash integrity.", "Summarizes how explainable the final submission is from the log.", events.length, "estimated")
       ]),
-      this.group("Patrones de edicion", [
-        this.metric(32, false, "Cambios masivos repentinos", massiveChanges.length, undefined, "file_changed con mas de 20 lineas o changeCount mayor a 20.", "Senal para revisar pegado, formateo, generacion o reemplazos amplios.", massiveChanges.length, "estimated"),
-        this.metric(33, false, "Indice de edicion incremental", this.percent(incrementalChanges.length, effectiveChanges.length), "%", "Cambios pequenos sobre cambios efectivos.", "Compatible con construccion paso a paso cuando es alto.", incrementalChanges.length, "estimated"),
-        this.metric(34, false, "Ritmo de edicion por ventanas temporales", this.windowDetail(changeWindows), undefined, "file_changed agrupado por ventanas de 1 minuto.", "Picos breves e intensos merecen revision contextual.", fileChanges.length, "estimated"),
-        this.metric(35, false, "Pausas entre acciones activas", this.pauseDetail(activePauses), undefined, "Diferencias entre acciones no-heartbeat.", "Las pausas pueden ser lectura, consulta, bloqueo o trabajo externo.", activePauses.length, "direct")
+      this.group("Editing patterns", [
+        this.metric(32, false, "Sudden massive changes", massiveChanges.length, undefined, "file_changed with more than 20 lines or changeCount greater than 20.", "Signal to review paste, formatting, generation, or broad replacements.", massiveChanges.length, "estimated"),
+        this.metric(33, false, "Incremental editing index", this.percent(incrementalChanges.length, effectiveChanges.length), "%", "Small changes over effective changes.", "Compatible with step-by-step construction when high.", incrementalChanges.length, "estimated"),
+        this.metric(34, false, "Editing pace by time windows", this.windowDetail(changeWindows), undefined, "file_changed grouped into one-minute windows.", "Brief intense peaks deserve contextual review.", fileChanges.length, "estimated"),
+        this.metric(35, false, "Pauses between active actions", this.pauseDetail(activePauses), undefined, "Differences between non-heartbeat actions.", "Pauses may be reading, consultation, blockage, or external work.", activePauses.length, "direct")
       ]),
-      this.group("Exploracion y lectura", [
-        this.metric(36, false, "Alternancia lectura-edicion", readEditCycles, undefined, "active_editor_changed seguido por file_changed del mismo archivo en menos de 10 minutos.", "Sugiere lectura o inspeccion antes de editar.", readEditCycles, "estimated"),
-        this.metric(37, true, "Numero de archivos consultados", filesConsulted.size, undefined, "Archivos distintos en active_editor_changed.", "Mide amplitud de exploracion del proyecto.", filesConsulted.size, "direct"),
-        this.metric(38, false, "Ratio archivos consultados sobre modificados", this.ratio(filesConsulted.size, filesChanged.size), undefined, "Archivos consultados dividido por archivos modificados.", "Valores altos sugieren busqueda de contexto o exploracion dispersa.", filesConsulted.size + filesChanged.size, "direct")
+      this.group("Exploration and reading", [
+        this.metric(36, false, "Read-edit alternation", readEditCycles, undefined, "active_editor_changed followed by file_changed in the same file within 10 minutes.", "Suggests reading or inspection before editing.", readEditCycles, "estimated"),
+        this.metric(37, true, "Number of consulted files", filesConsulted.size, undefined, "Distinct files in active_editor_changed.", "Measures breadth of project exploration.", filesConsulted.size, "direct"),
+        this.metric(38, false, "Consulted-to-modified files ratio", this.ratio(filesConsulted.size, filesChanged.size), undefined, "Consulted files divided by modified files.", "High values suggest context search or dispersed exploration.", filesConsulted.size + filesChanged.size, "direct")
       ]),
-      this.group("Iteracion y refinamiento", [
-        this.metric(39, false, "Reapertura de archivos modificados", reopenCount, undefined, "Vuelta a archivos ya editados tras foco en otros archivos.", "Compatible con revision, depuracion o refinamiento.", reopenCount, "estimated"),
-        this.metric(40, true, "Profundidad de refinamiento por archivo", this.refinementDetail(refinementBlocks), undefined, "Bloques separados de edicion por archivo.", "Varios ciclos sobre el mismo archivo sugieren iteracion.", fileChanges.length, "estimated"),
-        this.metric(41, false, "Revision de mismas lineas", this.percent(lineRepeats, uniqueLineCount), "%", "Lineas unicas tocadas dos o mas veces.", "Puede indicar ajuste conceptual, depuracion o dificultad localizada.", lineRepeats, "direct")
+      this.group("Iteration and refinement", [
+        this.metric(39, false, "Reopening modified files", reopenCount, undefined, "Return to already edited files after focusing other files.", "Compatible with review, debugging, or refinement.", reopenCount, "estimated"),
+        this.metric(40, true, "Refinement depth by file", this.refinementDetail(refinementBlocks), undefined, "Separate editing blocks by file.", "Multiple cycles on the same file suggest iteration.", fileChanges.length, "estimated"),
+        this.metric(41, false, "Same-line revision", this.percent(lineRepeats, uniqueLineCount), "%", "Unique lines touched two or more times.", "May indicate conceptual adjustment, debugging, or localized difficulty.", lineRepeats, "direct")
       ]),
-      this.group("Validacion y pruebas", [
-        this.metric(43, false, "Actividad sobre tests", testActivity.length, undefined, "Acciones sobre rutas de tests o archivos *.test/*.spec/test_*.py.", "Indica trabajo orientado a comprobar la solucion cuando aplica.", testActivity.length, "estimated"),
-        this.metric(44, false, "Actividad asociada a tarea de pruebas", testingTaskActivity.length, undefined, "Acciones en taskId relacionado con pruebas o validacion.", "Mide actividad visible en tareas de verificacion.", testingTaskActivity.length, "estimated")
+      this.group("Validation and testing", [
+        this.metric(43, false, "Activity on tests", testActivity.length, undefined, "Actions on test paths or *.test/*.spec/test_*.py files.", "Indicates work aimed at checking the solution when applicable.", testActivity.length, "estimated"),
+        this.metric(44, false, "Activity associated with a testing task", testingTaskActivity.length, undefined, "Actions in taskId related to testing or validation.", "Measures visible activity in verification tasks.", testingTaskActivity.length, "estimated")
       ]),
-      this.group("Autonomia frente al sistema", [
-        this.metric(17, false, "Restauraciones automaticas del sistema", this.count(events, "agents_file_restored"), undefined, "count(agents_file_restored).", "Valores altos sugieren conflicto con archivos gestionados o reglas del entorno.", this.count(events, "agents_file_restored"), "direct"),
-        this.metric(45, false, "Indice de autonomia de edicion", this.percent(this.autonomyActions(events), Math.max(1, events.length - heartbeat)), "%", "Acciones directas observables sobre eventos no-heartbeat.", "Separa interaccion humana observable de ruido sistemico.", events.length, "estimated"),
-        this.metric(46, false, "Indice de dependencia sistemica", this.percent(systemicEvents.length, events.length), "%", "Heartbeat, restauraciones, protegidos o cambios sin efecto sobre total eventos.", "Si es alto, conviene filtrar antes de interpretar agencia.", systemicEvents.length, "estimated")
+      this.group("Autonomy versus system", [
+        this.metric(17, false, "Automatic system restorations", this.count(events, "agents_file_restored"), undefined, "count(agents_file_restored).", "High values suggest conflict with managed files or environment rules.", this.count(events, "agents_file_restored"), "direct"),
+        this.metric(45, false, "Editing autonomy index", this.percent(this.autonomyActions(events), Math.max(1, events.length - heartbeat)), "%", "Direct observable actions over non-heartbeat events.", "Separates observable human interaction from systemic noise.", events.length, "estimated"),
+        this.metric(46, false, "Systemic dependency index", this.percent(systemicEvents.length, events.length), "%", "Heartbeat, restorations, protected files, or no-effect changes over total events.", "If high, filter before interpreting agency.", systemicEvents.length, "estimated")
       ]),
-      this.group("Integridad y cumplimiento", [
-        this.metric(47, false, "Secuencias sospechosas sobre archivos protegidos", protectedEditSequences.length, undefined, this.protectedEditDetail(protectedEditSequences), "Apertura de archivo protegido seguida por cambio/guardado dentro de una ventana sospechosa. Indicador de revision, nunca acusacion automatica.", protectedEditSequences.length, "estimated"),
-        this.metric(48, true, "Integridad de la cadena hash", hashDiscontinuities === 0 ? "continua" : `${hashDiscontinuities} discontinuidades`, undefined, "Comprueba previousHash contra hash anterior.", "Afecta la confianza en la trazabilidad del log.", contribution.events.length, "direct"),
-        this.metric(49, false, "Discontinuidades temporales", temporalGaps, undefined, "Pausas de 15 minutos o mas entre acciones no-heartbeat.", "Ayuda a no sobreinterpretar ausencia de eventos.", temporalGaps, "direct")
+      this.group("Integrity and compliance", [
+        this.metric(47, false, "Suspicious sequences on protected files", protectedEditSequences.length, undefined, this.protectedEditDetail(protectedEditSequences), "Protected file opening followed by change/save within a suspicious window. Review indicator, never an automatic accusation.", protectedEditSequences.length, "estimated"),
+        this.metric(48, true, "Hash chain integrity", hashDiscontinuities === 0 ? "continuous" : `${hashDiscontinuities} discontinuities`, undefined, "Checks previousHash against the previous hash.", "Affects confidence in log traceability.", contribution.events.length, "direct"),
+        this.metric(49, false, "Temporal discontinuities", temporalGaps, undefined, "Pauses of 15 minutes or more between non-heartbeat actions.", "Helps avoid overinterpreting absence of events.", temporalGaps, "direct")
       ]),
-      this.group("Relevancia avanzada", [
-        this.metric(42, false, "Cambios distribuidos en zonas funcionales", this.functionalZones(fileChanges), undefined, "Estimacion por zonas de 50 lineas; no parsea semantica del codigo.", "Aproxima distribucion funcional cuando no hay analizador de lenguaje.", uniqueLineCount, "limited")
+      this.group("Advanced relevance", [
+        this.metric(42, false, "Changes distributed across functional zones", this.functionalZones(fileChanges), undefined, "Estimate by 50-line zones; does not parse code semantics.", "Approximates functional distribution when no language analyzer is available.", uniqueLineCount, "limited")
       ])
     ];
 
@@ -228,26 +228,26 @@ export class AgencyMetricsService {
     };
 
     const dimensions = [
-      dimension("Continuidad", 20, [
+      dimension("Continuity", 20, [
         [this.cap(value(2), 30), this.evidence(metric(2))],
         [this.cap(value(3), 30), this.evidence(metric(3))],
         [this.cap(value(4), 1), this.evidence(metric(4))],
         [this.inverseCount(value(49), 3), this.evidence(metric(49))]
       ]),
-      dimension("Edicion efectiva", 25, [
+      dimension("Effective editing", 25, [
         [this.percentScore(value(6)), this.evidence(metric(6))],
         [this.cap(value(9), 20), this.evidence(metric(9))],
         [this.cap(value(7), 30), this.evidence(metric(7))],
         [this.band(value(5), 0.1, 4), this.evidence(metric(5))],
         [this.percentScore(value(33)), this.evidence(metric(33))]
       ]),
-      dimension("Relevancia", 20, [
+      dimension("Relevance", 20, [
         [this.percentOrNeutral(metric(12)), this.evidence(metric(12))],
         [this.inverseCount(value(13), 8), this.evidence(metric(13))],
         [this.inversePercent(value(11), 100), this.evidence(metric(11))],
         [this.cap(this.leadingNumber(metric(42)?.value), 4), this.evidence(metric(42))]
       ]),
-      dimension("Gestion del proceso", 15, [
+      dimension("Process management", 15, [
         [this.cap(value(18), 3), this.evidence(metric(18))],
         [this.band(value(19), 0.5, 8), this.evidence(metric(19))],
         [this.percentScore(value(25)), this.evidence(metric(25))],
@@ -255,14 +255,14 @@ export class AgencyMetricsService {
         [this.percentScore(value(31)), this.evidence(metric(31))],
         [this.percentScore(value(50)), this.evidence(metric(50))]
       ]),
-      dimension("Iteracion y refinamiento", 10, [
+      dimension("Iteration and refinement", 10, [
         [this.cap(value(36), 4), this.evidence(metric(36))],
         [this.cap(value(37), 5), this.evidence(metric(37))],
         [this.cap(value(39), 3), this.evidence(metric(39))],
         [this.cap(this.maxNumber(metric(40)?.value), 4), this.evidence(metric(40))],
         [this.band(value(41), 5, 45), this.evidence(metric(41))]
       ]),
-      dimension("Validacion y entrega", 10, [
+      dimension("Validation and submission", 10, [
         [this.cap(value(43), 3), this.evidence(metric(43))],
         [this.cap(value(44), 3), this.evidence(metric(44))],
         [this.band(value(22), 1, 60), this.evidence(metric(22))],
@@ -296,11 +296,11 @@ export class AgencyMetricsService {
   private agencyLevel(
     score: number
   ): ObservableAgencyAssessment["level"] {
-    if (score >= 85) return "muy alta";
-    if (score >= 65) return "alta";
-    if (score >= 40) return "media";
-    if (score >= 15) return "baja";
-    return "insuficiente";
+    if (score >= 85) return "very high";
+    if (score >= 65) return "high";
+    if (score >= 40) return "medium";
+    if (score >= 15) return "low";
+    return "insufficient";
   }
 
   private confidence(metrics: AgencyMetric[]): ObservableAgencyAssessment["confidence"] {
@@ -308,9 +308,9 @@ export class AgencyMetricsService {
     const limited = metrics.filter((metric) => metric.reliability === "limited").length;
     const direct = metrics.filter((metric) => metric.reliability === "direct").length;
     const hash = metrics.find((metric) => metric.id === 48)?.value;
-    if (evidence >= 30 && direct >= limited && hash === "continua") return "alta";
-    if (evidence >= 10 && limited < metrics.length / 2) return "media";
-    return "limitada";
+    if (evidence >= 30 && direct >= limited && hash === "continuous") return "high";
+    if (evidence >= 10 && limited < metrics.length / 2) return "medium";
+    return "limited";
   }
 
   private penalty(metrics: Map<number, AgencyMetric>): number {
@@ -323,7 +323,7 @@ export class AgencyMetricsService {
     const systemic = value(46);
     if (systemic !== undefined && systemic > 50) penalty += 8;
     const integrity = metrics.get(48)?.value;
-    if (typeof integrity === "string" && integrity !== "continua") penalty += 10;
+    if (typeof integrity === "string" && integrity !== "continuous") penalty += 10;
     return penalty;
   }
 
@@ -339,12 +339,12 @@ export class AgencyMetricsService {
       .forEach((dimension) =>
         flags.push(`${dimension.name} con evidencia debil (${dimension.score}/100)`)
       );
-    if ((value(30) ?? 0) > 0) flags.push("Hay cambios posteriores a la entrega registrada");
-    if ((value(32) ?? 0) > 0) flags.push("Hay cambios masivos repentinos para revisar en contexto");
-    if ((value(47) ?? 0) > 0) flags.push("Hay actividad sobre archivos protegidos o internos");
-    if ((value(49) ?? 0) > 0) flags.push("Hay discontinuidades temporales relevantes");
+    if ((value(30) ?? 0) > 0) flags.push("There are changes after the recorded submission");
+    if ((value(32) ?? 0) > 0) flags.push("There are sudden massive changes to review in context");
+    if ((value(47) ?? 0) > 0) flags.push("There is activity on protected or internal files");
+    if ((value(49) ?? 0) > 0) flags.push("There are relevant temporal discontinuities");
     const integrity = metrics.get(48)?.value;
-    if (typeof integrity === "string" && integrity !== "continua") {
+    if (typeof integrity === "string" && integrity !== "continuous") {
       flags.push("La cadena hash no es continua");
     }
     if (penalty > 0) flags.push(`Penalizacion contextual aplicada: ${this.round(penalty)} puntos`);
@@ -352,7 +352,7 @@ export class AgencyMetricsService {
   }
 
   private evidence(metric: AgencyMetric | undefined): string {
-    if (!metric) return "Metrica no disponible.";
+    if (!metric) return "Metric not available.";
     const unit = metric.unit ? ` ${metric.unit}` : "";
     return `${metric.name}: ${metric.value}${unit}`;
   }
@@ -629,12 +629,12 @@ export class AgencyMetricsService {
   }
 
   private mapDetail(values: Map<string, number>): string {
-    return Array.from(values.entries()).map(([key, value]) => `${key}: ${value}`).join("; ") || "Sin eventos.";
+    return Array.from(values.entries()).map(([key, value]) => `${key}: ${value}`).join("; ") || "No events.";
   }
 
   private taskShare(values: { taskId: string; minutes: number }[]): string {
     const total = Math.max(1, this.sum(values.map((item) => item.minutes)));
-    return values.length ? values.map((item) => `${item.taskId}: ${this.percent(item.minutes, total)}%`).join("; ") : "Sin duraciones de tarea.";
+    return values.length ? values.map((item) => `${item.taskId}: ${this.percent(item.minutes, total)}%`).join("; ") : "No task durations.";
   }
 
   private changesAfterTaskFinish(changes: EventView[], finishes: EventView[]): number {
@@ -686,7 +686,7 @@ export class AgencyMetricsService {
   }
 
   private windowDetail(values: number[]): string {
-    return values.length ? `media ${this.round(this.average(values))}, maximo ${Math.max(...values)} cambios/min.` : "Sin file_changed con timestamp.";
+    return values.length ? `average ${this.round(this.average(values))}, maximum ${Math.max(...values)} changes/min.` : "No file_changed events with timestamps.";
   }
 
   private pauses(events: EventView[]): number[] {
@@ -699,11 +699,11 @@ export class AgencyMetricsService {
   }
 
   private pauseDetail(values: number[]): string {
-    if (!values.length) return "Sin pausas calculables.";
+    if (!values.length) return "No calculable pauses.";
     const sorted = [...values].sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length / 2)];
     const p90 = sorted[Math.floor(sorted.length * 0.9)] ?? sorted[sorted.length - 1];
-    return `mediana ${median} min, p90 ${p90} min, >5 min: ${values.filter((value) => value > 5).length}.`;
+    return `median ${median} min, p90 ${p90} min, >5 min: ${values.filter((value) => value > 5).length}.`;
   }
 
   private readEditCycles(events: EventView[]): number {
@@ -755,7 +755,7 @@ export class AgencyMetricsService {
 
   private refinementDetail(blocks: Map<string, number>): string {
     const values = Array.from(blocks.values());
-    return values.length ? `media ${this.round(this.average(values))}, maximo ${Math.max(...values)} ciclos por archivo.` : "Sin ciclos de edicion.";
+    return values.length ? `average ${this.round(this.average(values))}, maximum ${Math.max(...values)} cycles per file.` : "No editing cycles.";
   }
 
   private autonomyActions(events: EventView[]): number {

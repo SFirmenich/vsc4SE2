@@ -1,0 +1,17 @@
+{
+  "extension.displayName": "Learning Activity Tracker - Estudiante",
+  "extension.description": "Carga actividades de programación, registra el trabajo del estudiante, gestiona evidencia Git y genera contexto local para agentes de IA.",
+  "command.loadFromZip": "Learning Activity: Cargar actividad desde ZIP",
+  "command.loadFromUrl": "Learning Activity: Cargar actividad desde URL",
+  "command.openPanel": "Learning Activity: Abrir panel del estudiante",
+  "command.registerStudent": "Learning Activity: Registrar estudiante",
+  "command.startTask": "Learning Activity: Empezar tarea",
+  "command.finishTask": "Learning Activity: Terminar tarea",
+  "command.exportSubmission": "Learning Activity: Exportar entrega",
+  "configuration.title": "Learning Activity Tracker",
+  "configuration.heartbeatIntervalSeconds": "Intervalo, en segundos, entre eventos heartbeat.",
+  "configuration.autoOpenPanelAfterLoad": "Abre automaticamente el panel despues de cargar una actividad.",
+  "configuration.enableGitIntegration": "Inicializa y gestiona un repositorio Git local para la actividad.",
+  "configuration.trackTextChanges": "Registra metadatos de cambios de texto sin guardar su contenido.",
+  "configuration.trackTerminalOpen": "Registra la apertura de terminales integrados."
+}

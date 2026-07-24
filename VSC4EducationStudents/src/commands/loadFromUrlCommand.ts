@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { t } from '../i18n';
 import { ActivityLoader } from '../services/ActivityLoader';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { ZipService } from '../services/ZipService';
@@ -18,16 +19,16 @@ export function registerLoadFromUrlCommand(
 ): vscode.Disposable {
 	return vscode.commands.registerCommand(LOAD_FROM_URL_COMMAND, () => runCommand(async () => {
 		const url = await vscode.window.showInputBox({
-			prompt: 'URL HTTPS/HTTP del archivo ZIP de la actividad',
-			placeHolder: 'https://example.org/actividad.zip',
+			prompt: t('HTTP/HTTPS URL for the activity ZIP file'),
+			placeHolder: 'https://example.org/activity.zip',
 			validateInput: value => {
 				try {
 					const parsed = new URL(value);
 					return ['http:', 'https:'].includes(parsed.protocol)
 						? undefined
-						: 'La URL debe usar HTTP o HTTPS.';
+						: t('The URL must use HTTP or HTTPS.');
 				} catch {
-					return 'Introduce una URL válida.';
+					return t('Enter a valid URL.');
 				}
 			}
 		});
@@ -41,7 +42,7 @@ export function registerLoadFromUrlCommand(
 			await vscode.window.withProgress(
 				{
 					location: vscode.ProgressLocation.Notification,
-					title: 'Descargando actividad...',
+					title: t('Downloading activity...'),
 					cancellable: false
 				},
 				() => zipService.download(url, zipPath)
