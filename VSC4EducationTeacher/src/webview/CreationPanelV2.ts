@@ -39,6 +39,18 @@ interface EventServerConfigurationPayload {
   requireReceipts?: boolean;
 }
 
+type UtilityPromptId =
+  | "tasksFromImports"
+  | "theoryFromImports"
+  | "solutionsForTasks"
+  | "rubricsForTasks"
+  | "reviewManifest"
+  | "acceptanceCriteria"
+  | "alignTasksWithTheory"
+  | "migrateLegacyMaterial"
+  | "starterDirectoriesPerExercise"
+  | "polishActivityLanguage";
+
 export class CreationPanelV2 {
   private static current: CreationPanelV2 | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -180,6 +192,7 @@ export class CreationPanelV2 {
     path?: string;
     kind?: "task" | "theory" | "rubric";
     importKind?: LegacyImportKind;
+    promptId?: UtilityPromptId;
     configuration?: EventServerConfigurationPayload;
   }): Promise<void> {
     try {
@@ -210,6 +223,9 @@ export class CreationPanelV2 {
           break;
         case "copyMigrationPrompt":
           await this.copyMigrationPrompt();
+          break;
+        case "copyUtilityPrompt":
+          if (message.promptId) await this.copyUtilityPrompt(message.promptId);
           break;
         case "addTask":
           await this.addNextTask();
@@ -453,6 +469,12 @@ export class CreationPanelV2 {
     await this.panel.webview.postMessage({ type: "ready" });
   }
 
+  private async copyUtilityPrompt(promptId: UtilityPromptId): Promise<void> {
+    await vscode.env.clipboard.writeText(this.utilityPrompt(promptId));
+    void vscode.window.showInformationMessage("Utility prompt copied to clipboard");
+    await this.panel.webview.postMessage({ type: "ready" });
+  }
+
   private migrationPrompt(): string {
     return `You are helping me migrate legacy teaching material into a VSCode4Education teacher activity project.
 
@@ -463,6 +485,271 @@ Use the files under imports/ as source material only:
 - imports/practice/ contains legacy practice statements, exercises, examples, tests, solutions, or assignment material.
 
 Create or update the canonical activity files from that material while preserving the VSCode4Education compatibility contract.`;
+  }
+
+  private utilityPrompt(promptId: UtilityPromptId): string {
+    const root = this.requireActivityRoot();
+    const context = this.utilityPromptContext(root);
+    switch (promptId) {
+      case "tasksFromImports":
+        return `${context}
+
+Task: create learning activity tasks from scratch based on the imported material.
+
+Use these sources:
+- imports/practice/ as the primary source for exercises, assignment statements, examples, tests, constraints, and grading notes.
+- imports/theory/ as supporting context for concepts, vocabulary, sequencing, and expected prior knowledge.
+- manifest.json to understand the current activity id, title, version, and any existing task IDs.
+
+Expected results:
+- Create or update Markdown task files under tasks/.
+- Update manifest.json so manifest.tasks contains one entry for each task.
+- Every task must have a stable id, clear title, relative file path, dependencies, acceptanceCriteria, and expectedEvidence.
+- Use task IDs like task-01, task-02, etc. unless the existing manifest already uses a different stable convention.
+- Make the tasks progressive: each task should be achievable, assessable, and aligned with the imported material.
+- If you infer dependencies, declare them explicitly in manifest.tasks[*].dependencies.
+
+Constraints:
+- Do not put private solutions or grading rubrics in tasks/.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- Preserve the VSCode4Education activity format. Student-facing tasks must not reveal complete solutions.
+- After editing, briefly report which files you changed and any assumptions you made.`;
+      case "theoryFromImports":
+        return `${context}
+
+Task: create student-facing theory files from scratch based on the imported material.
+
+Use these sources:
+- imports/theory/ as the primary source for explanations, definitions, examples, slides, notes, and references.
+- imports/practice/ as context for what the theory must prepare students to do.
+- manifest.json and tasks/ to understand the expected learning sequence.
+
+Expected results:
+- Create Markdown theory files under theory/.
+- Structure the material into short, readable files with clear headings and examples.
+- Keep the theory aligned with the task progression, but do not include complete task solutions.
+- If a task needs prerequisite concepts, make sure those concepts are covered before the task would be attempted.
+- Use filenames that are stable, descriptive, and safe relative paths.
+
+Constraints:
+- Do not overwrite useful existing theory files without preserving their intent.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- Keep the content student-facing: clear, helpful, and pedagogical, without private grading notes.
+- After editing, summarize the theory files created or updated and how they map to the tasks.`;
+      case "solutionsForTasks":
+        return `${context}
+
+Task: create private reference solutions for the tasks in the assessment folder.
+
+Use these sources:
+- manifest.json for the canonical task list and task IDs.
+- tasks/ for the student-facing task statements.
+- starter/ for the starting project structure and constraints.
+- imports/practice/ and imports/theory/ for any legacy expectations or examples.
+
+Expected results:
+- For each manifest task, create or update assessment/solutions/<taskId>.md.
+- Each solution file should explain the intended approach, key implementation details, and expected final state.
+- Include code snippets only when they are useful for teacher review; keep them private in assessment/solutions/.
+- Note common valid alternatives and likely misconceptions if the task allows multiple solutions.
+- Ensure every solution uses the exact task ID from manifest.tasks[*].id.
+
+Constraints:
+- Do not place solutions in tasks/, theory/, starter/, or agent/instructions.md.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- Do not change the student-facing task unless you find a clear inconsistency; if you do, explain it.
+- After editing, list which solution files were created or updated.`;
+      case "rubricsForTasks":
+        return `${context}
+
+Task: create private assessment rubrics for the tasks.
+
+Use these sources:
+- manifest.json for task IDs, titles, dependencies, acceptance criteria, and expected evidence.
+- tasks/ for student-facing requirements.
+- assessment/solutions/ for expected approaches when available.
+- docs/schemas/assessment-rubric.schema.json as the schema contract for rubric files.
+
+Expected results:
+- For each manifest task, create or update assessment/rubrics/<taskId>.yml.
+- Each rubric should evaluate the task independently and use the exact task ID from manifest.tasks[*].id.
+- Include criteria that distinguish correctness, completeness, code quality, process evidence, and relevant edge cases.
+- Use weights that add up consistently according to the existing rubric format.
+- Prefer observable criteria that a teacher can verify from submitted files, events, commits, and task metadata.
+
+Constraints:
+- Keep rubrics private under assessment/rubrics/.
+- Do not reveal grading details in student-facing tasks or theory unless explicitly intended.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- After editing, summarize the rubric files and any criteria that depend on evidence collection.`;
+      case "reviewManifest":
+        return `${context}
+
+Task: review and improve manifest.json for this learning activity.
+
+Use these sources:
+- manifest.json as the canonical activity definition.
+- tasks/ to verify task files, task titles, and task content.
+- theory/ to understand student-facing instructional material.
+- assessment/rubrics/ and assessment/solutions/ to check private assessment alignment.
+- docs/activity-format.md for the portable activity format.
+
+Expected results:
+- Fix missing, inconsistent, or unclear manifest fields.
+- Ensure id, title, description, version, type, and tasks are coherent.
+- Ensure every manifest.tasks[*].id is stable and every task file path is safe and relative.
+- Ensure dependencies reference existing task IDs and represent a sensible learning progression.
+- Improve acceptanceCriteria and expectedEvidence where they are missing or too vague.
+
+Constraints:
+- Do not rename task IDs unless absolutely necessary; if you must, update all matching files and references.
+- Do not introduce paths outside the activity package.
+- Preserve compatibility with the student extension and repository importer.
+- After editing, explain every manifest change and any compatibility risk.`;
+      case "acceptanceCriteria":
+        return `${context}
+
+Task: create or improve acceptance criteria for every task in manifest.json.
+
+Use these sources:
+- manifest.json for the canonical task list.
+- tasks/ for what students are asked to do.
+- assessment/solutions/ for the intended outcome when available.
+- assessment/rubrics/ for grading expectations when available.
+
+Expected results:
+- Update manifest.tasks[*].acceptanceCriteria with clear, assessable criteria.
+- Criteria should describe observable outcomes, not vague effort.
+- Criteria should be understandable to students and useful to teachers.
+- Keep criteria specific enough to guide work, but avoid revealing private solution details.
+- If a task has dependencies, criteria should reflect only what that task adds or verifies.
+
+Constraints:
+- Do not add complete solutions to manifest.json.
+- Do not change task IDs or file paths unless needed to fix a real inconsistency.
+- Preserve valid JSON formatting.
+- After editing, summarize the criteria added per task.`;
+      case "alignTasksWithTheory":
+        return `${context}
+
+Task: align the task sequence with the theory files.
+
+Use these sources:
+- theory/ for student-facing explanations and examples.
+- tasks/ for task statements.
+- manifest.json for task order, dependencies, acceptance criteria, and expected evidence.
+- imports/ as background material if existing theory or tasks are incomplete.
+
+Expected results:
+- Identify gaps where tasks require concepts not explained in theory/.
+- Update theory files or task wording so students receive the necessary context before each task.
+- If useful, add references inside task Markdown files to relevant theory files.
+- Keep task dependencies consistent with the theory progression.
+- Improve wording where a task and theory file use inconsistent terminology.
+
+Constraints:
+- Do not include private solutions or rubric details in theory/ or tasks/.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- Preserve task IDs and package paths unless a real broken reference must be fixed.
+- After editing, report the alignment changes and any remaining gaps.`;
+      case "migrateLegacyMaterial":
+        return `${context}
+
+Task: migrate legacy imported material into the VSCode4Education activity structure.
+
+Use these sources:
+- imports/practice/ for old exercises, assignments, tests, solutions, and examples.
+- imports/theory/ for old theory, notes, slides, readings, and explanations.
+- manifest.json to preserve or improve the current activity definition.
+- tasks/, theory/, assessment/rubrics/, and assessment/solutions/ as the target structure.
+
+Expected results:
+- Convert relevant practice material into tasks/ and manifest.tasks entries.
+- Convert relevant theory material into student-facing Markdown files under theory/.
+- Move private solution or grading material into assessment/solutions/ and assessment/rubrics/.
+- Keep imports/ as source material; do not delete it unless explicitly asked.
+- Preserve a clean separation between student-facing content and teacher-private assessment content.
+
+Constraints:
+- Preserve the VSCode4Education portable activity format.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- Avoid copying irrelevant legacy boilerplate into the canonical files.
+- After editing, summarize what was migrated, what was skipped, and why.`;
+      case "starterDirectoriesPerExercise":
+        return `${context}
+
+Task: create a starter/ directory structure with one directory per exercise or task.
+
+Use these sources:
+- manifest.json for the canonical list of tasks, task IDs, titles, dependencies, and intended order.
+- tasks/ for each student-facing task statement and the files students are expected to create or edit.
+- imports/practice/ for legacy exercise structures, sample project files, tests, fixtures, or starter code.
+- imports/theory/ for concepts that may imply useful starter examples or scaffolding.
+- assessment/solutions/ only as private reference material when deciding what minimal starter files are appropriate.
+
+Expected results:
+- Create or update subdirectories under starter/ so each exercise has a clear working area, preferably named with the task ID, for example starter/task-01/ and starter/task-02/.
+- Include only files students should receive at the start of the activity: skeleton code, sample data, fixtures, TODO markers, empty modules, configuration, or tests that are intentionally part of the starter.
+- If tasks refer to specific paths, align those paths with the starter structure and update task text only when needed for consistency.
+- Keep the starter structure easy for students to navigate after the student extension copies starter/ into their workspace.
+- Add lightweight README files inside starter subdirectories only when they help students understand where to work.
+
+Constraints:
+- Do not put complete solutions, teacher notes, rubric criteria, or private hints in starter/.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- Preserve task IDs in manifest.json and avoid changing dependencies unless the starter structure reveals a real mismatch.
+- Do not duplicate large imported files unless they are genuinely needed by students.
+- After editing, summarize each starter/<taskId>/ directory created or updated and explain how it maps to the corresponding task.`;
+      case "polishActivityLanguage":
+        return `${context}
+
+Task: polish the language of the learning activity without changing its pedagogical intent.
+
+Use these sources:
+- manifest.json for activity title, description, task titles, acceptance criteria, and expected evidence.
+- tasks/ for student-facing instructions.
+- theory/ for student-facing explanations.
+- agent/instructions.md for guidance given to the student's agent.
+
+Expected results:
+- Improve clarity, consistency, grammar, and tone across student-facing files.
+- Make instructions more actionable and less ambiguous.
+- Standardize terminology between manifest.json, tasks/, theory/, and agent/instructions.md.
+- Keep the difficulty level and intended learning outcomes unchanged.
+- Preserve all task IDs, file paths, dependencies, and package structure.
+
+Constraints:
+- Do not add solutions or private grading details to student-facing content.
+- Do not modify assessment files unless a wording mismatch needs a small clarification.
+- Do not modify signatures/, teacher-private/, node_modules/, dist/, out/, or .git/.
+- After editing, summarize the language changes and flag any ambiguity that requires teacher judgment.`;
+    }
+  }
+
+  private utilityPromptContext(root: string): string {
+    return `You are helping me author a VSCode4Education learning activity.
+
+Activity workspace root:
+${root}
+
+Important package structure:
+- manifest.json is the canonical activity definition.
+- tasks/ contains student-facing task statements.
+- theory/ contains student-facing theory material.
+- imports/practice/ contains imported legacy practice or assignment material.
+- imports/theory/ contains imported legacy theory material.
+- starter/ contains the project files students receive as their starting point.
+- agent/instructions.md contains guidance for the student's coding agent.
+- assessment/rubrics/ contains teacher-private per-task rubrics.
+- assessment/solutions/ contains teacher-private per-task reference solutions.
+- signatures/ and teacher-private/ contain generated evidence material and must not be edited unless explicitly requested.
+
+Compatibility rules:
+- Preserve the VSCode4Education activity package contract.
+- Use task IDs from manifest.tasks[*].id as canonical references.
+- Keep all package references as safe relative paths inside the activity.
+- Do not place private solutions, rubrics, or grading notes in student-facing files.
+- Do not edit node_modules/, dist/, out/, .git/, signatures/, or teacher-private/.`;
   }
 
   private async addNextTask(): Promise<void> {

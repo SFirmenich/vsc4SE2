@@ -190,6 +190,58 @@ const eventServerFromModel = (value) => {
     requireReceipts: eventServer.requireReceipts === true
   };
 };
+const utilityPrompts = [
+  {
+    id: 'tasksFromImports',
+    title: 'Create tasks from imports',
+    description: 'Create student-facing tasks and manifest entries from imported practice and theory material.'
+  },
+  {
+    id: 'theoryFromImports',
+    title: 'Create theory files from imports',
+    description: 'Create student-facing theory files from imported notes, slides, references, and practice context.'
+  },
+  {
+    id: 'solutionsForTasks',
+    title: 'Create task solutions',
+    description: 'Create private reference solutions for every task under assessment/solutions/.'
+  },
+  {
+    id: 'rubricsForTasks',
+    title: 'Create task rubrics',
+    description: 'Create private per-task rubrics under assessment/rubrics/ using the rubric schema and task requirements.'
+  },
+  {
+    id: 'reviewManifest',
+    title: 'Review and improve manifest',
+    description: 'Check manifest.json for missing fields, broken references, weak task metadata, and compatibility issues.'
+  },
+  {
+    id: 'acceptanceCriteria',
+    title: 'Create acceptance criteria',
+    description: 'Improve manifest task acceptance criteria so each task has clear observable outcomes.'
+  },
+  {
+    id: 'alignTasksWithTheory',
+    title: 'Align tasks with theory',
+    description: 'Check that theory files prepare students for the task sequence and terminology is consistent.'
+  },
+  {
+    id: 'migrateLegacyMaterial',
+    title: 'Migrate legacy material',
+    description: 'Transform imported legacy theory and practice material into the canonical activity structure.'
+  },
+  {
+    id: 'starterDirectoriesPerExercise',
+    title: 'Create starter directories per exercise',
+    description: 'Create one starter/ subdirectory per task with the files students should receive for each exercise.'
+  },
+  {
+    id: 'polishActivityLanguage',
+    title: 'Polish activity language',
+    description: 'Improve clarity, consistency, grammar, and tone without changing task IDs or learning intent.'
+  }
+];
 
 createApp({
   setup() {
@@ -259,6 +311,7 @@ createApp({
       counts,
       files,
       tasks,
+      utilityPrompts,
       eventServerForm,
       validationGroups,
       run,
@@ -344,6 +397,7 @@ createApp({
               <v-tab value="home">Home</v-tab>
               <v-tab value="tasks">Tasks</v-tab>
               <v-tab value="files">Files</v-tab>
+              <v-tab value="util-prompts">Util prompts</v-tab>
               <v-tab value="validation">Validation</v-tab>
               <v-tab value="event-server">Event Server</v-tab>
               </v-tabs>
@@ -423,6 +477,23 @@ createApp({
                     </tr>
                   </tbody>
                 </v-table>
+              </v-card>
+            </div>
+
+            <div v-show="activeTab === 'util-prompts'" class="tab-panel">
+              <v-card class="pa-5">
+                <div class="text-h6 mb-2">Util prompts</div>
+                <p class="muted mb-4">Copy a prompt and paste it into your preferred agent while this learning activity workspace is open.</p>
+                <v-row>
+                  <v-col v-for="prompt in utilityPrompts" :key="prompt.id" cols="12" md="6" lg="4">
+                    <v-card class="pa-4 h-100 d-flex flex-column">
+                      <div class="text-subtitle-1 font-weight-bold mb-2">{{ prompt.title }}</div>
+                      <p class="muted">{{ prompt.description }}</p>
+                      <v-spacer></v-spacer>
+                      <v-btn color="primary" variant="tonal" :loading="busy" @click="run('copyUtilityPrompt', { promptId: prompt.id })">Copy prompt</v-btn>
+                    </v-card>
+                  </v-col>
+                </v-row>
               </v-card>
             </div>
 
