@@ -54,13 +54,21 @@ def activity_zip_upload_to(instance, filename):
 
 
 class ActivityVersion(models.Model):
+    STATUS_DRAFT = "draft"
+    STATUS_IMPORTED = "imported"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_IMPORTED, "Imported"),
+    ]
+
     activity = models.ForeignKey(LearningActivity, related_name="versions", on_delete=models.CASCADE)
     version = models.CharField(max_length=80)
     title = models.CharField(max_length=240)
     description = models.TextField(blank=True)
     manifest = models.JSONField(default=dict)
-    original_zip = models.FileField(upload_to=activity_zip_upload_to)
-    checksum_sha256 = models.CharField(max_length=64, unique=True)
+    original_zip = models.FileField(upload_to=activity_zip_upload_to, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_IMPORTED)
     course_groups = models.ManyToManyField(CourseGroup, related_name="activity_versions", blank=True)
     imported_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

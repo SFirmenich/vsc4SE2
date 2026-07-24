@@ -20,7 +20,8 @@ export interface ActivityVersion {
   version: string;
   title: string;
   description: string;
-  checksum_sha256: string;
+  checksum_sha256: string | null;
+  status: "draft" | "imported";
   courseGroups?: CourseGroup[];
   submissionCount: number;
 }

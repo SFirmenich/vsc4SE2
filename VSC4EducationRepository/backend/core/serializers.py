@@ -51,6 +51,7 @@ class ActivityVersionListSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "checksum_sha256",
+            "status",
             "courseGroups",
             "submissionCount",
             "imported_at",
@@ -60,10 +61,13 @@ class ActivityVersionListSerializer(serializers.ModelSerializer):
 class ActivityVersionDetailSerializer(ActivityVersionListSerializer):
     tasks = ActivityTaskSerializer(many=True, read_only=True)
     course_groups = CourseGroupSerializer(many=True, read_only=True)
-    originalZipUrl = serializers.FileField(source="original_zip", read_only=True)
+    originalZipUrl = serializers.SerializerMethodField()
 
     class Meta(ActivityVersionListSerializer.Meta):
         fields = ActivityVersionListSerializer.Meta.fields + ["manifest", "tasks", "course_groups", "originalZipUrl"]
+
+    def get_originalZipUrl(self, obj):
+        return obj.original_zip.url if obj.original_zip else ""
 
 
 class LearningActivitySerializer(serializers.ModelSerializer):
@@ -167,6 +171,14 @@ class ZipImportSerializer(serializers.Serializer):
 class EventIngestionTokenCreateSerializer(serializers.Serializer):
     courseGroupId = serializers.IntegerField(required=False)
     name = serializers.CharField(required=False, allow_blank=True, max_length=160)
+
+
+class ActivityDraftRegisterSerializer(serializers.Serializer):
+    activityId = serializers.CharField(max_length=160)
+    version = serializers.CharField(max_length=80)
+    title = serializers.CharField(max_length=240)
+    description = serializers.CharField(required=False, allow_blank=True)
+    courseGroupId = serializers.IntegerField(required=False)
 
 
 class EventIngestionSessionCreateSerializer(serializers.Serializer):

@@ -146,6 +146,27 @@ function App() {
     }
   }
 
+  async function registerActivityDraft(form: FormData) {
+    const courseGroupId = String(form.get("courseGroupId") ?? "");
+    if (!courseGroupId) {
+      setMessage(t("Choose a group to associate the activity."));
+      return;
+    }
+    const draft = await postJson<ActivityVersion>("/activities/register-draft/", {
+      activityId: form.get("activityId"),
+      version: form.get("version"),
+      title: form.get("title"),
+      description: form.get("description"),
+      courseGroupId,
+    });
+    setMessage(t("Activity draft registered."));
+    setAddPanel(null);
+    if (selectedCourse) {
+      await openCourse(selectedCourse);
+      await openActivity(draft);
+    }
+  }
+
   async function importSubmission(file: File, courseGroupId: string, submissionName = "") {
     if (!selectedActivity) {
       return;
@@ -158,6 +179,23 @@ function App() {
     setMessage(t("Submission added."));
     setAddPanel(null);
     await openActivity(selectedActivity);
+  }
+
+  async function completeActivityDraft(file: File, courseGroupId: string) {
+    if (!selectedActivity) {
+      return;
+    }
+    if (!courseGroupId) {
+      setMessage(t("Choose a group to associate the activity."));
+      return;
+    }
+    const imported = await uploadZip<ActivityVersion>("/activities/import-zip/", file, { courseGroupId });
+    setMessage(t("Activity ZIP uploaded. Draft completed."));
+    setAddPanel(null);
+    if (selectedCourse) {
+      await openCourse(selectedCourse);
+    }
+    await openActivity(imported);
   }
 
   function goBack() {
@@ -230,6 +268,7 @@ function App() {
             addPanel={addPanel}
             onAdd={() => setAddPanel(addPanel === "activity" ? null : "activity")}
             onUpload={(file, groupId) => importActivity(file, groupId).catch((error) => setMessage(errorMessage(error)))}
+            onRegisterDraft={(form) => registerActivityDraft(form).catch((error) => setMessage(errorMessage(error)))}
             onOpen={openActivity}
           />
         )}
@@ -245,6 +284,7 @@ function App() {
             addPanel={addPanel}
             onAdd={() => setAddPanel(addPanel === "submission" ? null : "submission")}
             onUpload={(file, groupId, submissionName) => importSubmission(file, groupId, submissionName).catch((error) => setMessage(errorMessage(error)))}
+            onCompleteDraft={(file, groupId) => completeActivityDraft(file, groupId).catch((error) => setMessage(errorMessage(error)))}
             onOpen={openSubmission}
           />
         )}
@@ -306,17 +346,23 @@ function CourseActivitiesView(props: {
   addPanel: string | null;
   onAdd: () => void;
   onUpload: (file: File, groupId: string) => void;
+  onRegisterDraft: (form: FormData) => void;
   onOpen: (activity: ActivityVersion) => void;
 }) {
   return (
     <>
       <SectionHeader icon={<BookOpen size={20} />} title={t("Learning activities for {0}", props.course.name)} actionLabel={t("Add activity")} onAction={props.onAdd} />
-      {props.addPanel === "activity" && <ZipUploadPanel label={t("Activity ZIP")} groups={props.groups} onUpload={props.onUpload} />}
+      {props.addPanel === "activity" && (
+        <div className="twoColumns">
+          <ZipUploadPanel label={t("Activity ZIP")} groups={props.groups} onUpload={props.onUpload} />
+          <ActivityDraftPanel groups={props.groups} onRegister={props.onRegisterDraft} />
+        </div>
+      )}
       <div className="listPanel">
         {props.activities.map((activity) => (
           <button key={activity.id} className="listItem" onClick={() => props.onOpen(activity)}>
             <div>
-              <strong>{activity.title}</strong>
+              <strong>{activity.title}{activity.status === "draft" && <span className="badge">{t("Draft")}</span>}</strong>
               <span>{activity.activityId}@{activity.version}</span>
             </div>
             <div className="itemMeta">
@@ -341,9 +387,11 @@ function ActivityView(props: {
   addPanel: string | null;
   onAdd: () => void;
   onUpload: (file: File, groupId: string, submissionName?: string) => void;
+  onCompleteDraft: (file: File, groupId: string) => void;
   onOpen: (submission: Submission) => void;
 }) {
   const activity = props.activity;
+  const isDraft = props.fallbackActivity.status === "draft" || activity?.status === "draft";
   const [tab, setTab] = useState<"submissions" | "analysis" | "dashboard" | "event-server">("submissions");
   const [dashboard, setDashboard] = useState<ActivityReviewDashboard | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -412,11 +460,12 @@ function ActivityView(props: {
 
   return (
     <>
-      <SectionHeader icon={<FileArchive size={20} />} title={activity?.title ?? props.fallbackActivity.title} actionLabel={t("Add submission")} onAction={props.onAdd} />
+      <SectionHeader icon={<FileArchive size={20} />} title={activity?.title ?? props.fallbackActivity.title} actionLabel={isDraft ? t("Upload activity ZIP") : t("Add submission")} onAction={props.onAdd} />
       <section className="detailPanel">
         <div>
-          <span className="eyebrow">{props.fallbackActivity.activityId}@{props.fallbackActivity.version}</span>
+          <span className="eyebrow">{props.fallbackActivity.activityId}@{props.fallbackActivity.version}{isDraft ? ` - ${t("Draft")}` : ""}</span>
           <p>{activity?.description || props.fallbackActivity.description || t("No description.")}</p>
+          {isDraft && <p>{t("This activity is registered for Event Server configuration, but the Teacher ZIP has not been uploaded yet.")}</p>}
         </div>
         <div className="metrics">
           <Metric label={t("Submissions")} value={props.metrics?.submissions ?? props.submissions.length} />
@@ -442,7 +491,17 @@ function ActivityView(props: {
 
       {tab === "submissions" && (
         <>
-          {props.addPanel === "submission" && <ZipUploadPanel label={t("Submission ZIP")} groups={props.groups} includeName onUpload={props.onUpload} />}
+          {props.addPanel === "submission" && (
+            isDraft
+              ? <ZipUploadPanel label={t("Teacher activity ZIP")} groups={props.groups} onUpload={props.onCompleteDraft} />
+              : <ZipUploadPanel label={t("Submission ZIP")} groups={props.groups} includeName onUpload={props.onUpload} />
+          )}
+          {isDraft && (
+            <section className="tablePanel warningPanel">
+              <strong>{t("Draft activity")}</strong>
+              <span>{t("Upload the Teacher activity ZIP to complete this draft before adding student submissions.")}</span>
+            </section>
+          )}
           <section className="tablePanel">
             <h2><Upload size={18} /> {t("Submissions")}</h2>
             <table>
@@ -502,6 +561,7 @@ function ActivityView(props: {
       {tab === "event-server" && (
         <ActivityEventServerView
           activity={props.fallbackActivity}
+          activityDetail={activity}
           groups={props.groups}
           receipts={eventReceipts}
           loading={eventReceiptsLoading}
@@ -515,6 +575,7 @@ function ActivityView(props: {
 
 function ActivityEventServerView(props: {
   activity: ActivityVersion;
+  activityDetail: ActivityVersionDetail | null;
   groups: CourseGroup[];
   receipts: ActivityEventReceipts | null;
   loading: boolean;
@@ -530,7 +591,8 @@ function ActivityEventServerView(props: {
   const [tokenLoading, setTokenLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const baseUrl = repositoryBaseUrl();
-  const eventServerConfiguration = token ? {
+  const manifestEventServer = eventServerConfigurationFromManifest(props.activityDetail?.manifest);
+  const generatedEventServerConfiguration = token ? {
     enabled: true,
     baseUrl,
     activityVersionId: props.activity.id,
@@ -541,6 +603,7 @@ function ActivityEventServerView(props: {
     publicSigningKey: token.publicSigningKey,
     requireReceipts: false,
   } : null;
+  const eventServerConfiguration = generatedEventServerConfiguration ?? manifestEventServer;
   const configurationText = eventServerConfiguration
     ? JSON.stringify(eventServerConfiguration, null, 2)
     : "";
@@ -602,7 +665,7 @@ function ActivityEventServerView(props: {
         {eventServerConfiguration && (
           <div className="copyBlock">
             <div className="copyBlockHeader">
-              <strong>{t("Configuration for manifest.repository.eventServer")}</strong>
+              <strong>{generatedEventServerConfiguration ? t("Configuration for manifest.repository.eventServer") : t("Current manifest.repository.eventServer")}</strong>
               <button className="ghostButton" onClick={() => void copyConfiguration()}>
                 <Clipboard size={17} /> {copied ? t("Copied") : t("Copy JSON")}
               </button>
@@ -1455,6 +1518,29 @@ function ZipUploadPanel(props: { label: string; groups: CourseGroup[]; includeNa
   );
 }
 
+function ActivityDraftPanel(props: { groups: CourseGroup[]; onRegister: (form: FormData) => void }) {
+  return (
+    <form className="formPanel stacked" onSubmit={(event) => {
+      event.preventDefault();
+      props.onRegister(new FormData(event.currentTarget));
+    }}>
+      <span className="eyebrow">{t("Register activity draft")}</span>
+      <input name="activityId" placeholder={t("Activity ID")} required />
+      <input name="version" placeholder={t("Version")} defaultValue="1.0.0" required />
+      <input name="title" placeholder={t("Title")} required />
+      <input name="description" placeholder={t("Description")} />
+      <select name="courseGroupId" required>
+        <option value="">{t("Choose group")}</option>
+        {props.groups.map((group) => (
+          <option key={group.id} value={group.id}>{group.name}{group.term ? ` - ${group.term}` : ""}</option>
+        ))}
+      </select>
+      <button>{t("Register draft")}</button>
+      <p>{t("Use this when the Teacher ZIP does not exist yet and you need Event Server configuration first.")}</p>
+    </form>
+  );
+}
+
 function Metric(props: { label: string; value: string | number }) {
   return (
     <div className="metric">
@@ -1498,6 +1584,18 @@ function mergeActivities(activities: ActivityVersion[]) {
     });
   }
   return Array.from(map.values());
+}
+
+function eventServerConfigurationFromManifest(manifest: Record<string, unknown> | undefined) {
+  const repository = manifest?.repository;
+  if (!repository || typeof repository !== "object") {
+    return null;
+  }
+  const eventServer = (repository as { eventServer?: unknown }).eventServer;
+  if (!eventServer || typeof eventServer !== "object") {
+    return null;
+  }
+  return eventServer as Record<string, unknown>;
 }
 
 function errorMessage(error: unknown) {

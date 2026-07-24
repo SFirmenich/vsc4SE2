@@ -202,6 +202,20 @@ tbody tr:hover {
   grid-template-columns: minmax(220px, 320px) minmax(260px, 1fr) minmax(220px, 320px);
 }
 
+.formPanel.stacked {
+  display: flex;
+  flex-direction: column;
+}
+
+.formPanel.stacked button {
+  align-self: flex-start;
+}
+
+.formPanel.stacked p {
+  color: #64748b;
+  margin: 0;
+}
+
 label {
   color: #536276;
   display: flex;

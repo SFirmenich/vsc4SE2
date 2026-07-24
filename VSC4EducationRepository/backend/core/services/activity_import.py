@@ -47,19 +47,38 @@ class ActivityZipImportService:
                     if course_group:
                         existing.course_groups.add(course_group)
                     return existing
-                raise ZipValidationError("An activity with the same id and version already exists with a different ZIP checksum")
-
-            activity_version = ActivityVersion.objects.create(
-                activity=activity,
-                version=manifest.get("version", ""),
-                title=manifest["title"],
-                description=manifest.get("description", ""),
-                manifest=manifest,
-                checksum_sha256=checksum,
-            )
-            activity_version.original_zip.save(filename, ContentFile(data), save=True)
-            if course_group:
-                activity_version.course_groups.add(course_group)
+                if existing.status != ActivityVersion.STATUS_DRAFT:
+                    raise ZipValidationError("An activity with the same id and version already exists with a different ZIP checksum")
+                existing_event_server = ((existing.manifest or {}).get("repository") or {}).get("eventServer")
+                if existing_event_server and not ((manifest.get("repository") or {}).get("eventServer")):
+                    manifest["repository"] = {
+                        **(manifest.get("repository") or {}),
+                        "eventServer": existing_event_server,
+                    }
+                existing.title = manifest["title"]
+                existing.description = manifest.get("description", "")
+                existing.manifest = manifest
+                existing.checksum_sha256 = checksum
+                existing.status = ActivityVersion.STATUS_IMPORTED
+                existing.original_zip.save(filename, ContentFile(data), save=False)
+                existing.save()
+                if course_group:
+                    existing.course_groups.add(course_group)
+                existing.tasks.all().delete()
+                activity_version = existing
+            else:
+                activity_version = ActivityVersion.objects.create(
+                    activity=activity,
+                    version=manifest.get("version", ""),
+                    title=manifest["title"],
+                    description=manifest.get("description", ""),
+                    manifest=manifest,
+                    checksum_sha256=checksum,
+                    status=ActivityVersion.STATUS_IMPORTED,
+                )
+                activity_version.original_zip.save(filename, ContentFile(data), save=True)
+                if course_group:
+                    activity_version.course_groups.add(course_group)
 
             for index, task in enumerate(manifest["tasks"]):
                 ActivityTask.objects.create(

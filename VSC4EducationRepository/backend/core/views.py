@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from core.models import ActivityVersion, Course, CourseGroup, EventIngestionSession, LearningActivity, Student, Submission
 from core.serializers import (
+    ActivityDraftRegisterSerializer,
     ActivityVersionDetailSerializer,
     ActivityVersionListSerializer,
     CourseGroupSerializer,
@@ -102,6 +103,53 @@ class LearningActivityViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=["post"], url_path="import-zip")
     def import_zip(self, request):
         return import_activity_zip(request)
+
+    @action(detail=False, methods=["post"], url_path="register-draft")
+    def register_draft(self, request):
+        serializer = ActivityDraftRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        group = _course_group(data.get("courseGroupId"))
+        activity, _ = LearningActivity.objects.update_or_create(
+            activity_id=data["activityId"],
+            defaults={
+                "owner": _owner(request),
+                "title": data["title"],
+                "description": data.get("description", ""),
+            },
+        )
+        manifest = {
+            "id": data["activityId"],
+            "title": data["title"],
+            "description": data.get("description", ""),
+            "version": data["version"],
+            "tasks": [],
+        }
+        activity_version, created = ActivityVersion.objects.get_or_create(
+            activity=activity,
+            version=data["version"],
+            defaults={
+                "title": data["title"],
+                "description": data.get("description", ""),
+                "manifest": manifest,
+                "status": ActivityVersion.STATUS_DRAFT,
+            },
+        )
+        if activity_version.status == ActivityVersion.STATUS_DRAFT:
+            activity_version.title = data["title"]
+            activity_version.description = data.get("description", "")
+            activity_version.manifest = {
+                **(activity_version.manifest or {}),
+                **manifest,
+            }
+            activity_version.save()
+        if group:
+            activity_version.course_groups.add(group)
+        response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(
+            ActivityVersionDetailSerializer(activity_version, context={"request": request}).data,
+            status=response_status,
+        )
 
     @action(detail=True, methods=["get"])
     def versions(self, request, pk=None):
@@ -208,11 +256,32 @@ class ActivityVersionViewSet(viewsets.ReadOnlyModelViewSet):
             name=serializer.validated_data.get("name") or "",
         )
         public_key = public_signing_key()
+        activity_version = token_model.activity_version
+        base_url = request.build_absolute_uri("/").rstrip("/")
+        public_signing_key_url = request.build_absolute_uri("/api/integration/student/event-signing-key/")
+        event_server = {
+            "enabled": True,
+            "baseUrl": base_url,
+            "activityVersionId": activity_version.id,
+            "ingestionToken": token,
+            "publicSigningKeyUrl": public_signing_key_url,
+            "expectedSigningKeyId": public_key["kid"],
+            "expectedPublicKeySha256": public_key_fingerprint(public_key),
+            "publicSigningKey": public_key,
+            "requireReceipts": False,
+        }
+        manifest = activity_version.manifest or {}
+        manifest["repository"] = {
+            **(manifest.get("repository") or {}),
+            "eventServer": event_server,
+        }
+        activity_version.manifest = manifest
+        activity_version.save(update_fields=["manifest", "updated_at"])
         return Response({
             "id": token_model.id,
             "token": token,
-            "activityId": token_model.activity_version.activity.activity_id,
-            "version": token_model.activity_version.version,
+            "activityId": activity_version.activity.activity_id,
+            "version": activity_version.version,
             "courseGroupId": token_model.course_group_id,
             "publicSigningKey": public_key,
             "expectedSigningKeyId": public_key["kid"],

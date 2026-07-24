@@ -158,6 +158,80 @@ class ImportServicesTests(TestCase):
 
         self.assertEqual(ActivityVersion.objects.count(), 2)
 
+    def test_register_activity_draft_endpoint(self):
+        course = Course.objects.create(name="Programacion I", code="PI")
+        group = CourseGroup.objects.create(course=course, name="1", term="2026")
+
+        response = Client().post(
+            "/api/activities/register-draft/",
+            data=json.dumps({
+                "activityId": "poo-basico-01",
+                "version": "1.0.0",
+                "title": "POO basico",
+                "description": "Draft activity",
+                "courseGroupId": group.id,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        activity_version = ActivityVersion.objects.get()
+        self.assertEqual(activity_version.status, ActivityVersion.STATUS_DRAFT)
+        self.assertFalse(activity_version.original_zip)
+        self.assertIsNone(activity_version.checksum_sha256)
+        self.assertEqual(activity_version.course_groups.get().id, group.id)
+
+    def test_import_activity_zip_completes_matching_draft(self):
+        activity_response = Client().post(
+            "/api/activities/register-draft/",
+            data=json.dumps({
+                "activityId": "poo-basico-01",
+                "version": "1.0.0",
+                "title": "Draft title",
+            }),
+            content_type="application/json",
+        )
+        draft_id = activity_response.json()["id"]
+
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+
+        self.assertEqual(activity_version.id, draft_id)
+        self.assertEqual(activity_version.status, ActivityVersion.STATUS_IMPORTED)
+        self.assertTrue(activity_version.original_zip)
+        self.assertIsNotNone(activity_version.checksum_sha256)
+        self.assertEqual(activity_version.tasks.count(), 2)
+
+    def test_event_server_config_survives_draft_completion(self):
+        client = Client()
+        activity_response = client.post(
+            "/api/activities/register-draft/",
+            data=json.dumps({
+                "activityId": "poo-basico-01",
+                "version": "1.0.0",
+                "title": "Draft title",
+            }),
+            content_type="application/json",
+        )
+        draft_id = activity_response.json()["id"]
+        token_response = client.post(
+            f"/api/activity-versions/{draft_id}/event-ingestion-token/",
+            data=json.dumps({"name": "Teacher panel"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(token_response.status_code, 201)
+        draft = ActivityVersion.objects.get(id=draft_id)
+        draft_event_server = draft.manifest["repository"]["eventServer"]
+        self.assertEqual(draft_event_server["ingestionToken"], token_response.json()["token"])
+
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+
+        self.assertEqual(activity_version.id, draft_id)
+        self.assertEqual(activity_version.status, ActivityVersion.STATUS_IMPORTED)
+        event_server = activity_version.manifest["repository"]["eventServer"]
+        self.assertEqual(event_server["ingestionToken"], token_response.json()["token"])
+        self.assertEqual(event_server["activityVersionId"], draft_id)
+
     def test_import_submission_without_git_or_agent_interactions(self):
         activity_version = ActivityZipImportService().import_zip(activity_zip())
         submission = SubmissionZipImportService().import_zip(submission_zip(with_git=False, with_agent=False), activity_version)

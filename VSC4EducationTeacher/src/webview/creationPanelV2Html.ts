@@ -179,6 +179,7 @@ const emptyEventServer = () => ({
   publicSigningKeyUrl: '',
   expectedSigningKeyId: '',
   expectedPublicKeySha256: '',
+  publicSigningKey: undefined,
   requireReceipts: false
 });
 const eventServerFromModel = (value) => {
@@ -297,6 +298,17 @@ createApp({
         busy.value = false;
       }
       if (event.data.type === 'ready') {
+        busy.value = false;
+      }
+      if (event.data.type === 'eventServerConfiguration') {
+        eventServerForm.value = {
+          ...emptyEventServer(),
+          ...event.data.configuration,
+          enabled: event.data.configuration?.enabled === true,
+          activityVersionId: event.data.configuration?.activityVersionId ?? '',
+          requireReceipts: event.data.configuration?.requireReceipts === true
+        };
+        activeTab.value = 'event-server';
         busy.value = false;
       }
     });
@@ -583,6 +595,7 @@ createApp({
                 </v-row>
                 <div class="d-flex ga-2 flex-wrap">
                   <v-btn variant="tonal" @click="fillLocalEventServerDefaults">Fill local defaults</v-btn>
+                  <v-btn variant="tonal" :loading="busy" @click="run('pasteEventServerConfiguration')">Paste config JSON</v-btn>
                   <v-btn color="primary" :loading="busy" @click="saveEventServer">Save event server config</v-btn>
                   <v-btn variant="tonal" @click="run('openFile', { path: 'manifest.json' })">Open manifest.json</v-btn>
                 </div>

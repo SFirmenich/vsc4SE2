@@ -36,6 +36,7 @@ interface EventServerConfigurationPayload {
   publicSigningKeyUrl?: string;
   expectedSigningKeyId?: string;
   expectedPublicKeySha256?: string;
+  publicSigningKey?: Record<string, unknown>;
   requireReceipts?: boolean;
 }
 
@@ -246,6 +247,9 @@ export class CreationPanelV2 {
           if (message.configuration) {
             await this.saveEventServerConfiguration(message.configuration);
           }
+          break;
+        case "pasteEventServerConfiguration":
+          await this.pasteEventServerConfiguration();
           break;
       }
     } catch (error) {
@@ -872,6 +876,9 @@ Compatibility rules:
     if (expectedPublicKeySha256) {
       eventServer.expectedPublicKeySha256 = expectedPublicKeySha256;
     }
+    if (payload.publicSigningKey && typeof payload.publicSigningKey === "object") {
+      eventServer.publicSigningKey = payload.publicSigningKey;
+    }
     if (payload.requireReceipts) {
       eventServer.requireReceipts = true;
     }
@@ -882,6 +889,24 @@ Compatibility rules:
     await this.projects.save(root, manifest);
     void vscode.window.showInformationMessage("Event server configuration saved");
     await this.refresh();
+  }
+
+  private async pasteEventServerConfiguration(): Promise<void> {
+    const raw = await vscode.env.clipboard.readText();
+    let configuration: unknown;
+    try {
+      configuration = JSON.parse(raw);
+    } catch {
+      throw new Error("Clipboard does not contain valid Event Server JSON");
+    }
+    if (!configuration || typeof configuration !== "object") {
+      throw new Error("Clipboard does not contain an Event Server configuration object");
+    }
+    await this.panel.webview.postMessage({
+      type: "eventServerConfiguration",
+      configuration
+    });
+    await this.panel.webview.postMessage({ type: "ready" });
   }
 
   private cleanString(value: unknown): string {
