@@ -17,6 +17,11 @@ export interface ActivityState {
 	tasks: Record<string, TaskState>;
 	lastEventHash: string | null;
 	eventCounts?: Record<string, number>;
+	eventServerHeartbeatSampling?: {
+		windowSize: number;
+		countInWindow: number;
+		anchorAt: number;
+	};
 	git: {
 		enabled: boolean;
 		initialCommit?: string;

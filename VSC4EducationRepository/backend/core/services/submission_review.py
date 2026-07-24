@@ -15,6 +15,7 @@ from core.services.safe_zip import (
     validate_zip,
 )
 from core.services.evidence_crypto import decrypt_events, read_private_key_from_activity
+from core.services.event_receipts import public_key_fingerprint, verify_payload_signature
 
 
 ACTION_EVENTS = {
@@ -67,6 +68,7 @@ class SubmissionReviewService:
             "summary": self._summary(submission.contribution_id, events, interactions["values"]),
             "agencyMetrics": self._agency_metrics(submission.contribution_id, events, parsed["activity_manifest"]),
             "integrity": self._integrity(parsed["events_raw"], events, parsed["event_invalid_lines"]),
+            "externalIntegrity": self._external_integrity(events, parsed["activity_manifest"]),
             "events": [self._public_event(event) for event in events],
             "eventParseErrors": parsed["event_invalid_lines"],
             "agentInteractions": interactions["values"],
@@ -620,6 +622,79 @@ class SubmissionReviewService:
             "status": "valid",
             "checkedEntries": len(events),
             "message": "The local chain is internally consistent; this does not prove absolute authenticity",
+        }
+
+    def _external_integrity(self, events: list[dict], manifest: dict) -> dict:
+        receipt_events = [
+            event for event in events
+            if self._event_type(event) == "event_server_receipt" and isinstance(event.get("data"), dict)
+        ]
+        if not receipt_events:
+            return {
+                "status": "not_available",
+                "checkedReceipts": 0,
+                "anchoredEvents": 0,
+                "message": "No Repository event receipts are present",
+            }
+        event_server = ((manifest.get("repository") or {}).get("eventServer") or {}) if isinstance(manifest, dict) else {}
+        public_key = event_server.get("publicSigningKey") if isinstance(event_server.get("publicSigningKey"), dict) else None
+        expected_key_id = event_server.get("expectedSigningKeyId")
+        expected_fingerprint = event_server.get("expectedPublicKeySha256")
+        if not public_key:
+            return {
+                "status": "unverified",
+                "checkedReceipts": len(receipt_events),
+                "anchoredEvents": len({event["data"].get("anchoredEventHash") for event in receipt_events}),
+                "message": "Repository receipts are present, but the activity manifest does not include a pinned public signing key",
+            }
+        if expected_fingerprint and public_key_fingerprint(public_key) != expected_fingerprint:
+            return {
+                "status": "invalid",
+                "checkedReceipts": len(receipt_events),
+                "anchoredEvents": 0,
+                "message": "The Repository public signing key does not match the pinned fingerprint",
+            }
+        invalid = 0
+        checked = 0
+        anchored = set()
+        first_server_seen_at = None
+        last_server_seen_at = None
+        for event in receipt_events:
+            data = event["data"]
+            receipt = data.get("receipt")
+            if not isinstance(receipt, dict):
+                invalid += 1
+                continue
+            payload = receipt.get("payload")
+            signature = receipt.get("signature")
+            signing_key_id = receipt.get("signingKeyId")
+            if not isinstance(payload, dict) or not isinstance(signature, str):
+                invalid += 1
+                continue
+            if expected_key_id and signing_key_id != expected_key_id:
+                invalid += 1
+                continue
+            if payload.get("eventHash") != data.get("anchoredEventHash"):
+                invalid += 1
+                continue
+            if not verify_payload_signature(public_key, payload, signature):
+                invalid += 1
+                continue
+            checked += 1
+            anchored.add(payload.get("eventHash"))
+            server_seen = payload.get("serverReceivedAt")
+            if isinstance(server_seen, str):
+                first_server_seen_at = min(first_server_seen_at, server_seen) if first_server_seen_at else server_seen
+                last_server_seen_at = max(last_server_seen_at, server_seen) if last_server_seen_at else server_seen
+        status = "valid" if invalid == 0 and checked > 0 else "partial" if checked > 0 else "invalid"
+        return {
+            "status": status,
+            "checkedReceipts": checked,
+            "invalidReceipts": invalid,
+            "anchoredEvents": len(anchored),
+            "firstServerSeenAt": first_server_seen_at,
+            "lastServerSeenAt": last_server_seen_at,
+            "message": "Repository receipts validate against the pinned public key" if status == "valid" else "Some Repository receipts could not be verified",
         }
 
     def _event_view(self, event: dict) -> dict:

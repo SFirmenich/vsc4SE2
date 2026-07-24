@@ -3,6 +3,7 @@ import * as stream from 'stream';
 import { promisify } from 'util';
 import AdmZip from 'adm-zip';
 import * as fs from 'fs';
+import * as fsp from 'fs/promises';
 
 import { ensureDirectory } from '../utils/fs';
 
@@ -25,7 +26,7 @@ export class ZipService {
 	public async create(sourceDirectory: string, outputPath: string): Promise<void> {
 		await ensureDirectory(path.dirname(outputPath));
 		const zip = new AdmZip();
-		zip.addLocalFolder(sourceDirectory);
+		await this.addDirectory(zip, sourceDirectory, sourceDirectory);
 		await new Promise<void>((resolve, reject) => {
 			zip.writeZip(outputPath, error => {
 				if (error) {
@@ -35,6 +36,25 @@ export class ZipService {
 				}
 			});
 		});
+	}
+
+	private async addDirectory(zip: AdmZip, root: string, current: string): Promise<void> {
+		for (const entry of await fsp.readdir(current, { withFileTypes: true })) {
+			const full = path.join(current, entry.name);
+			const relative = path.relative(root, full).replace(/\\/g, '/');
+			if (this.isExcludedFromSubmission(relative)) {
+				continue;
+			}
+			if (entry.isDirectory()) {
+				await this.addDirectory(zip, root, full);
+			} else {
+				zip.addLocalFile(full, path.dirname(relative) === '.' ? '' : path.dirname(relative));
+			}
+		}
+	}
+
+	private isExcludedFromSubmission(relativePath: string): boolean {
+		return /^\.vsc4education\/contributions\/[^/]+\/event-server-session\.json$/i.test(relativePath);
 	}
 
 	public async download(url: string, outputPath: string): Promise<void> {

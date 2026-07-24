@@ -282,7 +282,26 @@ const translations: Record<Locale, Record<string, string>> = {
     "events/signals": "eventos/senales",
     "group": "comision",
     "groups": "comisiones",
-    "submissions": "entregas"
+    "submissions": "entregas",
+    "Closed": "Cerrada",
+    "Could not load event receipts": "No se pudieron cargar los recibos de eventos",
+    "Event ID": "ID de evento",
+    "Event hash": "Hash de evento",
+    "Event server": "Servidor de eventos",
+    "Event sessions": "Sesiones de eventos",
+    "Last event hash": "Hash del ultimo evento",
+    "Live": "En vivo",
+    "No event server sessions yet.": "Todavia no hay sesiones del servidor de eventos.",
+    "Previous hash": "Hash anterior",
+    "Receipts": "Recibos",
+    "Refreshing": "Actualizando",
+    "Registered events": "Eventos registrados",
+    "Repository receipts show events received and signed by the configured Repository. This view refreshes automatically.": "Los recibos del Repository muestran eventos recibidos y firmados por el Repository configurado. Esta vista se actualiza automaticamente.",
+    "Server time": "Hora del servidor",
+    "Sessions": "Sesiones",
+    "Showing the latest 80 receipts for this session.": "Mostrando los ultimos 80 recibos de esta sesion.",
+    "Signing key": "Clave de firma",
+    "Started": "Iniciada"
   }
 };
 

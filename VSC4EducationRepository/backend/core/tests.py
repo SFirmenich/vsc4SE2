@@ -8,6 +8,7 @@ from django.test import Client, TestCase
 
 from core.models import ActivityVersion, Course, CourseGroup, ImportWarning, Submission
 from core.services.activity_import import ActivityZipImportService
+from core.services.event_receipts import verify_payload_signature
 from core.services.safe_zip import ZipValidationError
 from core.services.submission_import import SubmissionZipImportService
 
@@ -236,6 +237,56 @@ class ImportServicesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["id"], activity_version.id)
         self.assertEqual(response.json()[0]["courseGroups"][0]["id"], group.id)
+
+    def test_student_event_server_issues_signed_receipt(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        client = Client()
+
+        token_response = client.post(
+            f"/api/activity-versions/{activity_version.id}/event-ingestion-token/",
+            data=json.dumps({"name": "Lab group"}),
+            content_type="application/json",
+        )
+        self.assertEqual(token_response.status_code, 201)
+        token_data = token_response.json()
+
+        session_response = client.post(
+            "/api/integration/student/event-sessions/",
+            data=json.dumps({
+                "activityId": "poo-basico-01",
+                "version": "1.0.0",
+                "studentId": "ana-001",
+                "contributionId": "ana-001",
+                "clientSessionId": "client-session-1",
+            }),
+            content_type="application/json",
+            HTTP_X_VSC4E_INGESTION_TOKEN=token_data["token"],
+        )
+        self.assertEqual(session_response.status_code, 201)
+        session_data = session_response.json()
+
+        receipt_response = client.post(
+            f"/api/integration/student/event-sessions/{session_data['sessionId']}/receipts/",
+            data=json.dumps({
+                "events": [{
+                    "id": "event-1",
+                    "timestamp": "2026-06-11T10:00:00Z",
+                    "previousHash": None,
+                    "hash": "a" * 64,
+                    "envelopeSha256": "b" * 64,
+                }]
+            }),
+            content_type="application/json",
+            HTTP_X_VSC4E_SESSION_TOKEN=session_data["sessionToken"],
+        )
+        self.assertEqual(receipt_response.status_code, 201)
+        receipt = receipt_response.json()["receipts"][0]
+        self.assertTrue(verify_payload_signature(
+            token_data["publicSigningKey"],
+            receipt["payload"],
+            receipt["signature"],
+        ))
+        self.assertEqual(receipt["eventHash"], "a" * 64)
 
     def test_activity_metrics_can_be_filtered_by_course(self):
         course_a = Course.objects.create(name="Programacion I", code="PI")

@@ -10,11 +10,13 @@ import { ActivityLoader } from '../services/ActivityLoader';
 import { ActivityStateService } from '../services/ActivityStateService';
 import { AgentInstructionsService } from '../services/AgentInstructionsService';
 import { EventLogService } from '../services/EventLogService';
+import { shouldAnchorInRepository } from '../services/EventAnchorPolicy';
 import { GitService } from '../services/GitService';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { StudentProfileService } from '../services/StudentProfileService';
 import { ZipService } from '../services/ZipService';
 import { ActivityManifest } from '../types/ActivityManifest';
+import { ActivityState } from '../types/ActivityState';
 import { StudentProfile } from '../types/StudentProfile';
 import { createEventHash } from '../utils/crypto';
 import { readJson, writeJson } from '../utils/fs';
@@ -99,6 +101,33 @@ suite('Learning Activity core', () => {
 		assert.strictEqual(first.previousHash, null);
 		assert.strictEqual(second.previousHash, first.hash);
 		assert.strictEqual((await stateService.load()).lastEventHash, second.hash);
+	});
+
+	test('event server anchoring is restricted and samples heartbeats by window', () => {
+		const state: ActivityState = {
+			studentId: 'ana-001',
+			contributionId: 'ana-001',
+			activityId: manifest.id,
+			activityTitle: manifest.title,
+			loadedAt: new Date().toISOString(),
+			currentTaskId: null,
+			tasks: {},
+			lastEventHash: null,
+			eventCounts: {},
+			git: { enabled: false }
+		};
+
+		assert.strictEqual(shouldAnchorInRepository('student_registered', state), true);
+		assert.strictEqual(shouldAnchorInRepository('file_saved', state), false);
+
+		const anchoredHeartbeats: number[] = [];
+		for (let index = 1; index <= 30; index += 1) {
+			if (shouldAnchorInRepository('heartbeat', state, () => 0.4)) {
+				anchoredHeartbeats.push(index);
+			}
+		}
+		assert.deepStrictEqual(anchoredHeartbeats, [13]);
+		assert.strictEqual(state.eventServerHeartbeatSampling?.countInWindow, 0);
 	});
 
 	test('ActivityStateService stores state in the contribution directory', async () => {

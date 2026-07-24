@@ -5,6 +5,7 @@ import { AgencyMetricsService } from "../services/AgencyMetricsService";
 import { FeedbackService } from "../services/FeedbackService";
 import { GitReviewService } from "../services/GitReviewService";
 import { IntegrityService } from "../services/IntegrityService";
+import { ExternalIntegrityService } from "../services/ExternalIntegrityService";
 import { SubmissionReviewService } from "../services/SubmissionReviewService";
 import { SubmissionFeedback } from "../types/Feedback";
 import { Rubric } from "../types/Rubric";
@@ -57,6 +58,7 @@ export class SubmissionReviewPanel {
     private readonly extensionUri: vscode.Uri,
     private readonly review = new SubmissionReviewService(),
     private readonly integrity = new IntegrityService(),
+    private readonly externalIntegrity = new ExternalIntegrityService(),
     private readonly agencyMetrics = new AgencyMetricsService(),
     private readonly git = new GitReviewService(),
     private readonly feedback = new FeedbackService(),
@@ -67,6 +69,7 @@ export class SubmissionReviewPanel {
 
   private async refresh(): Promise<void> {
     const integrity: Record<string, unknown> = {};
+    const externalIntegrity: Record<string, unknown> = {};
     const privateKey = await this.evidence.findPrivateKey(this.submission.metadataPath);
     for (const contribution of this.submission.contributions) {
       const target = path.join(
@@ -78,6 +81,10 @@ export class SubmissionReviewPanel {
       integrity[contribution.studentId] = this.integrity.verify(
         (await pathExists(target)) ? await fs.readFile(target, "utf8") : "",
         privateKey
+      );
+      externalIntegrity[contribution.studentId] = this.externalIntegrity.verify(
+        contribution.events,
+        this.submission.manifest
       );
     }
     const rubricPath = path.join(
@@ -105,6 +112,7 @@ export class SubmissionReviewPanel {
           this.agencyMetrics.calculate(item, this.submission.manifest)
         ),
         integrity,
+        externalIntegrity,
         commits
       }
     );

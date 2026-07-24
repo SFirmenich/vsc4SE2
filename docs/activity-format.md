@@ -25,6 +25,23 @@ activity.zip
   "title": "Basic OOP",
   "description": "A practical introduction to classes and encapsulation.",
   "version": "1.0.0",
+  "repository": {
+    "eventServer": {
+      "enabled": true,
+      "baseUrl": "https://repo.example.edu",
+      "ingestionToken": "vsc4e_ing_...",
+      "publicSigningKeyUrl": "https://repo.example.edu/api/integration/student/event-signing-key/",
+      "expectedSigningKeyId": "repo-local-2026-01",
+      "expectedPublicKeySha256": "sha256",
+      "publicSigningKey": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "kid": "repo-local-2026-01",
+        "x": "base64url"
+      },
+      "requireReceipts": false
+    }
+  },
   "tasks": [
     {
       "id": "encapsulation",
@@ -38,6 +55,19 @@ activity.zip
 
 `id`, `title`, and a non-empty `tasks` list are required. Each task requires an
 `id` and `title`; identifiers must be unique.
+
+`repository.eventServer` is optional. When present and `enabled` is true, the
+student extension treats `baseUrl` as the Repository event server configured by
+the teacher. `ingestionToken` authorizes event receipt creation for this
+activity version only. `expectedSigningKeyId`, `expectedPublicKeySha256`, and
+`publicSigningKey` pin the Repository signing key so later review can verify
+receipts without trusting a URL modified in the student workspace. Activities
+without this block remain valid and offline-compatible.
+
+The student extension may keep a local
+`.vsc4education/contributions/<studentId>/event-server-session.json` file while
+syncing with the Repository event server. That file contains an operational
+session token and is excluded from exported submissions.
 
 ## Import
 

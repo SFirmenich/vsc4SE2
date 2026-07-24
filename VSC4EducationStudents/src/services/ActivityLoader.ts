@@ -43,7 +43,8 @@ export class ActivityLoader {
 				gitEnabled: gitAvailable,
 				repositoryMode: gitAvailable
 					? repositoryExisted ? 'existing' as const : 'created' as const
-					: 'disabled' as const
+					: 'disabled' as const,
+				repository: manifest.repository
 			};
 			await writeJson(activityConfigurationPath(destination), configuration);
 			if (gitAvailable) {
@@ -110,7 +111,38 @@ export class ActivityLoader {
 			title: manifest.title,
 			description: typeof manifest.description === 'string' ? manifest.description : undefined,
 			version: typeof manifest.version === 'string' ? manifest.version : undefined,
+			repository: this.normalizeRepository(manifest.repository),
 			tasks
+		};
+	}
+
+	private normalizeRepository(value: unknown): ActivityManifest['repository'] {
+		if (!value || typeof value !== 'object') {
+			return undefined;
+		}
+		const repository = value as Record<string, unknown>;
+		const raw = repository.eventServer;
+		if (!raw || typeof raw !== 'object') {
+			return undefined;
+		}
+		const eventServer = raw as Record<string, unknown>;
+		if (eventServer.enabled !== true || typeof eventServer.baseUrl !== 'string') {
+			return undefined;
+		}
+		return {
+			eventServer: {
+				enabled: true,
+				baseUrl: eventServer.baseUrl.replace(/\/+$/, ''),
+				activityVersionId: typeof eventServer.activityVersionId === 'number' ? eventServer.activityVersionId : undefined,
+				ingestionToken: typeof eventServer.ingestionToken === 'string' ? eventServer.ingestionToken : undefined,
+				publicSigningKeyUrl: typeof eventServer.publicSigningKeyUrl === 'string' ? eventServer.publicSigningKeyUrl : undefined,
+				expectedSigningKeyId: typeof eventServer.expectedSigningKeyId === 'string' ? eventServer.expectedSigningKeyId : undefined,
+				expectedPublicKeySha256: typeof eventServer.expectedPublicKeySha256 === 'string' ? eventServer.expectedPublicKeySha256 : undefined,
+				publicSigningKey: eventServer.publicSigningKey && typeof eventServer.publicSigningKey === 'object'
+					? eventServer.publicSigningKey as Record<string, unknown>
+					: undefined,
+				requireReceipts: eventServer.requireReceipts === true
+			}
 		};
 	}
 

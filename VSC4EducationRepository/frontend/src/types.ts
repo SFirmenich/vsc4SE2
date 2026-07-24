@@ -297,6 +297,38 @@ export interface ActivitySubmissionAnalysis {
   }[];
 }
 
+export interface ActivityEventReceipt {
+  eventId: string;
+  eventHash: string;
+  previousHash: string;
+  envelopeSha256: string;
+  serverReceivedAt: string;
+  signingKeyId: string;
+  payload: Record<string, unknown>;
+  signature: string;
+}
+
+export interface ActivityEventSession {
+  id: number;
+  studentId: string;
+  studentName: string;
+  contributionId: string;
+  clientSessionId: string;
+  courseGroup: string | null;
+  startedAt: string;
+  closedAt: string | null;
+  lastEventHash: string;
+  receiptCount: number;
+  receipts: ActivityEventReceipt[];
+}
+
+export interface ActivityEventReceipts {
+  activityVersionId: number;
+  sessionCount: number;
+  receiptCount: number;
+  sessions: ActivityEventSession[];
+}
+
 export interface Metrics {
   submissions: number;
   uniqueStudents: number;

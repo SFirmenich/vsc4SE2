@@ -1,14 +1,19 @@
 from django.contrib.auth.models import AnonymousUser
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 
-from core.models import ActivityVersion, Course, CourseGroup, LearningActivity, Student, Submission
+from core.models import ActivityVersion, Course, CourseGroup, EventIngestionSession, LearningActivity, Student, Submission
 from core.serializers import (
     ActivityVersionDetailSerializer,
     ActivityVersionListSerializer,
     CourseGroupSerializer,
     CourseSerializer,
+    EventIngestionSessionCreateSerializer,
+    EventIngestionTokenCreateSerializer,
+    EventReceiptBatchSerializer,
+    EventReceiptSerializer,
     ImportWarningSerializer,
     LearningActivitySerializer,
     StudentSerializer,
@@ -18,6 +23,16 @@ from core.serializers import (
 )
 from core.services.activity_import import ActivityZipImportService
 from core.services.activity_review_dashboard import ActivityReviewDashboardService
+from core.services.event_receipts import (
+    authenticate_ingestion_token,
+    authenticate_session,
+    create_or_get_session,
+    create_receipts,
+    issue_ingestion_token,
+    public_key_fingerprint,
+    public_signing_key,
+    resolve_activity_version,
+)
 from core.services.metrics import ActivityMetricsService, CourseGroupMetricsService
 from core.services.safe_zip import ZipValidationError
 from core.services.submission_import import SubmissionZipImportService
@@ -151,6 +166,60 @@ class ActivityVersionViewSet(viewsets.ReadOnlyModelViewSet):
             course_group_id=request.query_params.get("courseGroupId"),
         ))
 
+    @action(detail=True, methods=["get"], url_path="event-receipts")
+    def event_receipts(self, request, pk=None):
+        activity_version = self.get_object()
+        sessions = EventIngestionSession.objects.filter(activity_version=activity_version).select_related("student", "course_group").prefetch_related("receipts")
+        if request.query_params.get("courseGroupId"):
+            sessions = sessions.filter(course_group_id=request.query_params["courseGroupId"])
+        payload = []
+        total_receipts = 0
+        for session in sessions:
+            receipts = list(session.receipts.all())
+            total_receipts += len(receipts)
+            payload.append({
+                "id": session.id,
+                "studentId": session.student.institutional_id,
+                "studentName": session.student.display_name,
+                "contributionId": session.contribution_id,
+                "clientSessionId": session.client_session_id,
+                "courseGroup": session.course_group.name if session.course_group else None,
+                "startedAt": session.started_at,
+                "closedAt": session.closed_at,
+                "lastEventHash": session.last_event_hash,
+                "receiptCount": len(receipts),
+                "receipts": EventReceiptSerializer(receipts, many=True).data,
+            })
+        return Response({
+            "activityVersionId": activity_version.id,
+            "sessionCount": len(payload),
+            "receiptCount": total_receipts,
+            "sessions": payload,
+        })
+
+    @action(detail=True, methods=["post"], url_path="event-ingestion-token")
+    def event_ingestion_token(self, request, pk=None):
+        serializer = EventIngestionTokenCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        group = _course_group(serializer.validated_data.get("courseGroupId"))
+        token_model, token = issue_ingestion_token(
+            self.get_object(),
+            course_group=group,
+            name=serializer.validated_data.get("name") or "",
+        )
+        public_key = public_signing_key()
+        return Response({
+            "id": token_model.id,
+            "token": token,
+            "activityId": token_model.activity_version.activity.activity_id,
+            "version": token_model.activity_version.version,
+            "courseGroupId": token_model.course_group_id,
+            "publicSigningKey": public_key,
+            "expectedSigningKeyId": public_key["kid"],
+            "expectedPublicKeySha256": public_key_fingerprint(public_key),
+            "createdAt": token_model.created_at,
+        }, status=status.HTTP_201_CREATED)
+
 
 class StudentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Student.objects.all()
@@ -268,3 +337,73 @@ def teacher_activity_submissions(request, pk):
     version = ActivityVersion.objects.get(id=pk)
     serializer = SubmissionListSerializer(version.submissions.all(), many=True, context={"request": request})
     return Response(serializer.data)
+
+
+def _bearer_or_header(request, header_name):
+    auth = request.headers.get("Authorization", "")
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return request.headers.get(header_name, "")
+
+
+@api_view(["GET"])
+def student_event_signing_key(request):
+    public_key = public_signing_key()
+    return Response({
+        "publicSigningKey": public_key,
+        "signingKeyId": public_key["kid"],
+        "publicKeySha256": public_key_fingerprint(public_key),
+    })
+
+
+@api_view(["POST"])
+def student_event_session(request):
+    serializer = EventIngestionSessionCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    try:
+        activity_version = resolve_activity_version(data["activityId"], data.get("version") or "")
+        ingestion_token = authenticate_ingestion_token(
+            _bearer_or_header(request, "X-VSC4E-Ingestion-Token"),
+            activity_version,
+        )
+        session, session_token = create_or_get_session(data, ingestion_token)
+    except ZipValidationError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    payload = {
+        "sessionId": session.id,
+        "sessionToken": session_token,
+        "serverStartedAt": session.started_at,
+        "activityId": session.activity_version.activity.activity_id,
+        "version": session.activity_version.version,
+        "studentId": session.student.institutional_id,
+        "contributionId": session.contribution_id,
+    }
+    if not session_token:
+        payload["detail"] = "Session already exists; continue using the original session token."
+    return Response(payload, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+def student_event_receipts(request, pk):
+    serializer = EventReceiptBatchSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        session = EventIngestionSession.objects.select_related("activity_version", "activity_version__activity", "student").get(id=pk)
+        authenticate_session(_bearer_or_header(request, "X-VSC4E-Session-Token"), session)
+        receipts = create_receipts(session, serializer.validated_data["events"])
+    except (EventIngestionSession.DoesNotExist, ZipValidationError) as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"receipts": EventReceiptSerializer(receipts, many=True).data}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+def student_event_session_close(request, pk):
+    try:
+        session = EventIngestionSession.objects.get(id=pk)
+        authenticate_session(_bearer_or_header(request, "X-VSC4E-Session-Token"), session)
+        session.closed_at = timezone.now()
+        session.save(update_fields=["closed_at"])
+    except (EventIngestionSession.DoesNotExist, ZipValidationError) as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(status=status.HTTP_204_NO_CONTENT)

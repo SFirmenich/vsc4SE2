@@ -114,6 +114,31 @@ export class ActivityValidationService {
       });
     }
 
+    const eventServer = manifest.repository?.eventServer;
+    if (eventServer?.enabled) {
+      if (!/^https?:\/\//i.test(eventServer.baseUrl ?? "")) {
+        issues.push({
+          severity: "error",
+          code: "repository.eventServer.baseUrl",
+          message: "Repository event server baseUrl must be an HTTP(S) URL"
+        });
+      }
+      if (!eventServer.ingestionToken) {
+        issues.push({
+          severity: "warning",
+          code: "repository.eventServer.ingestionToken",
+          message: "Repository event server is enabled but no ingestion token is configured"
+        });
+      }
+      if (!eventServer.expectedSigningKeyId || !eventServer.expectedPublicKeySha256) {
+        issues.push({
+          severity: "warning",
+          code: "repository.eventServer.signingKey",
+          message: "Repository event server should pin expectedSigningKeyId and expectedPublicKeySha256"
+        });
+      }
+    }
+
     for (const required of [
       "starter",
       path.join("agent", "instructions.md")

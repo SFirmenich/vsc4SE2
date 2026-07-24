@@ -5,6 +5,7 @@ from core.models import (
     ActivityVersion,
     Course,
     CourseGroup,
+    EventReceipt,
     ImportWarning,
     LearningActivity,
     Student,
@@ -161,3 +162,51 @@ class ZipImportSerializer(serializers.Serializer):
     activityVersionId = serializers.IntegerField(required=False)
     submissionName = serializers.CharField(required=False, allow_blank=True, max_length=240)
     name = serializers.CharField(required=False, allow_blank=True, max_length=240)
+
+
+class EventIngestionTokenCreateSerializer(serializers.Serializer):
+    courseGroupId = serializers.IntegerField(required=False)
+    name = serializers.CharField(required=False, allow_blank=True, max_length=160)
+
+
+class EventIngestionSessionCreateSerializer(serializers.Serializer):
+    activityId = serializers.CharField(max_length=160)
+    version = serializers.CharField(required=False, allow_blank=True, max_length=80)
+    studentId = serializers.CharField(max_length=160)
+    displayName = serializers.CharField(required=False, allow_blank=True, max_length=240)
+    contributionId = serializers.CharField(max_length=160)
+    clientSessionId = serializers.CharField(max_length=160)
+
+
+class EventReceiptInputSerializer(serializers.Serializer):
+    id = serializers.CharField(max_length=160)
+    timestamp = serializers.CharField(required=False, allow_blank=True)
+    previousHash = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=64)
+    hash = serializers.CharField(max_length=64)
+    envelopeSha256 = serializers.CharField(max_length=64)
+
+
+class EventReceiptBatchSerializer(serializers.Serializer):
+    events = EventReceiptInputSerializer(many=True)
+
+
+class EventReceiptSerializer(serializers.ModelSerializer):
+    eventId = serializers.CharField(source="event_id", read_only=True)
+    eventHash = serializers.CharField(source="event_hash", read_only=True)
+    previousHash = serializers.CharField(source="previous_hash", read_only=True)
+    envelopeSha256 = serializers.CharField(source="envelope_sha256", read_only=True)
+    serverReceivedAt = serializers.DateTimeField(source="server_received_at", read_only=True)
+    signingKeyId = serializers.CharField(source="signing_key_id", read_only=True)
+
+    class Meta:
+        model = EventReceipt
+        fields = [
+            "eventId",
+            "eventHash",
+            "previousHash",
+            "envelopeSha256",
+            "serverReceivedAt",
+            "signingKeyId",
+            "payload",
+            "signature",
+        ]

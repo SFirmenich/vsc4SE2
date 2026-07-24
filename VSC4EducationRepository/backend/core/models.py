@@ -104,6 +104,53 @@ class Student(models.Model):
         return self.display_name or self.institutional_id
 
 
+class EventIngestionToken(models.Model):
+    activity_version = models.ForeignKey(ActivityVersion, related_name="event_ingestion_tokens", on_delete=models.CASCADE)
+    course_group = models.ForeignKey(CourseGroup, related_name="event_ingestion_tokens", null=True, blank=True, on_delete=models.CASCADE)
+    name = models.CharField(max_length=160, blank=True)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class EventIngestionSession(models.Model):
+    activity_version = models.ForeignKey(ActivityVersion, related_name="event_ingestion_sessions", on_delete=models.CASCADE)
+    course_group = models.ForeignKey(CourseGroup, related_name="event_ingestion_sessions", null=True, blank=True, on_delete=models.SET_NULL)
+    student = models.ForeignKey(Student, related_name="event_ingestion_sessions", on_delete=models.CASCADE)
+    contribution_id = models.CharField(max_length=160)
+    client_session_id = models.CharField(max_length=160)
+    session_token_hash = models.CharField(max_length=64, unique=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    last_event_hash = models.CharField(max_length=64, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+        unique_together = [("activity_version", "student", "contribution_id", "client_session_id")]
+
+
+class EventReceipt(models.Model):
+    session = models.ForeignKey(EventIngestionSession, related_name="receipts", on_delete=models.CASCADE)
+    event_id = models.CharField(max_length=160)
+    sequence = models.PositiveIntegerField()
+    event_hash = models.CharField(max_length=64)
+    previous_hash = models.CharField(max_length=64, blank=True)
+    client_timestamp = models.DateTimeField(null=True, blank=True)
+    envelope_sha256 = models.CharField(max_length=64)
+    server_received_at = models.DateTimeField(auto_now_add=True)
+    signing_key_id = models.CharField(max_length=120)
+    signature = models.TextField()
+    payload = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["session", "sequence"]
+        unique_together = [("session", "event_id")]
+
+
 def submission_zip_upload_to(instance, filename):
     activity_id = instance.activity_version.activity.activity_id
     version = instance.activity_version.version

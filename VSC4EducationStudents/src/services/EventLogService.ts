@@ -8,6 +8,8 @@ import { ensureDirectory, pathExists } from '../utils/fs';
 import { contributionPath, eventsPath } from '../utils/paths';
 import { ActivityStateService } from './ActivityStateService';
 import { EvidenceEncryptionService } from './EvidenceEncryptionService';
+import { EventAnchorService } from './EventAnchorService';
+import { shouldAnchorInRepository } from './EventAnchorPolicy';
 
 export class EventLogService {
 	public constructor(
@@ -57,7 +59,7 @@ export class EventLogService {
 	}
 
 	private async appendImmediately(input: LearningEventInput): Promise<LearningEvent> {
-		return this.stateService.withLock(async state => {
+		const { event, envelope, shouldAnchor } = await this.stateService.withLock(async state => {
 			const eventWithoutHash = {
 				id: randomUUID(),
 				studentId: this.stateService.profile.studentId,
@@ -102,8 +104,37 @@ export class EventLogService {
 				[this.countKey(event.event, event.taskId)]: (state.eventCounts?.[this.countKey(event.event, event.taskId)] ?? 0) + 1,
 				[this.countKey(event.event)]: (state.eventCounts?.[this.countKey(event.event)] ?? 0) + 1
 			};
-			return { state, result: event };
+			return {
+				state,
+				result: {
+					event,
+					envelope,
+					shouldAnchor: shouldAnchorInRepository(event.event, state)
+				}
+			};
 		});
+		if (shouldAnchor) {
+			await this.appendServerReceiptEvent(event, envelope);
+		}
+		return event;
+	}
+
+	private async appendServerReceiptEvent(event: LearningEvent, envelope: EncryptedEventEnvelope): Promise<void> {
+		try {
+			const receipt = await new EventAnchorService(
+				this.stateService.root,
+				this.stateService.profile
+			).anchor(event, envelope);
+			if (receipt) {
+				await this.appendImmediately({
+					event: 'event_server_receipt',
+					taskId: event.taskId,
+					data: { ...receipt }
+				});
+			}
+		} catch {
+			// Event anchoring is best-effort; the local encrypted hash chain remains the primary offline evidence.
+		}
 	}
 
 	private countKey(eventName: string, taskId?: string | null): string {

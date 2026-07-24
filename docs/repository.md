@@ -89,6 +89,12 @@ The backend stores these main entities:
   contribution state and task metadata files.
 - `SubmissionEventSummary`: event counts grouped by event type.
 - `SubmissionAgentSummary`: aggregate agent interaction counts.
+- `EventIngestionToken`: limited token that authorizes student event receipt
+  creation for one activity version and, optionally, one course group.
+- `EventIngestionSession`: server-side session opened by a student extension
+  for one contribution.
+- `EventReceipt`: signed Repository receipt for one local event hash and
+  encrypted envelope hash.
 - `ImportWarning`: non-fatal import issues detected in activity or submission
   packages.
 
@@ -125,7 +131,8 @@ Submission review:
 
 - reads the stored original submission ZIP on demand;
 - exposes a principal review summary, full recorded agent interactions,
-  agency metrics, raw event drill-down, and event hash-chain integrity;
+  agency metrics, raw event drill-down, event hash-chain integrity, and
+  optional Repository receipt verification;
 - treats missing optional evidence, such as agent interactions, as missing data
   or warnings instead of changing the submission contract;
 - does not execute student code, install dependencies, or mutate imported ZIP
@@ -139,6 +146,11 @@ Activity review dashboards:
   for submissions that cannot be reviewed;
 - remain derived views over the original submitted ZIPs, not additions to the
   portable package format.
+
+The activity detail UI also includes an Event server tab. It polls
+`/api/activity-versions/{id}/event-receipts/` while open and shows live
+Repository ingestion sessions, signed receipt counts, server receipt times, and
+event hashes for the selected activity version.
 
 Corrupt required JSON, unreadable required JSONL, invalid paths, and unsafe
 archive entries should produce clear import errors. Invalid lines in optional
@@ -168,6 +180,24 @@ GET  /api/integration/teacher/activities/
 GET  /api/integration/teacher/course-groups/
 GET  /api/integration/teacher/activity-versions/{id}/submissions/
 ```
+
+Student event-server endpoints:
+
+```text
+GET  /api/integration/student/event-signing-key/
+POST /api/integration/student/event-sessions/
+POST /api/integration/student/event-sessions/{id}/receipts/
+POST /api/integration/student/event-sessions/{id}/close/
+POST /api/activity-versions/{id}/event-ingestion-token/
+```
+
+`event-signing-key` is public and returns the Repository Ed25519 public signing
+key plus its SHA-256 fingerprint. `event-ingestion-token` creates a limited
+token that the teacher can place in `manifest.repository.eventServer` before
+exporting an activity. Student session and receipt endpoints require that token
+or the short session token returned when a session is created. These endpoints
+only create receipt evidence; they do not grant read access to courses,
+submissions, or Repository administration.
 
 ZIP upload endpoints expect multipart form data with a `zip` file field. Where
 supported, `courseGroupId` associates the import with a course group.

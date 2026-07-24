@@ -9,6 +9,7 @@ import { FeedbackService } from "../services/FeedbackService";
 import { EvidenceCryptoService } from "../services/EvidenceCryptoService";
 import { GitReviewService } from "../services/GitReviewService";
 import { IntegrityService } from "../services/IntegrityService";
+import { ExternalIntegrityService } from "../services/ExternalIntegrityService";
 import { ReviewWorkspaceService } from "../services/ReviewWorkspaceService";
 import { SubmissionReviewService } from "../services/SubmissionReviewService";
 import { ActivityManifest } from "../types/ActivityManifest";
@@ -107,6 +108,7 @@ export class TeacherPanel {
     private readonly reviewWorkspaces = new ReviewWorkspaceService(),
     private readonly review = new SubmissionReviewService(),
     private readonly integrity = new IntegrityService(),
+    private readonly externalIntegrity = new ExternalIntegrityService(),
     private readonly agencyMetrics = new AgencyMetricsService(),
     private readonly git = new GitReviewService(),
     private readonly feedback = new FeedbackService(),
@@ -195,6 +197,7 @@ export class TeacherPanel {
   ): Promise<SubmissionReviewModel | undefined> {
     const submission = await this.reviewWorkspaces.readSubmission(submissionRoot);
     const integrity: Record<string, unknown> = {};
+    const externalIntegrity: Record<string, unknown> = {};
     const privateKey = this.reviewRoot
       ? await this.evidence.findPrivateKey(this.reviewWorkspaces.activityRoot(this.reviewRoot))
       : undefined;
@@ -208,6 +211,10 @@ export class TeacherPanel {
       integrity[contribution.studentId] = this.integrity.verify(
         (await pathExists(target)) ? await fs.readFile(target, "utf8") : "",
         privateKey
+      );
+      externalIntegrity[contribution.studentId] = this.externalIntegrity.verify(
+        contribution.events,
+        submission.manifest
       );
     }
     const rubricPath = path.join(submission.metadataPath, "rubrics", "main.json");
@@ -225,6 +232,7 @@ export class TeacherPanel {
         this.agencyMetrics.calculate(item, submission.manifest)
       ),
       integrity,
+      externalIntegrity,
       commits
     };
   }

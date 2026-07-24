@@ -20,4 +20,8 @@ urlpatterns = [
     path("integration/teacher/activities/", views.teacher_activities),
     path("integration/teacher/course-groups/", views.teacher_course_groups),
     path("integration/teacher/activity-versions/<int:pk>/submissions/", views.teacher_activity_submissions),
+    path("integration/student/event-signing-key/", views.student_event_signing_key),
+    path("integration/student/event-sessions/", views.student_event_session),
+    path("integration/student/event-sessions/<int:pk>/receipts/", views.student_event_receipts),
+    path("integration/student/event-sessions/<int:pk>/close/", views.student_event_session_close),
 ]

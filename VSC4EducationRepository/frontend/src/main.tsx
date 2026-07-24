@@ -7,6 +7,7 @@ import type {
   ActivityVersion,
   ActivityVersionDetail,
   ActivityReviewDashboard,
+  ActivityEventReceipts,
   ActivitySubmissionAnalysis,
   Course,
   CourseGroup,
@@ -342,13 +343,39 @@ function ActivityView(props: {
   onOpen: (submission: Submission) => void;
 }) {
   const activity = props.activity;
-  const [tab, setTab] = useState<"submissions" | "analysis" | "dashboard">("submissions");
+  const [tab, setTab] = useState<"submissions" | "analysis" | "dashboard" | "event-server">("submissions");
   const [dashboard, setDashboard] = useState<ActivityReviewDashboard | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
   const [analysis, setAnalysis] = useState<ActivitySubmissionAnalysis | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+  const [eventReceipts, setEventReceipts] = useState<ActivityEventReceipts | null>(null);
+  const [eventReceiptsLoading, setEventReceiptsLoading] = useState(false);
+  const [eventReceiptsError, setEventReceiptsError] = useState("");
+
+  async function loadEventReceipts() {
+    setEventReceiptsLoading(true);
+    setEventReceiptsError("");
+    try {
+      setEventReceipts(await getJson<ActivityEventReceipts>(`/activity-versions/${props.fallbackActivity.id}/event-receipts/`));
+    } catch (error) {
+      setEventReceiptsError(errorMessage(error));
+    } finally {
+      setEventReceiptsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (tab !== "event-server") {
+      return;
+    }
+    void loadEventReceipts();
+    const timer = window.setInterval(() => {
+      void loadEventReceipts();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [tab, props.fallbackActivity.id]);
 
   async function openDashboard() {
     setTab("dashboard");
@@ -409,6 +436,7 @@ function ActivityView(props: {
         <button className={tab === "submissions" ? "active" : ""} onClick={() => setTab("submissions")}><Upload size={16} /> {t("Submissions")}</button>
         <button className={tab === "analysis" ? "active" : ""} onClick={openAnalysis}><BarChart3 size={16} /> {t("Submission analysis")}</button>
         <button className={tab === "dashboard" ? "active" : ""} onClick={openDashboard}><Activity size={16} /> {t("Dashboard")}</button>
+        <button className={tab === "event-server" ? "active" : ""} onClick={() => setTab("event-server")}><ShieldCheck size={16} /> {t("Event server")}</button>
       </nav>
 
       {tab === "submissions" && (
@@ -469,6 +497,93 @@ function ActivityView(props: {
       {tab === "analysis" && (
         <SubmissionAnalysisView analysis={analysis} loading={analysisLoading} error={analysisError} />
       )}
+
+      {tab === "event-server" && (
+        <ActivityEventServerView receipts={eventReceipts} loading={eventReceiptsLoading} error={eventReceiptsError} onRefresh={loadEventReceipts} />
+      )}
+    </>
+  );
+}
+
+function ActivityEventServerView(props: {
+  receipts: ActivityEventReceipts | null;
+  loading: boolean;
+  error: string;
+  onRefresh: () => Promise<void>;
+}) {
+  const receipts = props.receipts;
+  const sessions = receipts?.sessions ?? [];
+  return (
+    <>
+      <section className="detailPanel">
+        <div>
+          <span className="eyebrow">{t("Event server")}</span>
+          <p>{t("Repository receipts show events received and signed by the configured Repository. This view refreshes automatically.")}</p>
+        </div>
+        <div className="metrics">
+          <Metric label={t("Sessions")} value={receipts?.sessionCount ?? 0} />
+          <Metric label={t("Receipts")} value={receipts?.receiptCount ?? 0} />
+          <Metric label={t("Status")} value={props.loading ? t("Refreshing") : t("Live")} />
+        </div>
+        <button className="ghostButton" onClick={() => void props.onRefresh()}><RefreshCw size={17} /> {t("Refresh")}</button>
+      </section>
+      {props.error && <section className="tablePanel warningPanel"><strong>{t("Could not load event receipts")}</strong><span>{props.error}</span></section>}
+      <section className="tablePanel">
+        <h2><ShieldCheck size={18} /> {t("Event sessions")}</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>{t("Student")}</th>
+              <th>{t("Group")}</th>
+              <th>{t("Receipts")}</th>
+              <th>{t("Started")}</th>
+              <th>{t("Closed")}</th>
+              <th>{t("Last event hash")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sessions.map((session) => (
+              <tr key={session.id}>
+                <td><strong>{session.studentName || session.studentId}</strong><br /><small>{session.contributionId}</small></td>
+                <td>{session.courseGroup ?? t("No group")}</td>
+                <td>{session.receiptCount}</td>
+                <td>{new Date(session.startedAt).toLocaleString()}</td>
+                <td>{session.closedAt ? new Date(session.closedAt).toLocaleString() : "-"}</td>
+                <td><code>{shortHash(session.lastEventHash)}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!sessions.length && <EmptyState text={t("No event server sessions yet.")} />}
+      </section>
+      {sessions.map((session) => (
+        <section className="tablePanel" key={`receipts-${session.id}`}>
+          <h2>{session.studentName || session.studentId} - {t("Registered events")}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>{t("Server time")}</th>
+                <th>{t("Event ID")}</th>
+                <th>{t("Event hash")}</th>
+                <th>{t("Previous hash")}</th>
+                <th>{t("Signing key")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {session.receipts.slice(-80).reverse().map((receipt) => (
+                <tr key={receipt.eventId}>
+                  <td>{new Date(receipt.serverReceivedAt).toLocaleString()}</td>
+                  <td><code>{receipt.eventId}</code></td>
+                  <td><code>{shortHash(receipt.eventHash)}</code></td>
+                  <td><code>{shortHash(receipt.previousHash)}</code></td>
+                  <td>{receipt.signingKeyId}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {session.receiptCount > 80 && <p>{t("Showing the latest 80 receipts for this session.")}</p>}
+        </section>
+      ))}
     </>
   );
 }
@@ -916,6 +1031,10 @@ function formatCounts(values: Record<string, number>) {
 
 function formatMetricValue(value: string | number) {
   return typeof value === "string" ? t(value) : value;
+}
+
+function shortHash(value: string | null | undefined) {
+  return value ? `${value.slice(0, 12)}...` : "-";
 }
 
 function translateSignal(value: string) {
