@@ -40,7 +40,8 @@ export function relativeWorkspacePath(root: string, filePath: string): string {
 
 export function isIgnoredPath(relativePath: string): boolean {
 	const normalized = relativePath.replace(/\\/g, '/');
-	return /^\.vsc4education\/contributions\/[^/]+\/events\.jsonl$/.test(normalized)
+	return /^\.vsc4education\/contributions\/[^/]+\/(events|agent-evidence|agent-evidence-state|state|current-task)\.jsonl?$/.test(normalized)
+		|| /^\.vsc4education\/contributions\/[^/]+\/task-metadata\//.test(normalized)
 		|| normalized.startsWith('node_modules/')
 		|| normalized.startsWith('.git/')
 		|| normalized.startsWith('dist/')

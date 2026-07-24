@@ -52,6 +52,7 @@ export class AgentInstructionsService {
 	): Promise<void> {
 		const canonicalInstructions = await this.getCanonicalInstructions();
 		await this.ensureInteractionLog();
+		await this.ensureEvidenceLog();
 		await this.ensureRootInstructions(canonicalInstructions);
 		await this.writeGeneratedContext(manifest, state, recentEvents);
 		await this.writeCurrentTask(manifest, state);
@@ -114,6 +115,18 @@ export class AgentInstructionsService {
 		}
 	}
 
+	private async ensureEvidenceLog(): Promise<void> {
+		const logPath = contributionPath(
+			this.root,
+			this.profile.contributionId,
+			'agent-evidence.jsonl'
+		);
+		if (!await pathExists(logPath)) {
+			await ensureDirectory(path.dirname(logPath));
+			await fs.writeFile(logPath, '', 'utf8');
+		}
+	}
+
 	private async writeGeneratedContext(
 		manifest: ActivityManifest,
 		state: ActivityState,
@@ -154,6 +167,7 @@ ${progress}
 - Theory: \`.vsc4education/theory/\`
 - Tasks: \`.vsc4education/tasks/\`
 - Interactions: \`.vsc4education/contributions/${this.profile.contributionId}/agent-interactions.jsonl\`
+- Encrypted interaction evidence: \`.vsc4education/contributions/${this.profile.contributionId}/agent-evidence.jsonl\`
 
 ## Recent Events
 

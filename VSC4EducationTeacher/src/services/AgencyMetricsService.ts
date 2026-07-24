@@ -38,7 +38,7 @@ const PROTECTED_PATTERNS = [
   /^AGENTS\.md$/i,
   /^\.vsc4education[\\/]/i,
   /(^|[\\/])agent[\\/]instructions\.md$/i,
-  /(^|[\\/])(state|events|agent-interactions|current-task)\.jsonl?$/i,
+  /(^|[\\/])(state|events|agent-interactions|agent-evidence|agent-evidence-state|current-task)\.jsonl?$/i,
   /(^|[\\/])AGENTS\.generated\.md$/i
 ];
 
@@ -193,7 +193,7 @@ export class AgencyMetricsService {
       ]),
       this.group("Integrity and compliance", [
         this.metric(47, false, "Suspicious sequences on protected files", protectedEditSequences.length, undefined, this.protectedEditDetail(protectedEditSequences), "Protected file opening followed by change/save within a suspicious window. Review indicator, never an automatic accusation.", protectedEditSequences.length, "estimated"),
-        this.metric(48, true, "Hash chain integrity", hashDiscontinuities === 0 ? "continuous" : `${hashDiscontinuities} discontinuities`, undefined, "Checks previousHash against the previous hash.", "Affects confidence in log traceability.", contribution.events.length, "direct"),
+        this.metric(48, true, "Integridad de la cadena hash", hashDiscontinuities === 0 ? "continua" : `${hashDiscontinuities} discontinuidades`, undefined, "Checks previousHash against the previous hash.", "Affects confidence in log traceability.", contribution.events.length, "direct"),
         this.metric(49, false, "Temporal discontinuities", temporalGaps, undefined, "Pauses of 15 minutes or more between non-heartbeat actions.", "Helps avoid overinterpreting absence of events.", temporalGaps, "direct")
       ]),
       this.group("Advanced relevance", [
@@ -296,11 +296,11 @@ export class AgencyMetricsService {
   private agencyLevel(
     score: number
   ): ObservableAgencyAssessment["level"] {
-    if (score >= 85) return "very high";
-    if (score >= 65) return "high";
-    if (score >= 40) return "medium";
-    if (score >= 15) return "low";
-    return "insufficient";
+    if (score >= 85) return "muy alta";
+    if (score >= 65) return "alta";
+    if (score >= 40) return "media";
+    if (score >= 15) return "baja";
+    return "insuficiente";
   }
 
   private confidence(metrics: AgencyMetric[]): ObservableAgencyAssessment["confidence"] {
@@ -308,9 +308,9 @@ export class AgencyMetricsService {
     const limited = metrics.filter((metric) => metric.reliability === "limited").length;
     const direct = metrics.filter((metric) => metric.reliability === "direct").length;
     const hash = metrics.find((metric) => metric.id === 48)?.value;
-    if (evidence >= 30 && direct >= limited && hash === "continuous") return "high";
-    if (evidence >= 10 && limited < metrics.length / 2) return "medium";
-    return "limited";
+    if (evidence >= 30 && direct >= limited && hash === "continua") return "alta";
+    if (evidence >= 10 && limited < metrics.length / 2) return "media";
+    return "limitada";
   }
 
   private penalty(metrics: Map<number, AgencyMetric>): number {
@@ -323,7 +323,7 @@ export class AgencyMetricsService {
     const systemic = value(46);
     if (systemic !== undefined && systemic > 50) penalty += 8;
     const integrity = metrics.get(48)?.value;
-    if (typeof integrity === "string" && integrity !== "continuous") penalty += 10;
+    if (typeof integrity === "string" && integrity !== "continua") penalty += 10;
     return penalty;
   }
 
@@ -344,7 +344,7 @@ export class AgencyMetricsService {
     if ((value(47) ?? 0) > 0) flags.push("There is activity on protected or internal files");
     if ((value(49) ?? 0) > 0) flags.push("There are relevant temporal discontinuities");
     const integrity = metrics.get(48)?.value;
-    if (typeof integrity === "string" && integrity !== "continuous") {
+    if (typeof integrity === "string" && integrity !== "continua") {
       flags.push("La cadena hash no es continua");
     }
     if (penalty > 0) flags.push(`Penalizacion contextual aplicada: ${this.round(penalty)} puntos`);

@@ -10,6 +10,7 @@ import { SubmissionFeedback } from "../types/Feedback";
 import { Rubric } from "../types/Rubric";
 import { ImportedSubmission } from "../types/Submission";
 import { pathExists, readJson } from "../utils/fs";
+import { EvidenceCryptoService } from "../services/EvidenceCryptoService";
 import { submissionReviewHtml } from "./submissionReviewHtml";
 
 export class SubmissionReviewPanel {
@@ -58,13 +59,15 @@ export class SubmissionReviewPanel {
     private readonly integrity = new IntegrityService(),
     private readonly agencyMetrics = new AgencyMetricsService(),
     private readonly git = new GitReviewService(),
-    private readonly feedback = new FeedbackService()
+    private readonly feedback = new FeedbackService(),
+    private readonly evidence = new EvidenceCryptoService()
   ) {
     panel.webview.onDidReceiveMessage((message) => this.handle(message));
   }
 
   private async refresh(): Promise<void> {
     const integrity: Record<string, unknown> = {};
+    const privateKey = await this.evidence.findPrivateKey(this.submission.metadataPath);
     for (const contribution of this.submission.contributions) {
       const target = path.join(
         this.submission.metadataPath,
@@ -73,7 +76,8 @@ export class SubmissionReviewPanel {
         "events.jsonl"
       );
       integrity[contribution.studentId] = this.integrity.verify(
-        (await pathExists(target)) ? await fs.readFile(target, "utf8") : ""
+        (await pathExists(target)) ? await fs.readFile(target, "utf8") : "",
+        privateKey
       );
     }
     const rubricPath = path.join(

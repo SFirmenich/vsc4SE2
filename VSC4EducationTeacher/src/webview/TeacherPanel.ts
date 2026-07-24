@@ -6,6 +6,7 @@ import { ActivityPackageService } from "../services/ActivityPackageService";
 import { ActivityProjectService } from "../services/ActivityProjectService";
 import { ActivityStatusService } from "../services/ActivityStatusService";
 import { FeedbackService } from "../services/FeedbackService";
+import { EvidenceCryptoService } from "../services/EvidenceCryptoService";
 import { GitReviewService } from "../services/GitReviewService";
 import { IntegrityService } from "../services/IntegrityService";
 import { ReviewWorkspaceService } from "../services/ReviewWorkspaceService";
@@ -108,7 +109,8 @@ export class TeacherPanel {
     private readonly integrity = new IntegrityService(),
     private readonly agencyMetrics = new AgencyMetricsService(),
     private readonly git = new GitReviewService(),
-    private readonly feedback = new FeedbackService()
+    private readonly feedback = new FeedbackService(),
+    private readonly evidence = new EvidenceCryptoService()
   ) {
     this.disposables.push(
       panel.webview.onDidReceiveMessage((message) => this.handle(message)),
@@ -193,6 +195,9 @@ export class TeacherPanel {
   ): Promise<SubmissionReviewModel | undefined> {
     const submission = await this.reviewWorkspaces.readSubmission(submissionRoot);
     const integrity: Record<string, unknown> = {};
+    const privateKey = this.reviewRoot
+      ? await this.evidence.findPrivateKey(this.reviewWorkspaces.activityRoot(this.reviewRoot))
+      : undefined;
     for (const contribution of submission.contributions) {
       const target = path.join(
         submission.metadataPath,
@@ -201,7 +206,8 @@ export class TeacherPanel {
         "events.jsonl"
       );
       integrity[contribution.studentId] = this.integrity.verify(
-        (await pathExists(target)) ? await fs.readFile(target, "utf8") : ""
+        (await pathExists(target)) ? await fs.readFile(target, "utf8") : "",
+        privateKey
       );
     }
     const rubricPath = path.join(submission.metadataPath, "rubrics", "main.json");
@@ -300,6 +306,9 @@ export class TeacherPanel {
           break;
         case "exportStudent":
           await this.exportStudent();
+          break;
+        case "generateSignatures":
+          await this.generateSignatures();
           break;
         case "exportTeacher":
           await this.exportTeacher();
@@ -667,6 +676,17 @@ Create or update the canonical activity files from that material while preservin
     if (!destination) return;
     await this.packages.export(root, destination.fsPath, true);
     void vscode.window.showInformationMessage(`Student activity exported to ${destination.fsPath}`);
+    await this.refresh();
+  }
+
+  private async generateSignatures(): Promise<void> {
+    const root = this.requireActivityRoot();
+    const status = await this.statusService.inspect(root);
+    if (!status.validation?.valid) {
+      throw new Error("Fix validation errors before generating signatures");
+    }
+    await this.evidence.ensureKeyPair(root);
+    void vscode.window.showInformationMessage("Evidence signatures generated");
     await this.refresh();
   }
 

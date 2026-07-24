@@ -4,11 +4,13 @@ import { listFiles, writeJson } from "../utils/fs";
 import { sha256 } from "../utils/crypto";
 import { ActivityValidationService } from "./ActivityValidationService";
 import { ZipService } from "./ZipService";
+import { EvidenceCryptoService } from "./EvidenceCryptoService";
 
 export class ActivityPackageService {
   constructor(
     private readonly validation = new ActivityValidationService(),
-    private readonly zip = new ZipService()
+    private readonly zip = new ZipService(),
+    private readonly evidence = new EvidenceCryptoService()
   ) {}
 
   async export(
@@ -24,6 +26,7 @@ export class ActivityPackageService {
           .join("; ")}`
       );
     }
+    await this.evidence.ensureKeyPair(activityRoot);
     if (includeHashes) {
       const hashes: Record<string, string> = {};
       for (const file of await listFiles(activityRoot)) {
@@ -34,6 +37,7 @@ export class ActivityPackageService {
           relative.startsWith("assessment/") ||
           relative.startsWith("resources/") ||
           relative.startsWith("rubrics/") ||
+          relative.startsWith("teacher-private/") ||
           relative.startsWith("imports/") ||
           relative.startsWith(".git/") ||
           relative.startsWith("node_modules/")
@@ -52,7 +56,7 @@ export class ActivityPackageService {
       activityRoot,
       destination,
       new Set(["node_modules", ".git", "dist", "out"]),
-      new Set(["imports", "AGENTS.md", "assessment", "resources", "rubrics"])
+      new Set(["imports", "AGENTS.md", "assessment", "resources", "rubrics", "teacher-private"])
     );
   }
 
@@ -68,6 +72,7 @@ export class ActivityPackageService {
           .join("; ")}`
       );
     }
+    await this.evidence.ensureKeyPair(activityRoot);
     await this.zip.createFromDirectory(
       activityRoot,
       destination,

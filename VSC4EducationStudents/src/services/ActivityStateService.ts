@@ -41,6 +41,7 @@ export class ActivityStateService {
 				{ status: 'pending' }
 			])),
 			lastEventHash: null,
+			eventCounts: {},
 			git: { enabled: gitEnabled }
 		};
 		await this.save(state);

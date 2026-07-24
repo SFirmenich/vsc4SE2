@@ -21,19 +21,21 @@ export class SubmissionImportService {
 
   async importToDirectory(
     zipPath: string,
-    destinationRoot: string
+    destinationRoot: string,
+    evidenceKeyRoot?: string
   ): Promise<ImportedSubmission> {
     const id = createId();
     const zipName = path.basename(zipPath, path.extname(zipPath));
     const safeName = zipName.replace(/[^a-zA-Z0-9._-]/g, "-") || "submission";
     const rootPath = path.join(destinationRoot, `${safeName}-${id}`);
-    return this.importAtRoot(zipPath, id, rootPath);
+    return this.importAtRoot(zipPath, id, rootPath, evidenceKeyRoot);
   }
 
   private async importAtRoot(
     zipPath: string,
     id: string,
-    rootPath: string
+    rootPath: string,
+    evidenceKeyRoot?: string
   ): Promise<ImportedSubmission> {
     await fs.mkdir(rootPath, { recursive: true });
     await this.zip.extractSafe(zipPath, rootPath);
@@ -54,7 +56,7 @@ export class SubmissionImportService {
       projectPath,
       metadataPath,
       manifest,
-      contributions: await this.review.readContributions(metadataPath),
+      contributions: await this.review.readContributions(metadataPath, evidenceKeyRoot ?? metadataPath),
       hasGit: await pathExists(path.join(projectPath, ".git")),
       importedAt: new Date().toISOString()
     };

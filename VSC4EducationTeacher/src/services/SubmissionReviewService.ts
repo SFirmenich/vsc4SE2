@@ -3,13 +3,17 @@ import * as path from "path";
 import { AgentInteraction } from "../types/AgentInteraction";
 import { Contribution } from "../types/Contribution";
 import { LearningEvent } from "../types/LearningEvent";
+import { EncryptedEventEnvelope } from "../types/Evidence";
 import { pathExists, readJson } from "../utils/fs";
 import { parseJsonLines } from "../utils/json";
+import { EvidenceCryptoService } from "./EvidenceCryptoService";
 
 const PROVIDERS = new Set(["chatGPT", "claude", "copilot"]);
 
 export class SubmissionReviewService {
-  async readContributions(metadataPath: string): Promise<Contribution[]> {
+  constructor(private readonly evidence = new EvidenceCryptoService()) {}
+
+  async readContributions(metadataPath: string, evidenceKeyRoot = metadataPath): Promise<Contribution[]> {
     const root = path.join(metadataPath, "contributions");
     if (!(await pathExists(root))) {
       return [];
@@ -20,9 +24,14 @@ export class SubmissionReviewService {
         continue;
       }
       const directory = path.join(root, entry.name);
-      const events = await this.readJsonl<LearningEvent>(
+      const privateKey = await this.evidence.findPrivateKey(evidenceKeyRoot);
+      const events = await this.readEvents(
         path.join(directory, "events.jsonl")
       );
+      const containsEncryptedEvents = events.values.some((event) => this.isEncryptedEvent(event));
+      const missingKeyError = containsEncryptedEvents && !privateKey
+        ? ["Encrypted events require teacher-private/evidence-private-key.jwk"]
+        : [];
       const interactions = await this.readInteractions(
         path.join(directory, "agent-interactions.jsonl")
       );
@@ -30,13 +39,25 @@ export class SubmissionReviewService {
         studentId: entry.name,
         profile: await this.optionalJson(path.join(directory, "profile.json")),
         state: await this.optionalJson(path.join(directory, "state.json")),
-        events: events.values,
+        events: (!containsEncryptedEvents || privateKey) ? events.values.map((event): LearningEvent => {
+          if (this.isEncryptedEvent(event)) {
+            const decrypted = this.evidence.decryptJson<Omit<LearningEvent, "hash">>(event.data, privateKey!);
+            return { ...decrypted, hash: event.hash } as LearningEvent;
+          }
+          return event as LearningEvent;
+        }) : [],
         eventParseErrors: events.invalidLines,
         agentInteractions: interactions.values,
-        interactionErrors: interactions.errors
+        interactionErrors: [...interactions.errors, ...missingKeyError]
       });
     }
     return output;
+  }
+
+  async readEvents(
+    target: string
+  ): Promise<{ values: Array<LearningEvent | EncryptedEventEnvelope>; invalidLines: number[] }> {
+    return this.readJsonl<LearningEvent | EncryptedEventEnvelope>(target);
   }
 
   async readInteractions(
@@ -293,7 +314,7 @@ export class SubmissionReviewService {
 
     return {
       score: Math.max(0, Math.min(6, score)),
-      level: score >= 5 ? "high" : score >= 3 ? "medium" : "low",
+      level: score >= 5 ? "alta" : score >= 3 ? "media" : "baja",
       positives,
       concerns
     };
@@ -306,6 +327,11 @@ export class SubmissionReviewService {
       return { values: [], invalidLines: [] };
     }
     return parseJsonLines<T>(await fs.readFile(target, "utf8"));
+  }
+
+  private isEncryptedEvent(value: unknown): value is EncryptedEventEnvelope {
+    const event = value as Partial<EncryptedEventEnvelope>;
+    return event?.schema === "vsc4e.event.encrypted.v1" && event.data?.encrypted === true;
   }
 
   private async optionalJson(

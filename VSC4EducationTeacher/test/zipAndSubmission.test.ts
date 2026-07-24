@@ -34,6 +34,8 @@ describe("ZIP export and submission import", () => {
     assert.ok(names.includes("starter/assets/empty/"));
     assert.ok(!names.includes("starter/proyecto-base/Animal.ts"));
     assert.ok(names.includes("signatures/hashes.json"));
+    assert.ok(names.includes("signatures/evidence-public-key.jwk"));
+    assert.ok(!names.includes("teacher-private/evidence-private-key.jwk"));
     assert.ok(!names.includes("AGENTS.md"));
     assert.ok(!names.some((name) => name.startsWith("imports/")));
     assert.ok(!names.some((name) => name.startsWith("assessment/")));
@@ -57,6 +59,7 @@ describe("ZIP export and submission import", () => {
     assert.ok(names.includes("resources/overall-review-template.md"));
     assert.ok(names.includes("assessment/rubrics/task.yml"));
     assert.ok(names.includes("assessment/solutions/task.md"));
+    assert.ok(names.includes("teacher-private/evidence-private-key.jwk"));
   });
 
   it("blocks path traversal before resolving extraction targets", () => {

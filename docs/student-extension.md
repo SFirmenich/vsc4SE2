@@ -109,6 +109,7 @@ profile.json
 state.json
 events.jsonl
 agent-interactions.jsonl
+agent-evidence.jsonl
 AGENTS.generated.md
 current-task.json
 task-metadata/
@@ -160,11 +161,12 @@ Events record actions such as:
 - `AGENTS.md` restored;
 - modification detected in another contribution.
 
-Each event is stored as one JSON line and participates in a hash chain. This
-helps detect accidental alterations or inconsistencies in the sequence.
+Each event is stored as one encrypted JSON line and participates in a hash
+chain. The persisted row contains only an evidence envelope; the logical event
+fields are available after decryption with the teacher private key.
 
-The extension does not store full file contents. It records paths, event type,
-timestamps, and minimal metadata.
+The extension does not store full file contents. The decrypted logical event
+records paths, event type, timestamps, and minimal metadata.
 
 ## Git
 
@@ -243,6 +245,16 @@ Example:
 
 This log depends on the agent following the instructions. The extension cannot
 read private conversations from external tools.
+
+The extension mirrors valid rows from `agent-interactions.jsonl` into encrypted
+evidence:
+
+```text
+.vsc4education/contributions/<studentId>/agent-evidence.jsonl
+```
+
+Student submissions include both the clear interaction log and the encrypted
+evidence log.
 
 ## AGENTS.md Protection
 

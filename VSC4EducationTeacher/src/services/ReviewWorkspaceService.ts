@@ -75,7 +75,11 @@ export class ReviewWorkspaceService {
     root: string
   ): Promise<ImportedSubmission> {
     await this.initialize(root);
-    return this.importer.importToDirectory(zipPath, this.submissionsRoot(root));
+    return this.importer.importToDirectory(
+      zipPath,
+      this.submissionsRoot(root),
+      this.activityRoot(root)
+    );
   }
 
   async readSubmission(rootPath: string): Promise<ImportedSubmission> {

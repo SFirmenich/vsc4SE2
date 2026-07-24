@@ -16,6 +16,7 @@ export interface ActivityState {
 	currentTaskId: string | null;
 	tasks: Record<string, TaskState>;
 	lastEventHash: string | null;
+	eventCounts?: Record<string, number>;
 	git: {
 		enabled: boolean;
 		initialCommit?: string;

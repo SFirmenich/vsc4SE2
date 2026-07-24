@@ -458,6 +458,7 @@ student-project/
             |-- state.json
             |-- events.jsonl
             |-- agent-interactions.jsonl
+            |-- agent-evidence.jsonl
             |-- AGENTS.generated.md
             |-- current-task.json
             `-- task-metadata/
@@ -551,8 +552,8 @@ Events include:
 - event type;
 - active task;
 - minimal metadata;
-- previous hash;
-- current hash.
+- encrypted logical event payload;
+- current hash, verifiable after decryption with the teacher private key.
 
 Full file contents are not stored.
 
@@ -565,6 +566,9 @@ Generated instructions ask the agent to record each message in:
 ```text
 .vsc4education/contributions/<studentId>/agent-interactions.jsonl
 ```
+
+The student extension mirrors valid interaction rows into encrypted
+`.vsc4education/contributions/<studentId>/agent-evidence.jsonl`.
 
 Format:
 

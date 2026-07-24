@@ -9,6 +9,7 @@ import { registerStudentCommand } from './commands/registerStudentCommand';
 import { registerStartTaskCommand } from './commands/startTaskCommand';
 import { ActivityLoader } from './services/ActivityLoader';
 import { AgentInstructionsGuardService } from './services/AgentInstructionsGuardService';
+import { AgentEvidenceService } from './services/AgentEvidenceService';
 import { HeartbeatService } from './services/HeartbeatService';
 import { LearningActivityService } from './services/LearningActivityService';
 import { TrackingService } from './services/TrackingService';
@@ -20,6 +21,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	const loader = new ActivityLoader(zipService);
 	const profileService = new StudentProfileService(context.workspaceState);
 	const activityService = new LearningActivityService(profileService);
+	const agentEvidenceService = new AgentEvidenceService(activityService);
 
 	context.subscriptions.push(
 		registerLoadFromZipCommand(loader, activityService),
@@ -28,7 +30,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		registerStudentCommand(activityService),
 		registerStartTaskCommand(activityService),
 		registerFinishTaskCommand(activityService),
-		registerExportSubmissionCommand(activityService, zipService)
+		registerExportSubmissionCommand(activityService, zipService, agentEvidenceService)
 	);
 
 	for (const folder of vscode.workspace.workspaceFolders ?? []) {
@@ -43,6 +45,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	context.subscriptions.push(
 		trackingService,
 		heartbeatService,
+		agentEvidenceService,
 		agentInstructionsGuard,
 		vscode.workspace.onDidChangeConfiguration(event => {
 			if (event.affectsConfiguration('learningActivity.heartbeatIntervalSeconds')) {

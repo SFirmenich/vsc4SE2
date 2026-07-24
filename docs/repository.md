@@ -116,8 +116,8 @@ Submission import:
   one is explicitly selected;
 - imports the first contribution directory if multiple are present and records a
   warning;
-- parses `profile.json`, `state.json`, `events.jsonl`, task metadata, and
-  `agent-interactions.jsonl` when present;
+- parses `profile.json`, `state.json`, encrypted `events.jsonl`, task metadata,
+  `agent-interactions.jsonl`, and `agent-evidence.jsonl` when present;
 - stores the original submission ZIP;
 - records event, task, Git, agent, and warning summaries.
 

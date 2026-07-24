@@ -2,10 +2,12 @@ import * as fs from 'fs/promises';
 import { randomUUID } from 'crypto';
 
 import { LearningEvent, LearningEventInput } from '../types/LearningEvent';
+import { EncryptedEventEnvelope } from '../types/Evidence';
 import { createEventHash } from '../utils/crypto';
 import { ensureDirectory, pathExists } from '../utils/fs';
 import { contributionPath, eventsPath } from '../utils/paths';
 import { ActivityStateService } from './ActivityStateService';
+import { EvidenceEncryptionService } from './EvidenceEncryptionService';
 
 export class EventLogService {
 	public constructor(
@@ -29,14 +31,14 @@ export class EventLogService {
 			.split(/\r?\n/)
 			.filter(Boolean)
 			.slice(-limit)
-			.map(line => JSON.parse(line) as LearningEvent);
+			.map(line => JSON.parse(line) as LearningEvent)
+			.filter(event => typeof event.event === 'string');
 	}
 
 	public async count(eventName: string, taskId?: string): Promise<number> {
-		const events = await this.getAll();
-		return events.filter(event =>
-			event.event === eventName && (taskId === undefined || event.taskId === taskId)
-		).length;
+		const state = await this.stateService.load();
+		const key = this.countKey(eventName, taskId);
+		return state.eventCounts?.[key] ?? 0;
 	}
 
 	private async getAll(): Promise<LearningEvent[]> {
@@ -69,6 +71,18 @@ export class EventLogService {
 				...eventWithoutHash,
 				hash: createEventHash(state.lastEventHash, eventWithoutHash)
 			};
+			const encryption = new EvidenceEncryptionService(this.stateService.root);
+			const keyId = await encryption.keyId();
+			if (!keyId) {
+				throw new Error('The activity is missing signatures/evidence-public-key.jwk.');
+			}
+			const envelope: EncryptedEventEnvelope = {
+				id: event.id,
+				schema: 'vsc4e.event.encrypted.v1',
+				keyId,
+				data: await encryption.encryptJson(eventWithoutHash),
+				hash: event.hash
+			};
 
 			await ensureDirectory(contributionPath(
 				this.stateService.root,
@@ -79,11 +93,20 @@ export class EventLogService {
 					this.stateService.root,
 					this.stateService.profile.contributionId
 				),
-				`${JSON.stringify(event)}\n`,
+				`${JSON.stringify(envelope)}\n`,
 				'utf8'
 			);
 			state.lastEventHash = event.hash;
+			state.eventCounts = {
+				...(state.eventCounts ?? {}),
+				[this.countKey(event.event, event.taskId)]: (state.eventCounts?.[this.countKey(event.event, event.taskId)] ?? 0) + 1,
+				[this.countKey(event.event)]: (state.eventCounts?.[this.countKey(event.event)] ?? 0) + 1
+			};
 			return { state, result: event };
 		});
+	}
+
+	private countKey(eventName: string, taskId?: string | null): string {
+		return taskId ? `${eventName}:${taskId}` : eventName;
 	}
 }

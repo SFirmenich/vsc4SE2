@@ -24,8 +24,8 @@ export interface ObservableAgencyDimension {
 
 export interface ObservableAgencyAssessment {
   score: number;
-  level: "very high" | "high" | "medium" | "low" | "insufficient";
-  confidence: "high" | "medium" | "limited";
+  level: "muy alta" | "alta" | "media" | "baja" | "insuficiente";
+  confidence: "alta" | "media" | "limitada";
   dimensions: ObservableAgencyDimension[];
   strengths: string[];
   flags: string[];

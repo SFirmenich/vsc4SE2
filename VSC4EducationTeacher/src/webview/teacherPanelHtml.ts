@@ -92,6 +92,7 @@ function runAction(action) {
     activeReviewTab = 'submissions-tab';
     post('importReviewSubmission');
   }
+  if (action === 'generate-signatures') post('generateSignatures');
   if (action === 'export-student') post('exportStudent');
   if (action === 'export-teacher') post('exportTeacher');
 }
@@ -154,7 +155,7 @@ function renderActivityReady(status) {
   app.innerHTML = \`
     <div class="row" style="justify-content:space-between">
       <div><h1>\${esc(manifest?.title ?? 'Activity files need attention')}</h1><p class="muted">\${esc(manifest?.description ?? status.manifestError ?? '')}</p></div>
-      <div class="row"><button id="change-folder" class="secondary">Change folder</button><button id="refresh" class="secondary">Refresh</button><button data-action="export-student" \${validation?.valid ? '' : 'disabled'}>Export student ZIP</button><button data-action="export-teacher" \${validation?.valid ? '' : 'disabled'}>Export teacher package ZIP</button></div>
+      <div class="row"><button id="change-folder" class="secondary">Change folder</button><button id="refresh" class="secondary">Refresh</button><button data-action="generate-signatures" \${validation?.valid ? '' : 'disabled'}>Generate signatures</button><button data-action="export-student" \${validation?.valid ? '' : 'disabled'}>Export student ZIP</button><button data-action="export-teacher" \${validation?.valid ? '' : 'disabled'}>Export teacher package ZIP</button></div>
     </div>
     <div class="grid">
       \${metric('Tasks', status.counts.tasks)}

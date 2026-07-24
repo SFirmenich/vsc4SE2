@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 
 import { t } from '../i18n';
 import { LearningActivityService } from '../services/LearningActivityService';
+import { AgentEvidenceService } from '../services/AgentEvidenceService';
 import { ZipService } from '../services/ZipService';
 import { runCommand } from './commandUtils';
 
@@ -10,7 +11,8 @@ export const EXPORT_SUBMISSION_COMMAND = 'learningActivity.exportSubmission';
 
 export function registerExportSubmissionCommand(
 	activityService: LearningActivityService,
-	zipService: ZipService
+	zipService: ZipService,
+	agentEvidence?: AgentEvidenceService
 ): vscode.Disposable {
 	return vscode.commands.registerCommand(EXPORT_SUBMISSION_COMMAND, () => runCommand(async () => {
 		const snapshot = await activityService.getSnapshot();
@@ -32,8 +34,10 @@ export function registerExportSubmissionCommand(
 		if (!destination) {
 			return;
 		}
+		await agentEvidence?.syncActiveContribution();
 		await activityService.prepareSubmissionExport(path.basename(destination.fsPath));
 		try {
+			await agentEvidence?.syncActiveContribution();
 			await vscode.window.withProgress(
 				{
 					location: vscode.ProgressLocation.Notification,

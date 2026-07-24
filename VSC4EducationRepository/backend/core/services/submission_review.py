@@ -14,6 +14,7 @@ from core.services.safe_zip import (
     read_jsonl,
     validate_zip,
 )
+from core.services.evidence_crypto import decrypt_events, read_private_key_from_activity
 
 
 ACTION_EVENTS = {
@@ -33,7 +34,7 @@ PROTECTED_PATTERNS = [
     re.compile(r"^AGENTS\.md$", re.I),
     re.compile(r"^\.vsc4education/", re.I),
     re.compile(r"(^|/)agent/instructions\.md$", re.I),
-    re.compile(r"(^|/)(state|events|agent-interactions|current-task)\.jsonl?$", re.I),
+    re.compile(r"(^|/)(state|events|agent-interactions|agent-evidence|agent-evidence-state|current-task)\.jsonl?$", re.I),
     re.compile(r"(^|/)AGENTS\.generated\.md$", re.I),
 ]
 TEST_PATTERN = re.compile(r"(^|/)(tests?|__tests__)/|(\.test|\.spec)\.[^./]+$|(^|/)test_[^/]+\.py$", re.I)
@@ -48,7 +49,12 @@ class SubmissionReviewService:
             name_map = build_name_map(zf)
             parsed = self._read_review_inputs(zf, name_map, submission.contribution_id)
 
-        events = parsed["events"]
+        private_key = read_private_key_from_activity(submission.activity_version)
+        events, decrypt_warnings = decrypt_events(parsed["events"], private_key)
+        parsed["event_invalid_lines"].extend(
+            {"line": item.get("details", {}).get("line"), "reason": item["message"]}
+            for item in decrypt_warnings
+        )
         interactions = self._validate_interactions(parsed["agent_interactions"], parsed["agent_invalid_lines"])
         return {
             "submissionId": submission.id,
@@ -348,7 +354,7 @@ class SubmissionReviewService:
                 "Integridad y cumplimiento",
                 [
                     self._metric(47, False, "Suspicious sequences on protected files", len(protected_sequences), None, self._protected_edit_detail(protected_sequences), "Protected file opening followed by change/save within a suspicious window. Review indicator, never an automatic accusation.", len(protected_sequences), "estimated"),
-                    self._metric(48, True, "Hash chain integrity", "continuous" if hash_discontinuities == 0 else f"{hash_discontinuities} discontinuities", None, "Checks previousHash against the previous hash.", "Affects confidence in log traceability.", len(events), "direct"),
+                    self._metric(48, True, "Integridad de la cadena hash", "continua" if hash_discontinuities == 0 else f"{hash_discontinuities} discontinuidades", None, "Checks previousHash against the previous hash.", "Affects confidence in log traceability.", len(events), "direct"),
                     self._metric(49, False, "Temporal discontinuities", temporal_gaps, None, "Pauses of 15 minutes or more between non-heartbeat actions.", "Helps avoid overinterpreting absence of events.", temporal_gaps, "direct"),
                 ],
             ),
@@ -478,7 +484,7 @@ class SubmissionReviewService:
         limited = len([metric for metric in metrics if metric.get("reliability") == "limited"])
         direct = len([metric for metric in metrics if metric.get("reliability") == "direct"])
         hash_value = next((metric.get("value") for metric in metrics if metric.get("id") == 48), None)
-        if evidence >= 30 and direct >= limited and hash_value == "continuous":
+        if evidence >= 30 and direct >= limited and hash_value == "continua":
             return "high"
         if evidence >= 10 and limited < len(metrics) / 2:
             return "medium"
@@ -497,7 +503,7 @@ class SubmissionReviewService:
         if systemic is not None and systemic > 50:
             penalty += 8
         integrity = metrics.get(48, {}).get("value")
-        if isinstance(integrity, str) and integrity != "continuous":
+        if isinstance(integrity, str) and integrity != "continua":
             penalty += 10
         return penalty
 
@@ -520,7 +526,7 @@ class SubmissionReviewService:
         if value(49) > 0:
             flags.append("There are relevant temporal discontinuities")
         integrity = metrics.get(48, {}).get("value")
-        if isinstance(integrity, str) and integrity != "continuous":
+        if isinstance(integrity, str) and integrity != "continua":
             flags.append("La cadena hash no es continua")
         if penalty > 0:
             flags.append(f"Penalizacion contextual aplicada: {self._round(penalty)} puntos")

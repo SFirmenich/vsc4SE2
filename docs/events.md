@@ -1,32 +1,39 @@
 # Event Model
 
-Events are stored as JSON Lines in
+Events are stored as encrypted JSON Lines in
 `.vsc4education/contributions/<studentId>/events.jsonl`. Each student has an
-independent hash chain.
+independent hash chain. The student package contains the public evidence key;
+the teacher package contains the matching private key.
 
 ```json
 {
   "id": "uuid",
-  "studentId": "ana-001",
-  "timestamp": "2026-06-11T10:00:00.000Z",
-  "event": "file_saved",
-  "taskId": "encapsulation",
+  "schema": "vsc4e.event.encrypted.v1",
+  "keyId": "vsc4e-key-id",
   "data": {
-    "file": "src/Animal.ts"
+    "encrypted": true,
+    "alg": "RSA-OAEP-256+A256GCM",
+    "iv": "base64",
+    "encryptedKey": "base64",
+    "ciphertext": "base64",
+    "tag": "base64"
   },
-  "previousHash": "previous-hash",
   "hash": "current-hash"
 }
 ```
 
-The hash is calculated as:
+After decrypting `data`, the logical event contains `studentId`, `timestamp`,
+`event`, `taskId`, event `data`, and `previousHash`. The stored `hash` is
+calculated from that decrypted logical event:
 
 ```text
 SHA256((previousHash or "") + canonicalJson(event without hash))
 ```
 
-Canonical JSON recursively sorts keys. The first event uses
-`previousHash: null`.
+Canonical JSON recursively sorts keys. The first decrypted event uses
+`previousHash: null`. Consumers without the teacher private key can parse the
+encrypted envelopes but cannot verify the logical hash chain or calculate
+event-based metrics.
 
 ## MVP Events
 
@@ -61,5 +68,18 @@ Conversations are not part of `events.jsonl`. They are stored separately in
 ```
 
 Supported providers are `chatGPT`, `claude`, and `copilot`.
+
+The student extension mirrors complete rows from `agent-interactions.jsonl` into
+encrypted evidence:
+
+```text
+.vsc4education/contributions/<studentId>/agent-evidence.jsonl
+```
+
+Each `agent-evidence.jsonl` row uses schema
+`vsc4e.agent-evidence.encrypted.v1`, records the source line and a hash of the
+clear row, and encrypts the original interaction row with the activity public
+key. Student submissions include both `agent-interactions.jsonl` and
+`agent-evidence.jsonl`.
 
 Text-change events record counts and line ranges, not the edited content.

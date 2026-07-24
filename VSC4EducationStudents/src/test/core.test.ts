@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import AdmZip from 'adm-zip';
+import { generateKeyPairSync } from 'crypto';
 
 import { ActivityLoader } from '../services/ActivityLoader';
 import { ActivityStateService } from '../services/ActivityStateService';
@@ -61,6 +62,7 @@ suite('Learning Activity core', () => {
 
 	setup(async () => {
 		root = await fs.mkdtemp(path.join(os.tmpdir(), 'learning-test-'));
+		await writeEvidencePublicKey(root);
 		profiles = new StudentProfileService(new MemoryMemento());
 		ana = await profiles.register(root, {
 			studentId: 'ana-001',
@@ -330,7 +332,8 @@ suite('Learning Activity core', () => {
 
 		assert.strictEqual(commitAfterOpen, commitBeforeOpen);
 		assert.strictEqual(snapshot?.profile?.studentId, 'ana-open');
-		assert.strictEqual(snapshot?.recentEvents.at(-1)?.event, 'student_session_started');
+		assert.strictEqual(snapshot?.recentEvents.length, 0);
+		assert.strictEqual((await new ActivityStateService(root, snapshot!.profile!).load()).eventCounts?.student_session_started, 1);
 	});
 
 	test('two students keep isolated states, events and metadata', async () => {
@@ -438,6 +441,21 @@ suite('Learning Activity core', () => {
 		assert.strictEqual(await git.getStatus(), '');
 	});
 });
+
+async function writeEvidencePublicKey(root: string): Promise<void> {
+	const { publicKey } = (generateKeyPairSync as unknown as (type: string, options: unknown) => unknown)('rsa', {
+		modulusLength: 3072,
+		publicKeyEncoding: { format: 'jwk' },
+		privateKeyEncoding: { format: 'jwk' }
+	}) as { publicKey: Record<string, unknown> };
+	await fs.mkdir(learningPath(root, 'signatures'), { recursive: true });
+	await writeJson(learningPath(root, 'signatures', 'evidence-public-key.jwk'), {
+		...publicKey,
+		kid: 'test-key',
+		use: 'enc',
+		alg: 'RSA-OAEP-256'
+	});
+}
 
 async function gitSubject(root: string): Promise<string> {
 	return new Promise<string>((resolve, reject) => {

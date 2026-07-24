@@ -26,6 +26,7 @@ from core.services.safe_zip import (
     sha256_file,
     validate_zip,
 )
+from core.services.evidence_crypto import decrypt_events, read_private_key_from_activity
 
 
 class SubmissionZipImportService:
@@ -43,6 +44,11 @@ class SubmissionZipImportService:
             activity_version = self._resolve_activity_version(parsed["activity_manifest"])
         elif not self._matches_activity_version(activity_version, parsed["activity_manifest"]):
             raise ZipValidationError("Submission activity manifest does not match the selected ActivityVersion")
+        private_key = read_private_key_from_activity(activity_version)
+        parsed["events"], decrypt_warnings = decrypt_events(parsed["events"], private_key)
+        parsed["warnings"].extend(decrypt_warnings)
+        parsed["event_counts"] = event_counter(parsed["events"])
+        parsed["exported_at"] = self._find_exported_at(parsed["events"])
 
         with transaction.atomic():
             existing = Submission.objects.filter(checksum_sha256=checksum).first()

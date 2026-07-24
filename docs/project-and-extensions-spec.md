@@ -201,9 +201,9 @@ It must:
 - request institutional identifier, first name, and last name;
 - normalize the identifier for use as a contribution directory;
 - create `.vsc4education/contributions/<studentId>/`;
-- maintain per student `profile.json`, `state.json`, `events.jsonl`,
-  `agent-interactions.jsonl`, `AGENTS.generated.md`, `current-task.json`, and
-  `task-metadata/`;
+- maintain per student `profile.json`, `state.json`, encrypted `events.jsonl`,
+  `agent-interactions.jsonl`, encrypted `agent-evidence.jsonl`,
+  `AGENTS.generated.md`, `current-task.json`, and `task-metadata/`;
 - locally bind the workspace to a student through `workspaceState`;
 - prevent the extension from accidentally writing into another student's
   contribution.
@@ -222,7 +222,7 @@ It must:
 
 ### 3.4 Local Evidence
 
-It must record JSONL events per student with a hash chain:
+It must record encrypted JSONL events per student with a hash chain:
 
 - `activity_loaded`
 - `student_registered`
@@ -240,9 +240,10 @@ It must record JSONL events per student with a hash chain:
 - `agents_file_restored`
 - `foreign_contribution_modified`
 
-Events must record minimal metadata, not full file contents. The hash chain
-helps detect inconsistencies, but must not be presented as a forensic
-guarantee.
+Persisted event rows expose only an encrypted evidence envelope. The decrypted
+logical event records minimal metadata, not full file contents. The hash chain
+can be verified only with the teacher private key and must not be presented as a
+forensic guarantee.
 
 ### 3.5 Git
 
@@ -262,7 +263,8 @@ It must:
 - generate `AGENTS.md` from the activity's canonical instructions;
 - preserve a master copy in `.vsc4education/agent/instructions.master.md`;
 - add technical instructions for recording interactions in
-  `agent-interactions.jsonl`;
+  `agent-interactions.jsonl`; the student extension mirrors those rows into
+  encrypted `agent-evidence.jsonl`;
 - restore `AGENTS.md` and internal instructions if they are modified while the
   extension is active;
 - clearly state that it does not use private APIs from ChatGPT, Claude, Codex,
@@ -349,8 +351,8 @@ It must be able to import a submission and analyze:
 - contributions per student;
 - `state.json` and final task state;
 - `task-metadata/*.json`;
-- `events.jsonl` and hash-chain validity;
-- `agent-interactions.jsonl`;
+- encrypted `events.jsonl` and hash-chain validity after decryption;
+- `agent-interactions.jsonl` and encrypted `agent-evidence.jsonl`;
 - Git history and diffs by task;
 - files changed relative to the starter;
 - long heartbeat gaps or temporal inconsistencies;
@@ -451,8 +453,10 @@ A submission is reviewable by the teacher extension if:
 - it contains `.vsc4education/activity-manifest.json`;
 - it contains `.vsc4education/activity-configuration.json`;
 - it contains at least one contribution in `.vsc4education/contributions/`;
-- each contribution has `profile.json`, `state.json`, and `events.jsonl`;
-- events can be read line by line as JSON;
+- each contribution has `profile.json`, `state.json`, encrypted `events.jsonl`,
+  and, when agent interactions exist, `agent-evidence.jsonl`;
+- encrypted event envelopes can be read line by line as JSON and decrypted with
+  the teacher private key;
 - missing Git or agent conversations are treated as missing data, not as fatal
   errors.
 

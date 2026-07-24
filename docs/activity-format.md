@@ -13,7 +13,8 @@ activity.zip
 |-- starter/
 |   `-- Animal.ts
 `-- signatures/
-    `-- manifest.sig
+    |-- manifest.sig
+    `-- evidence-public-key.jwk
 ```
 
 ## Manifest
@@ -70,6 +71,7 @@ student-project/
         |   |-- state.json
         |   |-- events.jsonl
         |   |-- agent-interactions.jsonl
+        |   |-- agent-evidence.jsonl
         |   `-- task-metadata/
         `-- juan-002/
 ```
@@ -140,8 +142,13 @@ When the workspace is opened later, no new load commit is created. The shared
 configuration allows the extension to recover the repository mode and resume the
 local contribution.
 
-The `signatures/manifest.sig` file is preserved, but the MVP does not implement
-cryptographic validation.
+`signatures/evidence-public-key.jwk` contains the public RSA-OAEP-256 key used
+by the student extension to encrypt event and agent evidence. Teacher packages
+also contain `teacher-private/evidence-private-key.jwk`; student packages must
+not contain that private key.
+
+The `signatures/manifest.sig` file is preserved when present, but package
+signature validation is separate from evidence encryption.
 
 ## Repository Import
 

@@ -20,6 +20,7 @@ it does not change the submission format and does not execute student code.
 
 Repository also exposes a submission detail review view derived from the stored
 original ZIP. It includes a principal summary, recorded agent conversations,
-agency metrics, and event hash-chain integrity indicators. These views reuse the
+encrypted agent evidence, agency metrics, and event hash-chain integrity
+indicators after decryption with the teacher private key. These views reuse the
 portable submission evidence and remain review aids; they are not automatic
 grades or tamper-proof authorship proofs.
