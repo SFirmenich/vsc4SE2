@@ -362,6 +362,57 @@ class ImportServicesTests(TestCase):
         ))
         self.assertEqual(receipt["eventHash"], "a" * 64)
 
+    def test_submission_event_sessions_endpoint_matches_live_session(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        client = Client()
+
+        token_response = client.post(
+            f"/api/activity-versions/{activity_version.id}/event-ingestion-token/",
+            data=json.dumps({"name": "Lab group"}),
+            content_type="application/json",
+        )
+        token_data = token_response.json()
+
+        session_response = client.post(
+            "/api/integration/student/event-sessions/",
+            data=json.dumps({
+                "activityId": "poo-basico-01",
+                "version": "1.0.0",
+                "studentId": "ana-001",
+                "contributionId": "ana-001",
+                "clientSessionId": "client-session-1",
+            }),
+            content_type="application/json",
+            HTTP_X_VSC4E_INGESTION_TOKEN=token_data["token"],
+        )
+        session_data = session_response.json()
+
+        client.post(
+            f"/api/integration/student/event-sessions/{session_data['sessionId']}/receipts/",
+            data=json.dumps({
+                "events": [{
+                    "id": "event-1",
+                    "timestamp": "2026-06-11T10:00:00Z",
+                    "previousHash": None,
+                    "hash": "a" * 64,
+                    "envelopeSha256": "b" * 64,
+                }]
+            }),
+            content_type="application/json",
+            HTTP_X_VSC4E_SESSION_TOKEN=session_data["sessionToken"],
+        )
+
+        submission = SubmissionZipImportService().import_zip(submission_zip(student_id="ana-001"), activity_version)
+
+        response = client.get(f"/api/submissions/{submission.id}/event-sessions/")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["sessionCount"], 1)
+        self.assertEqual(data["sessions"][0]["clientSessionId"], "client-session-1")
+        self.assertEqual(data["sessions"][0]["receiptCount"], 1)
+        self.assertEqual(data["sessions"][0]["lastEventHash"], "a" * 64)
+
     def test_activity_metrics_can_be_filtered_by_course(self):
         course_a = Course.objects.create(name="Programacion I", code="PI")
         course_b = Course.objects.create(name="Programacion II", code="PII")

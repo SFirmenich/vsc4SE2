@@ -340,6 +340,29 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         except ZipValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=["get"], url_path="event-sessions")
+    def event_sessions(self, request, pk=None):
+        submission = self.get_object()
+        sessions = EventIngestionSession.objects.filter(
+            activity_version=submission.activity_version,
+            student=submission.student,
+            contribution_id=submission.contribution_id,
+        ).prefetch_related("receipts")
+        payload = [{
+            "id": session.id,
+            "clientSessionId": session.client_session_id,
+            "courseGroup": session.course_group.name if session.course_group else None,
+            "startedAt": session.started_at,
+            "closedAt": session.closed_at,
+            "lastEventHash": session.last_event_hash,
+            "receiptCount": session.receipts.count(),
+        } for session in sessions]
+        return Response({
+            "submissionId": submission.id,
+            "sessionCount": len(payload),
+            "sessions": payload,
+        })
+
 
 def import_activity_zip(request):
     serializer = ZipImportSerializer(data=request.data)
