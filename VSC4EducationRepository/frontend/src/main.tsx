@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as d3 from "d3";
-import { Activity, ArrowLeft, BarChart3, Bot, BookOpen, Clipboard, FileArchive, GraduationCap, KeyRound, Plus, RefreshCw, ShieldCheck, Upload, UserRound, X } from "lucide-react";
+import { Activity, ArrowLeft, BarChart3, Bot, BookOpen, ChevronDown, ChevronRight, Clipboard, FileArchive, GraduationCap, KeyRound, Plus, RefreshCw, ShieldCheck, Upload, UserRound, X } from "lucide-react";
 import { getJson, getListJson, postJson, repositoryBaseUrl, uploadZip } from "./api";
 import type {
   ActivityVersion,
@@ -17,6 +17,7 @@ import type {
   Submission,
   SubmissionAnalysisRow,
   SubmissionDetail,
+  SubmissionEventSessions,
   SubmissionReview,
 } from "./types";
 import { getLocale, locales, setLocale, t, type Locale } from "./i18n";
@@ -35,6 +36,7 @@ function App() {
   const [activityDetail, setActivityDetail] = useState<ActivityVersionDetail | null>(null);
   const [submissionDetail, setSubmissionDetail] = useState<SubmissionDetail | null>(null);
   const [submissionReview, setSubmissionReview] = useState<SubmissionReview | null>(null);
+  const [submissionEventSessions, setSubmissionEventSessions] = useState<SubmissionEventSessions | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityVersion | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -62,6 +64,7 @@ function App() {
     setSelectedSubmission(null);
     setSubmissionDetail(null);
     setSubmissionReview(null);
+    setSubmissionEventSessions(null);
     setActivities([]);
     setView("course");
     setAddPanel(null);
@@ -90,6 +93,7 @@ function App() {
     setSelectedSubmission(null);
     setSubmissionDetail(null);
     setSubmissionReview(null);
+    setSubmissionEventSessions(null);
     const scopeQuery = selectedCourse ? `?courseId=${selectedCourse.id}` : "";
     const [detail, nextSubmissions, nextMetrics] = await Promise.all([
       getJson<ActivityVersionDetail>(`/activity-versions/${activity.id}/`),
@@ -105,12 +109,14 @@ function App() {
 
   async function openSubmission(submission: Submission) {
     setSelectedSubmission(submission);
-    const [detail, review] = await Promise.all([
+    const [detail, review, eventSessions] = await Promise.all([
       getJson<SubmissionDetail>(`/submissions/${submission.id}/`),
       getJson<SubmissionReview>(`/submissions/${submission.id}/review/`),
+      getJson<SubmissionEventSessions>(`/submissions/${submission.id}/event-sessions/`),
     ]);
     setSubmissionDetail(detail);
     setSubmissionReview(review);
+    setSubmissionEventSessions(eventSessions);
     setView("submission");
     setAddPanel(null);
   }
@@ -290,7 +296,7 @@ function App() {
         )}
 
         {view === "submission" && submissionDetail && (
-          <SubmissionView submission={submissionDetail} review={submissionReview} />
+          <SubmissionView submission={submissionDetail} review={submissionReview} eventSessions={submissionEventSessions} />
         )}
       </section>
     </main>
@@ -590,8 +596,13 @@ function ActivityEventServerView(props: {
   const [tokenError, setTokenError] = useState("");
   const [tokenLoading, setTokenLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [manuallyShowForm, setManuallyShowForm] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const baseUrl = repositoryBaseUrl();
   const manifestEventServer = eventServerConfigurationFromManifest(props.activityDetail?.manifest);
+  const hasExistingConfig = Boolean(manifestEventServer);
+  const showForm = !hasExistingConfig || manuallyShowForm || Boolean(token);
+  const showDetails = !hasExistingConfig || expanded;
   const generatedEventServerConfiguration = token ? {
     enabled: true,
     baseUrl,
@@ -638,40 +649,72 @@ function ActivityEventServerView(props: {
   return (
     <>
       <section className="detailPanel">
-        <div>
+        <div
+          className={hasExistingConfig ? "accordionHeader" : undefined}
+          onClick={hasExistingConfig ? () => setExpanded((value) => !value) : undefined}
+          role={hasExistingConfig ? "button" : undefined}
+          aria-expanded={hasExistingConfig ? expanded : undefined}
+        >
           <span className="eyebrow">{t("Teacher configuration")}</span>
-          <h2><KeyRound size={18} /> {t("Create Event Server settings")}</h2>
-          <p>{t("Generate an ingestion token for this activity version, then copy the JSON into the Teacher extension Event Server tab.")}</p>
+          <h2>
+            <KeyRound size={18} /> {hasExistingConfig ? t("Event Server settings") : t("Create Event Server settings")}
+            {hasExistingConfig && (
+              expanded
+                ? <ChevronDown size={18} style={{ marginLeft: "auto" }} />
+                : <ChevronRight size={18} style={{ marginLeft: "auto" }} />
+            )}
+          </h2>
+          <p>
+            {hasExistingConfig && !showForm
+              ? t("This activity version already has an ingestion configuration. Regenerating will issue a new token and replace it.")
+              : t("Generate an ingestion token for this activity version, then copy the JSON into the Teacher extension Event Server tab.")}
+          </p>
         </div>
-        <div className="eventConfigGrid">
-          <label>
-            <span>{t("Token name")}</span>
-            <input value={tokenName} onChange={(event) => setTokenName(event.target.value)} />
-          </label>
-          <label>
-            <span>{t("Course group")}</span>
-            <select value={courseGroupId} onChange={(event) => setCourseGroupId(event.target.value)}>
-              <option value="">{t("Any group")}</option>
-              {props.groups.map((group) => (
-                <option key={group.id} value={group.id}>{group.name}{group.term ? ` - ${group.term}` : ""}</option>
-              ))}
-            </select>
-          </label>
-          <button className="ghostButton" onClick={() => void issueToken()} disabled={tokenLoading}>
-            <KeyRound size={17} /> {tokenLoading ? t("Generating") : t("Generate config")}
-          </button>
-        </div>
-        {tokenError && <div className="inlineError">{tokenError}</div>}
-        {eventServerConfiguration && (
-          <div className="copyBlock">
-            <div className="copyBlockHeader">
-              <strong>{generatedEventServerConfiguration ? t("Configuration for manifest.repository.eventServer") : t("Current manifest.repository.eventServer")}</strong>
-              <button className="ghostButton" onClick={() => void copyConfiguration()}>
-                <Clipboard size={17} /> {copied ? t("Copied") : t("Copy JSON")}
+        {showDetails && (
+          <>
+            {hasExistingConfig && !showForm && (
+              <button className="ghostButton" onClick={() => setManuallyShowForm(true)}>
+                <KeyRound size={17} /> {t("Regenerate config")}
               </button>
-            </div>
-            <pre>{configurationText}</pre>
-          </div>
+            )}
+            {showForm && (
+              <div className="eventConfigGrid">
+                <label>
+                  <span>{t("Token name")}</span>
+                  <input value={tokenName} onChange={(event) => setTokenName(event.target.value)} />
+                </label>
+                <label>
+                  <span>{t("Course group")}</span>
+                  <select value={courseGroupId} onChange={(event) => setCourseGroupId(event.target.value)}>
+                    <option value="">{t("Any group")}</option>
+                    {props.groups.map((group) => (
+                      <option key={group.id} value={group.id}>{group.name}{group.term ? ` - ${group.term}` : ""}</option>
+                    ))}
+                  </select>
+                </label>
+                <button className="ghostButton" onClick={() => void issueToken()} disabled={tokenLoading}>
+                  <KeyRound size={17} /> {tokenLoading ? t("Generating") : t("Generate config")}
+                </button>
+                {hasExistingConfig && !token && (
+                  <button className="ghostButton" onClick={() => setManuallyShowForm(false)}>
+                    {t("Cancel")}
+                  </button>
+                )}
+              </div>
+            )}
+            {tokenError && <div className="inlineError">{tokenError}</div>}
+            {eventServerConfiguration && (
+              <div className="copyBlock">
+                <div className="copyBlockHeader">
+                  <strong>{generatedEventServerConfiguration ? t("Configuration for manifest.repository.eventServer") : t("Current manifest.repository.eventServer")}</strong>
+                  <button className="ghostButton" onClick={() => void copyConfiguration()}>
+                    <Clipboard size={17} /> {copied ? t("Copied") : t("Copy JSON")}
+                  </button>
+                </div>
+                <pre>{configurationText}</pre>
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -1252,7 +1295,7 @@ function ObservableAgencyPanel(props: { agency: ObservableAgencyAssessment | und
   );
 }
 
-function SubmissionView(props: { submission: SubmissionDetail; review: SubmissionReview | null }) {
+function SubmissionView(props: { submission: SubmissionDetail; review: SubmissionReview | null; eventSessions: SubmissionEventSessions | null }) {
   const submission = props.submission;
   const review = props.review;
   const observableAgency = review?.agencyMetrics.observableAgency;
@@ -1267,6 +1310,34 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
     const query = eventFilter.toLowerCase();
     return !query || JSON.stringify(event).toLowerCase().includes(query);
   });
+
+  const liveSessions = props.eventSessions?.sessions ?? [];
+  const hasLiveSessions = liveSessions.length > 0;
+  const liveEventCount = liveSessions.reduce((sum, session) => sum + session.receiptCount, 0);
+  const zipEventCount = submission.event_count;
+  const zipEventHashes = new Set(
+    (review?.events ?? [])
+      .map((event) => event["hash"])
+      .filter((hash): hash is string => typeof hash === "string"),
+  );
+  const hashChainMatches = hasLiveSessions && liveSessions.every(
+    (session) => !session.lastEventHash || zipEventHashes.has(session.lastEventHash),
+  );
+  let syncStatus: string;
+  if (!hasLiveSessions) {
+    syncStatus = t("Not synced");
+  } else if (!hashChainMatches) {
+    syncStatus = t("Mismatch");
+  } else if (liveEventCount !== zipEventCount) {
+    syncStatus = t("Partial");
+  } else {
+    syncStatus = t("Synced");
+  }
+  const liveSessionWindow = hasLiveSessions
+    ? `${new Date(Math.min(...liveSessions.map((session) => new Date(session.startedAt).getTime()))).toLocaleString()} - ${
+        new Date(Math.max(...liveSessions.map((session) => new Date(session.closedAt ?? session.startedAt).getTime()))).toLocaleString()
+      }`
+    : t("n/d");
 
   return (
     <>
@@ -1414,7 +1485,21 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
       )}
 
       {tab === "integrity" && (
-        <div className="twoColumns">
+        <>
+          <section className="detailPanel">
+            <div>
+              <span className="eyebrow">{t("Event server")}</span>
+              <h2><ShieldCheck size={18} /> {t("Live sync with event server")}</h2>
+            </div>
+            <div className="metrics">
+              <Metric label={t("Sync status")} value={syncStatus} />
+              <Metric label={t("Events in .zip")} value={zipEventCount} />
+              <Metric label={t("Events received live")} value={hasLiveSessions ? liveEventCount : t("n/d")} />
+              <Metric label={t("Hash chain match")} value={hasLiveSessions ? (hashChainMatches ? t("Yes") : t("No")) : t("n/d")} />
+              <Metric label={t("Live session window")} value={liveSessionWindow} />
+            </div>
+          </section>
+          <div className="twoColumns">
           <section className={`tablePanel integrityPanel ${review?.integrity.status ?? "not_available"}`}>
             <h2><ShieldCheck size={18} /> {t("Hash chain")}</h2>
             <div className="integrityStatus">
@@ -1439,7 +1524,8 @@ function SubmissionView(props: { submission: SubmissionDetail; review: Submissio
             </div>
             {filteredEvents.length > 80 && <p>{t("Showing the first 80 filtered events.")}</p>}
           </section>
-        </div>
+          </div>
+        </>
       )}
 
       {submission.warnings.length > 0 && (

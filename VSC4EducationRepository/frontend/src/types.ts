@@ -330,6 +330,22 @@ export interface ActivityEventReceipts {
   sessions: ActivityEventSession[];
 }
 
+export interface SubmissionEventSession {
+  id: number;
+  clientSessionId: string;
+  courseGroup: string | null;
+  startedAt: string;
+  closedAt: string | null;
+  lastEventHash: string;
+  receiptCount: number;
+}
+
+export interface SubmissionEventSessions {
+  submissionId: number;
+  sessionCount: number;
+  sessions: SubmissionEventSession[];
+}
+
 export interface EventIngestionTokenResponse {
   id: number;
   token: string;

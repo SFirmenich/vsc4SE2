@@ -80,3 +80,6 @@ desktop.ini
 
 # Local scratch copies
 /VSC4EducationRepositoryLCL/
+
+# Local files
+.no_sync/

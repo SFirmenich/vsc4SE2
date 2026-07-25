@@ -277,6 +277,10 @@ select {
   gap: 16px;
 }
 
+.accordionHeader {
+  cursor: pointer;
+}
+
 .metrics {
   display: grid;
   gap: 12px;
