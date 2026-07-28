@@ -3,21 +3,23 @@
   "tasks": [
     {
       "label": "Teacher: clean compile",
-      "type": "shell",
-      "command": "if (Test-Path out) { Remove-Item -Recurse -Force out }; npm.cmd run compile",
-      "options": {
-        "cwd": "${workspaceFolder}/VSC4EducationTeacher"
-      },
+      "type": "npm",
+      "script": "clean-compile",
+      "path": "VSC4EducationTeacher",
       "problemMatcher": "$tsc"
     },
     {
       "label": "Students: compile",
-      "type": "shell",
-      "command": "npm.cmd run compile",
-      "options": {
-        "cwd": "${workspaceFolder}/VSC4EducationStudents"
-      },
+      "type": "npm",
+      "script": "compile",
+      "path": "VSC4EducationStudents",
       "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Build both: Teacher and Students",
+      "dependsOn": ["Teacher: clean compile", "Students: compile"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
     }
   ]
 }

@@ -5,9 +5,10 @@
       "name": "Run extension: Students",
       "type": "extensionHost",
       "request": "launch",
+      "preLaunchTask": "Students: compile",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationStudents",
-        "--extensions-dir=${env:USERPROFILE}/.vscode/extensions",
+        "--extensions-dir=${userHome}/.vscode/extensions",
         "--disable-extension",
         "pdconsec.vscode-print"
       ],
@@ -23,7 +24,7 @@
       "preLaunchTask": "Teacher: clean compile",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationTeacher",
-        "--extensions-dir=${env:USERPROFILE}/.vscode/extensions"
+        "--extensions-dir=${userHome}/.vscode/extensions"
       ],
       "outFiles": [
         "${workspaceFolder}/VSC4EducationTeacher/out/**/*.js",
@@ -34,11 +35,11 @@
       "name": "Run both extensions: Same window",
       "type": "extensionHost",
       "request": "launch",
-      "preLaunchTask": "Teacher: clean compile",
+      "preLaunchTask": "Build both: Teacher and Students",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationStudents",
         "--extensionDevelopmentPath=${workspaceFolder}/VSC4EducationTeacher",
-        "--extensions-dir=${env:USERPROFILE}/.vscode/extensions",
+        "--extensions-dir=${userHome}/.vscode/extensions",
         "--disable-extension",
         "pdconsec.vscode-print"
       ],
