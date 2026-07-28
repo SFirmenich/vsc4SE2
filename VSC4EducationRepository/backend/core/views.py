@@ -24,6 +24,7 @@ from core.serializers import (
 )
 from core.services.activity_import import ActivityZipImportService
 from core.services.activity_review_dashboard import ActivityReviewDashboardService
+from core.services.activity_review_dashboard_v2 import ActivityReviewDashboardServiceV2
 from core.services.event_receipts import (
     authenticate_ingestion_token,
     authenticate_session,
@@ -38,6 +39,7 @@ from core.services.metrics import ActivityMetricsService, CourseGroupMetricsServ
 from core.services.safe_zip import ZipValidationError
 from core.services.submission_import import SubmissionZipImportService
 from core.services.submission_review import SubmissionReviewService
+from core.services.submission_review_v2 import SubmissionReviewServiceV2
 
 
 def _owner(request):
@@ -214,6 +216,18 @@ class ActivityVersionViewSet(viewsets.ReadOnlyModelViewSet):
             course_group_id=request.query_params.get("courseGroupId"),
         ))
 
+    @action(detail=True, methods=["get"], url_path="review-dashboard-v2")
+    def review_dashboard_v2(self, request, pk=None):
+        return Response(ActivityReviewDashboardServiceV2().build(self.get_object()))
+
+    @action(detail=True, methods=["get"], url_path="submission-analysis-v2")
+    def submission_analysis_v2(self, request, pk=None):
+        return Response(ActivityReviewDashboardServiceV2().build_analysis(
+            self.get_object(),
+            course_id=request.query_params.get("courseId"),
+            course_group_id=request.query_params.get("courseGroupId"),
+        ))
+
     @action(detail=True, methods=["get"], url_path="event-receipts")
     def event_receipts(self, request, pk=None):
         activity_version = self.get_object()
@@ -337,6 +351,13 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     def review(self, request, pk=None):
         try:
             return Response(SubmissionReviewService().build(self.get_object()))
+        except ZipValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["get"], url_path="review-v2")
+    def review_v2(self, request, pk=None):
+        try:
+            return Response(SubmissionReviewServiceV2().build(self.get_object()))
         except ZipValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -492,3 +492,60 @@ class ImportServicesTests(TestCase):
         self.assertGreaterEqual(data["submissions"][0]["agencyScore"], 0)
         self.assertLessEqual(data["submissions"][0]["agencyScore"], 100)
         self.assertTrue(data["submissions"][0]["agencyMetrics"])
+
+    def test_activity_review_dashboard_v2_aggregates_submission_reviews(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        SubmissionZipImportService().import_zip(review_submission_zip(), activity_version)
+        SubmissionZipImportService().import_zip(review_submission_zip(tampered=True), activity_version)
+
+        response = Client().get(f"/api/activity-versions/{activity_version.id}/review-dashboard-v2/")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["metricsSchemaVersion"], "2.0.0")
+        self.assertEqual(data["submissionCount"], 2)
+        self.assertEqual(data["reviewedSubmissionCount"], 2)
+        for key in ("traceability", "engagement", "authorship", "agentSupport"):
+            self.assertGreaterEqual(data[key]["score"]["max"], 0)
+            self.assertLessEqual(data[key]["score"]["max"], 100)
+        self.assertGreaterEqual(data["summary"]["score"]["max"], 0)
+        self.assertLessEqual(data["summary"]["score"]["max"], 100)
+
+    def test_submission_analysis_v2_returns_four_indices_by_submission(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version, name="Solucion oficial")
+
+        response = Client().get(f"/api/activity-versions/{activity_version.id}/submission-analysis-v2/")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["reviewedSubmissionCount"], 1)
+        row = data["submissions"][0]
+        self.assertEqual(row["submissionId"], submission.id)
+        self.assertEqual(row["submissionName"], "Solucion oficial")
+        for key in ("traceabilityScore", "engagementScore", "authorshipScore", "agentSupportScore", "summaryScore"):
+            self.assertGreaterEqual(row[key], 0)
+            self.assertLessEqual(row[key], 100)
+        self.assertIn(row["summaryLevel"], {"muy alta", "alta", "media", "baja", "insuficiente"})
+        self.assertTrue(row["atoms"])
+        self.assertIn("T1", row["atoms"])
+        self.assertIn("A1", row["atoms"])
+        self.assertIn("S1", row["atoms"])
+
+    def test_submission_review_v2_endpoint_returns_four_indices(self):
+        activity_version = ActivityZipImportService().import_zip(activity_zip())
+        submission = SubmissionZipImportService().import_zip(review_submission_zip(), activity_version, name="Solucion oficial")
+
+        response = Client().get(f"/api/submissions/{submission.id}/review-v2/")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["submissionId"], submission.id)
+        self.assertEqual(data["metricsSchemaVersion"], "2.0.0")
+        for key in ("traceability", "engagement", "authorship", "agentSupport"):
+            self.assertGreaterEqual(data[key]["score"], 0)
+            self.assertLessEqual(data[key]["score"], 100)
+            self.assertIn(data[key]["confidence"], {"alta", "media", "limitada"})
+        self.assertEqual(set(data["engagement"]["subdimensions"].keys()), {"presencia", "intensidad", "alineacion", "gestionProceso", "validacion"})
+        self.assertIn(data["summary"]["level"], {"muy alta", "alta", "media", "baja", "insuficiente"})
+        self.assertTrue(data["atoms"])

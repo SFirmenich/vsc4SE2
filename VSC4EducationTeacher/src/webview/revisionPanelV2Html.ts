@@ -165,6 +165,7 @@ const app = createApp({
     const contribution = computed(() => contributions.value.find((item) => item.studentId === selectedStudent.value));
     const summary = computed(() => (reviewModel.value?.summaries ?? []).find((item) => item.studentId === selectedStudent.value) ?? {});
     const agency = computed(() => (reviewModel.value?.agencyMetrics ?? []).find((item) => item.studentId === selectedStudent.value));
+    const agencyV2 = computed(() => (reviewModel.value?.agencyMetricsV2 ?? []).find((item) => item.studentId === selectedStudent.value));
     const filteredEvents = computed(() => {
       const task = filters.value.task;
       const type = filters.value.eventType.trim().toLowerCase();
@@ -253,7 +254,7 @@ const app = createApp({
       model, mainTab, submissionTab, selectedSubmissionRoot, selectedStudent, busy,
       feedbackStatus, feedbackComment, evaluationsText, filters, prompts,
       status, activity, reviewModel, submissions, manifest, contributions, contribution,
-      summary, agency, filteredEvents, fileSignals, rubric, canReview, pretty,
+      summary, agency, agencyV2, filteredEvents, fileSignals, rubric, canReview, pretty,
       eventType, eventFile, run, chooseSubmission, saveFeedback
     };
   },
@@ -379,6 +380,7 @@ const app = createApp({
               <div v-else>
                 <v-tabs v-model="submissionTab" class="sub-tabs mb-5" grow>
                   <v-tab value="home">Overview</v-tab>
+                  <v-tab value="agency-metrics-2">Metrics 2</v-tab>
                   <v-tab value="tasks">Tasks</v-tab>
                   <v-tab value="files">Files</v-tab>
                   <v-tab value="events">Evidence</v-tab>
@@ -410,6 +412,97 @@ const app = createApp({
                     <h3 class="text-h5 mb-3">Agency metrics</h3>
                     <pre>{{ pretty(agency ?? { message: 'No agency metrics available.' }) }}</pre>
                   </v-card>
+                </section>
+
+                <section v-show="submissionTab === 'agency-metrics-2'" class="tab-panel">
+                  <v-card v-if="!agencyV2" class="pa-8">
+                    <p class="muted">No v2 agency metrics available for this contribution.</p>
+                  </v-card>
+                  <div v-else>
+                    <v-alert v-if="agencyV2.interpretationFlag" type="warning" variant="tonal" class="mb-5">{{ agencyV2.interpretationFlag }}</v-alert>
+                    <v-row>
+                      <v-col cols="12" md="3">
+                        <v-card class="pa-5">
+                          <div class="muted">Traceability</div>
+                          <div class="text-h4">{{ agencyV2.traceability.score }}/100</div>
+                          <v-chip size="small" class="mt-2">{{ agencyV2.traceability.confidence }}</v-chip>
+                        </v-card>
+                      </v-col>
+                      <v-col cols="12" md="3">
+                        <v-card class="pa-5">
+                          <div class="muted">Engagement</div>
+                          <div class="text-h4">{{ agencyV2.engagement.score }}/100</div>
+                          <v-chip size="small" class="mt-2">{{ agencyV2.engagement.confidence }}</v-chip>
+                        </v-card>
+                      </v-col>
+                      <v-col cols="12" md="3">
+                        <v-card class="pa-5">
+                          <div class="muted">Authorship</div>
+                          <div class="text-h4">{{ agencyV2.authorship.score }}/100</div>
+                          <v-chip size="small" class="mt-2">{{ agencyV2.authorship.confidence }}</v-chip>
+                        </v-card>
+                      </v-col>
+                      <v-col cols="12" md="3">
+                        <v-card class="pa-5">
+                          <div class="muted">Agent support</div>
+                          <div class="text-h4">{{ agencyV2.agentSupport.score }}/100</div>
+                          <v-chip size="small" class="mt-2">{{ agencyV2.agentSupport.confidence }}</v-chip>
+                        </v-card>
+                      </v-col>
+                    </v-row>
+
+                    <v-card class="pa-6 mt-5">
+                      <h3 class="text-h5 mb-3">Executive summary</h3>
+                      <p>{{ agencyV2.summary.level }} - {{ agencyV2.summary.score }}/100</p>
+                      <ul v-if="agencyV2.summary.flags.length">
+                        <li v-for="(flag, index) in agencyV2.summary.flags" :key="index">{{ flag }}</li>
+                      </ul>
+                      <p v-else class="muted">No summary flags.</p>
+                    </v-card>
+
+                    <v-card class="pa-6 mt-5">
+                      <h3 class="text-h5 mb-3">Engagement subdimensions</h3>
+                      <v-chip v-for="(value, name) in agencyV2.engagement.subdimensions" :key="name" class="mr-2 mb-2">{{ name }}: {{ value }}/100</v-chip>
+                    </v-card>
+
+                    <v-row class="mt-1">
+                      <v-col
+                        cols="12"
+                        lg="6"
+                        v-for="entry in [
+                          { label: 'Traceability', index: agencyV2.traceability },
+                          { label: 'Engagement', index: agencyV2.engagement },
+                          { label: 'Authorship', index: agencyV2.authorship },
+                          { label: 'Agent support', index: agencyV2.agentSupport }
+                        ]"
+                        :key="entry.label"
+                      >
+                        <v-card class="pa-6 mb-5">
+                          <h3 class="text-h6 mb-2">{{ entry.label }} evidence</h3>
+                          <p v-if="entry.index.note" class="muted">{{ entry.index.note }}</p>
+                          <ul v-if="entry.index.flags.length">
+                            <li v-for="(flag, index) in entry.index.flags" :key="index">{{ flag }}</li>
+                          </ul>
+                          <p v-else class="muted">No flags for this index.</p>
+                          <v-table density="compact">
+                            <thead><tr><th>Id</th><th>Metric</th><th>Value</th><th>Reliability</th><th>Reading</th></tr></thead>
+                            <tbody>
+                              <tr v-for="atom in entry.index.evidence" :key="atom.id">
+                                <td><code>{{ atom.id }}</code></td>
+                                <td>
+                                  {{ atom.name }}
+                                  <v-chip v-if="atom.scored" size="x-small" color="primary" class="ml-1">Priority</v-chip>
+                                </td>
+                                <td>{{ atom.value }}{{ atom.unit ? ' ' + atom.unit : '' }}</td>
+                                <td>{{ atom.reliability }}</td>
+                                <td>{{ atom.interpretation }}</td>
+                              </tr>
+                            </tbody>
+                          </v-table>
+                        </v-card>
+                      </v-col>
+                    </v-row>
+                  </div>
                 </section>
 
                 <section v-show="submissionTab === 'tasks'" class="tab-panel">
