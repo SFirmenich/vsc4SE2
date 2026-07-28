@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { AgencyMetricsService } from "../services/AgencyMetricsService";
+import { AgencyMetricsServiceV2 } from "../services/AgencyMetricsServiceV2";
 import { ActivityStatusService } from "../services/ActivityStatusService";
 import { EvidenceCryptoService } from "../services/EvidenceCryptoService";
 import { ExternalIntegrityService } from "../services/ExternalIntegrityService";
@@ -103,6 +104,7 @@ export class RevisionPanelV2 {
     private readonly integrity = new IntegrityService(),
     private readonly externalIntegrity = new ExternalIntegrityService(),
     private readonly agencyMetrics = new AgencyMetricsService(),
+    private readonly agencyMetricsV2 = new AgencyMetricsServiceV2(),
     private readonly git = new GitReviewService(),
     private readonly feedback = new FeedbackService(),
     private readonly evidence = new EvidenceCryptoService()
@@ -224,6 +226,9 @@ export class RevisionPanelV2 {
       summaries: submission.contributions.map((item) => this.review.summarize(item)),
       agencyMetrics: submission.contributions.map((item) =>
         this.agencyMetrics.calculate(item, submission.manifest)
+      ),
+      agencyMetricsV2: submission.contributions.map((item) =>
+        this.agencyMetricsV2.calculate(item, submission.manifest)
       ),
       integrity,
       externalIntegrity,

@@ -298,6 +298,96 @@ export interface ActivitySubmissionAnalysis {
   }[];
 }
 
+export interface AgencyIndexV2 {
+  score: number;
+  confidence: "alta" | "media" | "limitada" | string;
+  flags: string[];
+  note?: string;
+}
+
+export interface EngagementIndexV2 extends AgencyIndexV2 {
+  subdimensions: Record<string, number>;
+}
+
+export interface AgencyIndexStatsV2 {
+  score: StatsSummary;
+  confidenceLevels: Record<string, number>;
+  topFlags: { label: string; count: number }[];
+}
+
+export interface ActivityReviewDashboardV2 {
+  activityVersionId: number;
+  metricsSchemaVersion: string;
+  submissionCount: number;
+  reviewedSubmissionCount: number;
+  studentCount: number;
+  traceability: AgencyIndexStatsV2;
+  engagement: AgencyIndexStatsV2;
+  authorship: AgencyIndexStatsV2;
+  agentSupport: AgencyIndexStatsV2;
+  summary: {
+    score: StatsSummary;
+    levels: Record<string, number>;
+  };
+  interpretationFlagCount: number;
+  warnings: {
+    submissionId: number;
+    studentId: string;
+    code: string;
+    message: string;
+  }[];
+}
+
+export interface SubmissionAnalysisV2Row {
+  submissionId: number;
+  submissionName: string;
+  studentId: string;
+  studentName: string;
+  courseGroup: string | null;
+  importedAt: string;
+  metricsSchemaVersion: string;
+  traceabilityScore: number;
+  engagementScore: number;
+  authorshipScore: number;
+  agentSupportScore: number;
+  summaryScore: number;
+  summaryLevel: string;
+  interpretationFlag: string | null;
+  atoms: Record<string, number | null>;
+}
+
+export interface ActivitySubmissionAnalysisV2 {
+  activityVersionId: number;
+  metricsSchemaVersion: string;
+  submissionCount: number;
+  reviewedSubmissionCount: number;
+  submissions: SubmissionAnalysisV2Row[];
+  warnings: {
+    submissionId: number;
+    studentId: string;
+    code: string;
+    message: string;
+  }[];
+}
+
+export interface SubmissionReviewV2 {
+  submissionId: number;
+  studentId: string;
+  contributionId: string;
+  metricsSchemaVersion: string;
+  atoms: Record<string, number | null>;
+  traceability: AgencyIndexV2;
+  engagement: EngagementIndexV2;
+  authorship: AgencyIndexV2;
+  agentSupport: AgencyIndexV2;
+  interpretationFlag: string | null;
+  summary: {
+    score: number;
+    level: string;
+    flags: string[];
+  };
+}
+
 export interface ActivityEventReceipt {
   eventId: string;
   eventHash: string;

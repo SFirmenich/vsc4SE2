@@ -80,7 +80,7 @@ export function App() {
         )}
 
         {app.view === "submission" && app.submissionDetail && (
-          <SubmissionView submission={app.submissionDetail} review={app.submissionReview} eventSessions={app.submissionEventSessions} />
+          <SubmissionView submission={app.submissionDetail} review={app.submissionReview} reviewV2={app.submissionReviewV2} eventSessions={app.submissionEventSessions} />
         )}
       </section>
     </main>

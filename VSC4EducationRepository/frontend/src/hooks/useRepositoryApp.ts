@@ -10,6 +10,7 @@ import type {
   SubmissionDetail,
   SubmissionEventSessions,
   SubmissionReview,
+  SubmissionReviewV2,
 } from "../types";
 import { getLocale, setLocale, t, type Locale } from "../i18n";
 import { errorMessage } from "../lib/errors";
@@ -27,6 +28,7 @@ export function useRepositoryApp() {
   const [activityDetail, setActivityDetail] = useState<ActivityVersionDetail | null>(null);
   const [submissionDetail, setSubmissionDetail] = useState<SubmissionDetail | null>(null);
   const [submissionReview, setSubmissionReview] = useState<SubmissionReview | null>(null);
+  const [submissionReviewV2, setSubmissionReviewV2] = useState<SubmissionReviewV2 | null>(null);
   const [submissionEventSessions, setSubmissionEventSessions] = useState<SubmissionEventSessions | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityVersion | null>(null);
@@ -55,6 +57,7 @@ export function useRepositoryApp() {
     setSelectedSubmission(null);
     setSubmissionDetail(null);
     setSubmissionReview(null);
+    setSubmissionReviewV2(null);
     setSubmissionEventSessions(null);
     setActivities([]);
     setView("course");
@@ -84,6 +87,7 @@ export function useRepositoryApp() {
     setSelectedSubmission(null);
     setSubmissionDetail(null);
     setSubmissionReview(null);
+    setSubmissionReviewV2(null);
     setSubmissionEventSessions(null);
     const scopeQuery = selectedCourse ? `?courseId=${selectedCourse.id}` : "";
     const [detail, nextSubmissions, nextMetrics] = await Promise.all([
@@ -110,6 +114,12 @@ export function useRepositoryApp() {
     setSubmissionEventSessions(eventSessions);
     setView("submission");
     setAddPanel(null);
+    // Loaded separately so a v2-engine failure never blocks the (already working) v1 view.
+    try {
+      setSubmissionReviewV2(await getJson<SubmissionReviewV2>(`/submissions/${submission.id}/review-v2/`));
+    } catch {
+      setSubmissionReviewV2(null);
+    }
   }
 
   async function createCourse(form: FormData) {
@@ -231,6 +241,7 @@ export function useRepositoryApp() {
     activityDetail,
     submissionDetail,
     submissionReview,
+    submissionReviewV2,
     submissionEventSessions,
     selectedCourse,
     selectedActivity,

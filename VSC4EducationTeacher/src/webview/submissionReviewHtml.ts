@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { StudentAgencyMetrics } from "../types/AgencyMetrics";
+import { StudentAgencyMetricsV2 } from "../types/AgencyMetricsV2";
 import { ImportedSubmission } from "../types/Submission";
 import { Rubric } from "../types/Rubric";
 import { escapeHtml, webviewDocument } from "./webviewUtils";
@@ -9,6 +10,8 @@ export interface SubmissionReviewModel {
   rubric?: Rubric;
   summaries: Record<string, unknown>[];
   agencyMetrics: StudentAgencyMetrics[];
+  /** Additive "v2" agency metrics engine (metrics-new-approach.md); optional so older cached models still type-check. */
+  agencyMetricsV2?: StudentAgencyMetricsV2[];
   integrity: Record<string, unknown>;
   externalIntegrity: Record<string, unknown>;
   commits: unknown[];
@@ -18,6 +21,7 @@ const tabs = [
   ["activity", "Activity"],
   ["students", "Report"],
   ["agency-metrics", "Agency metrics"],
+  ["agency-metrics-2", "Metrics 2"],
   ["timeline", "Evidence"],
   ["git", "Git"],
   ["agents", "Agent"],
@@ -55,6 +59,7 @@ export function submissionReviewHtml(
   <section id="activity"></section>
   <section id="students" class="active"></section>
   <section id="agency-metrics"></section>
+  <section id="agency-metrics-2"></section>
   <section id="timeline"></section>
   <section id="git"></section>
   <section id="agents"></section>
@@ -80,6 +85,7 @@ const helpText = {
   agencySignals: 'Agency signals are positive indicators derived from the event log, such as task starts, sustained edits, completion and dialog with the agent.',
   reviewFlags: 'Review flags are prompts for closer inspection. They are not accusations; they point to patterns such as little editing after agent use or long gaps.',
   agencyMetrics: 'Agency metrics are calculated from the student events.jsonl file and grouped by observable agency dimension. They are review signals, not an automatic grade or authorship proof.',
+  agencyMetricsV2: 'Metrics 2 is a second, independent scoring engine that splits agency into four separate indices (Traceability, Engagement, Authorship, Agent support) instead of one blended score. Read Authorship and Agent support together, never in isolation; both require teacher review before affecting a grade.',
   activityChart: 'This chart groups timestamped events by hour. It helps identify when the student worked and whether work was concentrated or spread out.',
   linesChart: 'This chart shows the files with the most unique touched lines. It helps the teacher see where the student actually edited the submission.',
   agentChart: 'This chart compares recorded student messages and agent responses. A balanced or unbalanced ratio needs interpretation alongside the actual conversation.',
@@ -110,9 +116,11 @@ function renderStudent() {
   const file = byId('file-filter').value.toLowerCase();
   const events = item.events.filter((event) => (!task || event.taskId === task) && (!eventTypeFilter || String(getEventType(event)).toLowerCase().includes(eventTypeFilter)) && (!file || String(getEventFile(event)).toLowerCase().includes(file)));
   const studentMetrics = model.agencyMetrics.find((value) => value.studentId === selectedStudent);
+  const studentMetricsV2 = (model.agencyMetricsV2 ?? []).find((value) => value.studentId === selectedStudent);
   byId('students').innerHTML = renderTeacherReport(summary, studentMetrics?.observableAgency);
   drawD3Report(summary);
   byId('agency-metrics').innerHTML = renderAgencyMetrics(studentMetrics);
+  byId('agency-metrics-2').innerHTML = renderAgencyMetricsV2(studentMetricsV2);
   byId('timeline').innerHTML = renderEvidenceTimeline(events);
   byId('git').innerHTML = \`\${sectionTitle('Git repository', helpText.gitCard)}<p>Detected: \${model.submission.hasGit ? 'yes' : 'no'}</p>\` + model.commits.map((commit) => \`<div class="card">\${cardTitleHtml(\`<code>\${esc(commit.hash?.slice(0, 10))}</code> \${esc(commit.message)}\`, helpText.gitCard)}<span class="muted">\${esc(commit.author)} - \${esc(commit.timestamp)}</span><br><button data-commit="\${esc(commit.hash)}">Show changed files</button></div>\`).join('');
   byId('agents').innerHTML = \`\${sectionTitle('Agent conversations', helpText.agentCard)}<p class="muted">Completeness depends on the agent and student tooling following the recording instructions.</p>\` + item.agentInteractions.map((interaction) => \`<div class="card">\${cardTitle(\`\${interaction.actor}\${interaction.agent ? ' - ' + interaction.agent : ''}\`, helpText.agentCard)}<span class="muted">\${esc(interaction.timestamp)}</span><p>\${esc(interaction.message)}</p></div>\`).join('') + (item.interactionErrors.length ? \`<pre class="warning">\${pretty(item.interactionErrors)}</pre>\` : '');
@@ -212,6 +220,66 @@ function renderAgencyMetric(metric) {
     <td><strong>\${value}</strong></td>
     <td><span class="muted">\${esc(metric.detail)}</span><br><small>\${esc(metric.evidenceCount)} source events/signals</small></td>
     <td>\${esc(metric.interpretation)}</td>
+  </tr>\`;
+}
+function renderAgencyMetricsV2(metrics) {
+  if (!metrics) return \`\${sectionTitle('Metrics 2', helpText.agencyMetricsV2)}<p>No v2 metrics available for this contribution.</p>\`;
+  const indexCard = (label, index) => \`<div class="card metric">
+    <span class="muted metric-label">\${label} <span class="badge">\${esc(index.confidence)}</span></span>
+    <strong>\${esc(index.score)}/100</strong>
+    <small>\${index.note ? esc(index.note) : \`\${index.flags.length} flag(s)\`}</small>
+  </div>\`;
+  return \`
+    \${sectionTitle('Metrics 2', helpText.agencyMetricsV2)}
+    <p class="muted">Second, independent scoring engine for \${esc(metrics.studentId)} (schema \${esc(metrics.metricsSchemaVersion)}). Four separate indices instead of one blended score; Authorship and Agent support must be read together, never alone.</p>
+    <div class="grid">
+      \${indexCard('Traceability', metrics.traceability)}
+      \${indexCard('Engagement', metrics.engagement)}
+      \${indexCard('Authorship', metrics.authorship)}
+      \${indexCard('Agent support', metrics.agentSupport)}
+    </div>
+    <div class="card metric">
+      <span class="muted metric-label">Executive summary</span>
+      <strong>\${esc(metrics.summary.level)} - \${esc(metrics.summary.score)}/100</strong>
+      \${signalList(metrics.summary.flags, 'No summary flags.')}
+    </div>
+    \${metrics.interpretationFlag ? \`<div class="card warning"><strong>Interpretation flag</strong><p>\${esc(metrics.interpretationFlag)}</p></div>\` : ''}
+    <div class="card">
+      \${cardTitle('Engagement subdimensions', helpText.agencyMetricsV2)}
+      <div class="bars agency-bars">\${Object.entries(metrics.engagement.subdimensions).map(([name, value]) => \`
+        <div class="bar-row">
+          <code>\${esc(name)}</code>
+          <div class="bar-track"><span style="width:\${Math.max(4, Math.min(100, Number(value) || 0))}%"></span></div>
+          <small>\${esc(value)}/100</small>
+        </div>\`).join('')}</div>
+    </div>
+    <div class="grid">
+      \${renderIndexDetailV2('Traceability', metrics.traceability)}
+      \${renderIndexDetailV2('Engagement', metrics.engagement)}
+      \${renderIndexDetailV2('Authorship', metrics.authorship)}
+      \${renderIndexDetailV2('Agent support', metrics.agentSupport)}
+    </div>\`;
+}
+function renderIndexDetailV2(label, index) {
+  return \`<div class="card agency-group">
+    \${cardTitle(\`\${label} - \${index.score}/100 (\${index.confidence})\`, helpText.agencyMetricsV2)}
+    \${signalList(index.flags, 'No flags for this index.')}
+    <table>
+      <thead><tr><th>N</th><th>Metric</th><th>Value</th><th>Evidence</th><th>How to read it</th></tr></thead>
+      <tbody>\${index.evidence.map(renderAtomicMetricV2).join('')}</tbody>
+    </table>
+  </div>\`;
+}
+function renderAtomicMetricV2(atom) {
+  const badge = atom.scored ? '<span class="badge">Priority</span>' : '';
+  const reliability = \`<span class="reliability \${esc(atom.reliability)}">\${esc(atom.reliability)}</span>\`;
+  const value = \`\${esc(atom.value)}\${atom.unit ? ' ' + esc(atom.unit) : ''}\`;
+  return \`<tr>
+    <td><code>\${esc(atom.id)}</code></td>
+    <td><strong>\${esc(atom.name)}</strong> \${badge}<br><span class="muted">\${reliability}</span></td>
+    <td><strong>\${value}</strong></td>
+    <td><span class="muted">\${esc(atom.detail)}</span></td>
+    <td>\${esc(atom.interpretation)}</td>
   </tr>\`;
 }
 function metricCard(label, value, detail, help) {

@@ -4,7 +4,9 @@ import { getJson } from "../../api";
 import type {
   ActivityEventReceipts,
   ActivityReviewDashboard,
+  ActivityReviewDashboardV2,
   ActivitySubmissionAnalysis,
+  ActivitySubmissionAnalysisV2,
   ActivityVersion,
   ActivityVersionDetail,
   CourseGroup,
@@ -19,6 +21,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ZipUploadPanel } from "../../components/ZipUploadPanel";
 import { ActivityDashboardView } from "./ActivityDashboardView";
 import { SubmissionAnalysisView } from "./SubmissionAnalysisView";
+import { ActivityDashboardViewV2 } from "./ActivityDashboardViewV2";
+import { SubmissionAnalysisViewV2 } from "./SubmissionAnalysisViewV2";
 import { ActivityEventServerView } from "./ActivityEventServerView";
 
 export function ActivityView(props: {
@@ -36,13 +40,19 @@ export function ActivityView(props: {
 }) {
   const activity = props.activity;
   const isDraft = props.fallbackActivity.status === "draft" || activity?.status === "draft";
-  const [tab, setTab] = useState<"submissions" | "analysis" | "dashboard" | "event-server">("submissions");
+  const [tab, setTab] = useState<"submissions" | "analysis" | "dashboard" | "analysis-2" | "dashboard-2" | "event-server">("submissions");
   const [dashboard, setDashboard] = useState<ActivityReviewDashboard | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
   const [analysis, setAnalysis] = useState<ActivitySubmissionAnalysis | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+  const [dashboardV2, setDashboardV2] = useState<ActivityReviewDashboardV2 | null>(null);
+  const [dashboardV2Loading, setDashboardV2Loading] = useState(false);
+  const [dashboardV2Error, setDashboardV2Error] = useState("");
+  const [analysisV2, setAnalysisV2] = useState<ActivitySubmissionAnalysisV2 | null>(null);
+  const [analysisV2Loading, setAnalysisV2Loading] = useState(false);
+  const [analysisV2Error, setAnalysisV2Error] = useState("");
   const [eventReceipts, setEventReceipts] = useState<ActivityEventReceipts | null>(null);
   const [eventReceiptsLoading, setEventReceiptsLoading] = useState(false);
   const [eventReceiptsError, setEventReceiptsError] = useState("");
@@ -102,6 +112,38 @@ export function ActivityView(props: {
     }
   }
 
+  async function openDashboardV2() {
+    setTab("dashboard-2");
+    if (dashboardV2 || dashboardV2Loading) {
+      return;
+    }
+    setDashboardV2Loading(true);
+    setDashboardV2Error("");
+    try {
+      setDashboardV2(await getJson<ActivityReviewDashboardV2>(`/activity-versions/${props.fallbackActivity.id}/review-dashboard-v2/`));
+    } catch (error) {
+      setDashboardV2Error(errorMessage(error));
+    } finally {
+      setDashboardV2Loading(false);
+    }
+  }
+
+  async function openAnalysisV2() {
+    setTab("analysis-2");
+    if (analysisV2 || analysisV2Loading) {
+      return;
+    }
+    setAnalysisV2Loading(true);
+    setAnalysisV2Error("");
+    try {
+      setAnalysisV2(await getJson<ActivitySubmissionAnalysisV2>(`/activity-versions/${props.fallbackActivity.id}/submission-analysis-v2/${props.scopeQuery}`));
+    } catch (error) {
+      setAnalysisV2Error(errorMessage(error));
+    } finally {
+      setAnalysisV2Loading(false);
+    }
+  }
+
   return (
     <>
       <SectionHeader icon={<FileArchive size={20} />} title={activity?.title ?? props.fallbackActivity.title} actionLabel={isDraft ? t("Upload activity ZIP") : t("Add submission")} onAction={props.onAdd} />
@@ -130,6 +172,8 @@ export function ActivityView(props: {
         <button className={tab === "submissions" ? "active" : ""} onClick={() => setTab("submissions")}><Upload size={16} /> {t("Submissions")}</button>
         <button className={tab === "analysis" ? "active" : ""} onClick={openAnalysis}><BarChart3 size={16} /> {t("Submission analysis")}</button>
         <button className={tab === "dashboard" ? "active" : ""} onClick={openDashboard}><Activity size={16} /> {t("Dashboard")}</button>
+        <button className={tab === "analysis-2" ? "active" : ""} onClick={openAnalysisV2}><BarChart3 size={16} /> {t("Submission analysis 2")}</button>
+        <button className={tab === "dashboard-2" ? "active" : ""} onClick={openDashboardV2}><Activity size={16} /> {t("Dashboard 2")}</button>
         <button className={tab === "event-server" ? "active" : ""} onClick={() => setTab("event-server")}><ShieldCheck size={16} /> {t("Event server")}</button>
       </nav>
 
@@ -200,6 +244,14 @@ export function ActivityView(props: {
 
       {tab === "analysis" && (
         <SubmissionAnalysisView analysis={analysis} loading={analysisLoading} error={analysisError} />
+      )}
+
+      {tab === "dashboard-2" && (
+        <ActivityDashboardViewV2 dashboard={dashboardV2} loading={dashboardV2Loading} error={dashboardV2Error} />
+      )}
+
+      {tab === "analysis-2" && (
+        <SubmissionAnalysisViewV2 analysis={analysisV2} loading={analysisV2Loading} error={analysisV2Error} />
       )}
 
       {tab === "event-server" && (

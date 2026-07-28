@@ -2,6 +2,7 @@ import * as assert from "assert";
 import { promises as fs } from "fs";
 import * as path from "path";
 import { AgencyMetricsService } from "../src/services/AgencyMetricsService";
+import { AgencyMetricsServiceV2 } from "../src/services/AgencyMetricsServiceV2";
 import { IntegrityService } from "../src/services/IntegrityService";
 import { SubmissionReviewService } from "../src/services/SubmissionReviewService";
 import { canonicalJson } from "../src/utils/json";
@@ -231,5 +232,99 @@ describe("Integrity and agent interactions", () => {
         metrics.observableAgency.level
       )
     );
+  });
+
+  it("calculates the v2 agency indices (Trazabilidad/Compromiso/Autoria/Soporte) from the same log", () => {
+    const contribution = {
+      studentId: "student-1",
+      events: [
+        {
+          timestamp: "2026-01-01T10:00:00Z",
+          event: "task_started",
+          taskId: "task",
+          previousHash: null,
+          hash: "one"
+        },
+        {
+          timestamp: "2026-01-01T10:01:00Z",
+          event: "active_editor_changed",
+          taskId: "task",
+          data: { file: "src/Animal.ts" },
+          previousHash: "one",
+          hash: "two"
+        },
+        {
+          timestamp: "2026-01-01T10:02:00Z",
+          event: "file_changed",
+          taskId: "task",
+          data: {
+            file: "src/Animal.ts",
+            changeCount: 2,
+            lines: [{ start: 2, end: 4 }]
+          },
+          previousHash: "two",
+          hash: "three"
+        },
+        {
+          timestamp: "2026-01-01T10:03:00Z",
+          event: "file_saved",
+          taskId: "task",
+          data: { file: "src/Animal.ts" },
+          previousHash: "three",
+          hash: "four"
+        },
+        {
+          timestamp: "2026-01-01T10:06:00Z",
+          event: "task_finished",
+          taskId: "task",
+          previousHash: "four",
+          hash: "five"
+        },
+        {
+          timestamp: "2026-01-01T10:07:00Z",
+          event: "submission_exported",
+          previousHash: "five",
+          hash: "six"
+        }
+      ],
+      eventParseErrors: [],
+      agentInteractions: [
+        {
+          timestamp: "2026-01-01T09:59:00Z",
+          actor: "student" as const,
+          message: "Can you help me implement Animal.ts?"
+        },
+        {
+          timestamp: "2026-01-01T09:59:30Z",
+          actor: "agent" as const,
+          agent: "claude" as const,
+          taskId: "task",
+          message: "Sure, start by defining the Animal class."
+        }
+      ],
+      interactionErrors: []
+    };
+    const manifest = {
+      id: "activity",
+      title: "Activity",
+      tasks: [{ id: "task", title: "Task", file: "src/Animal.ts" }]
+    };
+
+    const metrics = new AgencyMetricsServiceV2().calculate(contribution, manifest);
+
+    assert.strictEqual(metrics.studentId, "student-1");
+    assert.strictEqual(metrics.metricsSchemaVersion, "2.0.0");
+    for (const index of [metrics.traceability, metrics.engagement, metrics.authorship, metrics.agentSupport]) {
+      assert.ok(index.score >= 0 && index.score <= 100);
+      assert.ok(["alta", "media", "limitada"].includes(index.confidence));
+      assert.ok(Array.isArray(index.flags));
+      assert.ok(index.evidence.length > 0);
+    }
+    assert.ok(Object.keys(metrics.engagement.subdimensions).length === 5);
+    assert.ok(metrics.summary.score >= 0 && metrics.summary.score <= 100);
+    assert.ok(
+      ["muy alta", "alta", "media", "baja", "insuficiente"].includes(metrics.summary.level)
+    );
+    assert.ok(metrics.interpretationFlag === null || typeof metrics.interpretationFlag === "string");
   });
 });

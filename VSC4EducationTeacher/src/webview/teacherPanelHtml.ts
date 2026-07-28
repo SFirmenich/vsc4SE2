@@ -278,13 +278,14 @@ function renderReviewSubmissions(review) {
 function renderSubmissionDashboard(reviewModel) {
   if (!reviewModel) return '<p class="muted">Select a submission to calculate the review dashboard.</p>';
   const firstStudent = reviewModel.submission.contributions[0]?.studentId ?? '';
-  const submissionTabs = ['report','agency-metrics','evidence','git','agents','integrity','rubric','feedback'];
+  const submissionTabs = ['report','agency-metrics','agency-metrics-2','evidence','git','agents','integrity','rubric','feedback'];
   const submissionTab = submissionTabs.includes(activeSubmissionTab) ? activeSubmissionTab : 'report';
   return \`
     <div id="review-dashboard" data-student="\${esc(firstStudent)}">
       <nav>
         <button class="secondary submission-tab" data-tab="report">Report</button>
         <button class="secondary submission-tab" data-tab="agency-metrics">Agency metrics</button>
+        <button class="secondary submission-tab" data-tab="agency-metrics-2">Metrics 2</button>
         <button class="secondary submission-tab" data-tab="evidence">Evidence</button>
         <button class="secondary submission-tab" data-tab="git">Git</button>
         <button class="secondary submission-tab" data-tab="agents">Agent</button>
@@ -300,6 +301,7 @@ function renderSubmissionDashboard(reviewModel) {
       </div>
       <section id="report" class="\${submissionTab === 'report' ? 'active' : ''}"></section>
       <section id="agency-metrics" class="\${submissionTab === 'agency-metrics' ? 'active' : ''}"></section>
+      <section id="agency-metrics-2" class="\${submissionTab === 'agency-metrics-2' ? 'active' : ''}"></section>
       <section id="evidence" class="\${submissionTab === 'evidence' ? 'active' : ''}"></section>
       <section id="git" class="\${submissionTab === 'git' ? 'active' : ''}"></section>
       <section id="agents" class="\${submissionTab === 'agents' ? 'active' : ''}"></section>
@@ -319,6 +321,7 @@ function bindSubmissionReview() {
     if (!item) return;
     const summary = reviewModel.summaries.find((value) => value.studentId === selectedStudent);
     const studentMetrics = reviewModel.agencyMetrics.find((value) => value.studentId === selectedStudent);
+    const studentMetricsV2 = (reviewModel.agencyMetricsV2 ?? []).find((value) => value.studentId === selectedStudent);
     const observableAgency = studentMetrics?.observableAgency;
     const task = byId('task-filter').value;
     const eventTypeFilter = byId('event-filter').value.toLowerCase();
@@ -338,6 +341,7 @@ function bindSubmissionReview() {
       </div>
       \${renderObservableAgency(observableAgency)}\`;
     byId('agency-metrics').innerHTML = renderAgencyMetrics(studentMetrics);
+    byId('agency-metrics-2').innerHTML = renderAgencyMetricsV2(studentMetricsV2);
     byId('evidence').innerHTML = renderEvidenceTimeline(events);
     byId('git').innerHTML = \`<h2>Git repository</h2><p>Detected: \${reviewModel.submission.hasGit ? 'yes' : 'no'}</p>\` + reviewModel.commits.map((commit) => \`<div class="card"><strong><code>\${esc(commit.hash?.slice(0, 10))}</code> \${esc(commit.message)}</strong><br><span class="muted">\${esc(commit.author)} - \${esc(commit.timestamp)}</span><br><button data-commit="\${esc(commit.hash)}">Show changed files</button></div>\`).join('');
     byId('agents').innerHTML = \`<h2>Agent conversations</h2>\` + item.agentInteractions.map((interaction) => \`<div class="card"><strong>\${esc(interaction.actor)}\${interaction.agent ? ' - ' + esc(interaction.agent) : ''}</strong><br><span class="muted">\${esc(interaction.timestamp)}</span><p>\${esc(interaction.message)}</p></div>\`).join('') + (item.interactionErrors.length ? \`<pre class="warning">\${pretty(item.interactionErrors)}</pre>\` : '');
@@ -412,6 +416,66 @@ function bindSubmissionReview() {
   }
   function metricCard(label, value, detail) {
     return \`<div class="card metric"><span class="muted metric-label">\${label}</span><strong>\${value}</strong><small>\${detail}</small></div>\`;
+  }
+  function renderAgencyMetricsV2(metrics) {
+    if (!metrics) return '<h2>Metrics 2</h2><p>No v2 metrics available for this contribution.</p>';
+    const indexCard = (label, index) => \`<div class="card metric">
+      <span class="muted metric-label">\${label} <span class="badge">\${esc(index.confidence)}</span></span>
+      <strong>\${esc(index.score)}/100</strong>
+      <small>\${index.note ? esc(index.note) : \`\${index.flags.length} flag(s)\`}</small>
+    </div>\`;
+    return \`
+      <h2>Metrics 2</h2>
+      <p class="muted">Second, independent scoring engine for \${esc(metrics.studentId)} (schema \${esc(metrics.metricsSchemaVersion)}). Four separate indices instead of one blended score; Authorship and Agent support must be read together, never alone.</p>
+      <div class="grid">
+        \${indexCard('Traceability', metrics.traceability)}
+        \${indexCard('Engagement', metrics.engagement)}
+        \${indexCard('Authorship', metrics.authorship)}
+        \${indexCard('Agent support', metrics.agentSupport)}
+      </div>
+      <div class="card metric">
+        <span class="muted metric-label">Executive summary</span>
+        <strong>\${esc(metrics.summary.level)} - \${esc(metrics.summary.score)}/100</strong>
+        \${signalList(metrics.summary.flags, 'No summary flags.')}
+      </div>
+      \${metrics.interpretationFlag ? \`<div class="card warning"><strong>Interpretation flag</strong><p>\${esc(metrics.interpretationFlag)}</p></div>\` : ''}
+      <div class="card">
+        <h3>Engagement subdimensions</h3>
+        <div class="bars agency-bars">\${Object.entries(metrics.engagement.subdimensions).map(([name, value]) => \`
+          <div class="bar-row">
+            <code>\${esc(name)}</code>
+            <div class="bar-track"><span style="width:\${Math.max(4, Math.min(100, Number(value) || 0))}%"></span></div>
+            <small>\${esc(value)}/100</small>
+          </div>\`).join('')}</div>
+      </div>
+      <div class="grid">
+        \${renderIndexDetailV2('Traceability', metrics.traceability)}
+        \${renderIndexDetailV2('Engagement', metrics.engagement)}
+        \${renderIndexDetailV2('Authorship', metrics.authorship)}
+        \${renderIndexDetailV2('Agent support', metrics.agentSupport)}
+      </div>\`;
+  }
+  function renderIndexDetailV2(label, index) {
+    return \`<div class="card agency-group">
+      <h3>\${esc(label)} - \${esc(index.score)}/100 (\${esc(index.confidence)})</h3>
+      \${signalList(index.flags, 'No flags for this index.')}
+      <table>
+        <thead><tr><th>N</th><th>Metric</th><th>Value</th><th>Evidence</th><th>How to read it</th></tr></thead>
+        <tbody>\${index.evidence.map(renderAtomicMetricV2).join('')}</tbody>
+      </table>
+    </div>\`;
+  }
+  function renderAtomicMetricV2(atom) {
+    const badge = atom.scored ? '<span class="badge">Priority</span>' : '';
+    const reliability = \`<span class="reliability \${esc(atom.reliability)}">\${esc(atom.reliability)}</span>\`;
+    const value = \`\${esc(atom.value)}\${atom.unit ? ' ' + esc(atom.unit) : ''}\`;
+    return \`<tr>
+      <td><code>\${esc(atom.id)}</code></td>
+      <td><strong>\${esc(atom.name)}</strong> \${badge}<br><span class="muted">\${reliability}</span></td>
+      <td><strong>\${value}</strong></td>
+      <td><span class="muted">\${esc(atom.detail)}</span></td>
+      <td>\${esc(atom.interpretation)}</td>
+    </tr>\`;
   }
   function renderEvidenceTimeline(events) {
     if (!events.length) return '<h2>Evidence timeline</h2><p>No matching events.</p>';
