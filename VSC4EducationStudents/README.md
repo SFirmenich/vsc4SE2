@@ -1,68 +1,22 @@
-# Learning Activity Tracker - Student
+# VSC4SE2 Student
 
-Visual Studio Code extension for loading programming practices, managing tasks,
-recording local evidence, automating Git commits, and generating file-based
-context for AI assistants.
+VSC4SE2 Student helps students work with programming activities prepared by their
+teacher directly in Visual Studio Code.
 
-It does not use private APIs from Codex, Claude, or Copilot. Integration happens
-through `AGENTS.md` and context files stored in `.vsc4education/`.
+Use it to import an activity, review assigned tasks, track your local progress,
+and export a final submission for review.
 
-`AGENTS.md` is synchronized with the canonical activity instructions. While the
-extension is active, any modification or deletion is automatically reverted.
+## Basic Use
 
-## Development
-
-Requirements:
-
-- Node.js 22 or a version compatible with the current VS Code runtime.
-- Git, optional.
-- Visual Studio Code.
-
-```powershell
-npm install
-npm run compile
-```
-
-Press `F5` and use the Command Palette in the Extension Development Host window.
-
-## Quick Test
-
-Generate the example ZIP:
-
-```powershell
-npm run example:zip
-```
-
-Then:
-
-1. Run `Learning Activity: Load Activity from ZIP`.
-2. Select `examples/poo-basico-01.zip`.
-3. Select an empty folder as the working project.
-4. Register first name, last name, and institutional identifier.
+1. Open Visual Studio Code.
+2. Run `Learning Activity: Load Activity from ZIP` or `Learning Activity: Load Activity from URL`.
+3. Select the activity provided by your teacher.
+4. Register your student information when prompted.
 5. Open `Learning Activity: Open Student Panel`.
-6. Start a task, edit files, and save them.
-7. Finish the task and review your contribution and Git history.
-8. Run `Learning Activity: Export Submission`.
+6. Work through the assigned tasks.
+7. When finished, run `Learning Activity: Export Submission` and submit the generated file as instructed by your teacher.
 
-Export records the corresponding event and creates a final Git checkpoint
-immediately before generating the ZIP.
-
-## Git Scenarios
-
-Activity loading and reopening distinguish these cases:
-
-1. **The folder does not contain a repository:** the extension runs `git init`
-   and creates `Initial activity state`.
-2. **The folder already contains a repository with history:** history is
-   preserved and `Checkpoint: Activity loaded` is created.
-3. **An already installed and versioned activity is opened:** the extension
-   detects `.vsc4education/activity-manifest.json`, recovers the local
-   contribution, and records a new session without creating another load commit.
-
-A normal repository that does not contain an activity is not modified
-automatically. To install an activity there, the load command must be run.
-
-## Commands
+## Main Commands
 
 - `Learning Activity: Load Activity from ZIP`
 - `Learning Activity: Load Activity from URL`
@@ -72,80 +26,22 @@ automatically. To install an activity there, the load command must be run.
 - `Learning Activity: Finish Task`
 - `Learning Activity: Export Submission`
 
-## Configuration
+## Recorded Information
 
-- `learningActivity.heartbeatIntervalSeconds`: heartbeat interval, 30 seconds by
-  default.
-- `learningActivity.autoOpenPanelAfterLoad`: opens the panel after import.
-- `learningActivity.enableGitIntegration`: enables automatic commits.
-- `learningActivity.trackTextChanges`: records edit metadata.
-- `learningActivity.trackTerminalOpen`: records integrated terminal openings.
+The extension may record local activity progress, such as started and completed
+tasks, file-change metadata, integrated terminal usage, and Git checkpoints when
+enabled.
 
-## Imported Project Structure
+This information is included in the exported submission so the teacher can review
+both the final work and the learning process.
 
-The student project lives at the root:
+## Privacy
 
-- `src/` and the rest of the starter.
-- `AGENTS.md`, generated from the extension base instructions plus the
-  activity-specific teacher instructions.
+The extension works with local project files. It does not access private
+conversations from external AI tools. If an activity includes instructions for AI
+assistants, those instructions are handled through local files in the project.
 
-The shared academic package is isolated in:
+## Requirements
 
-- `.vsc4education/manifest.json`
-- `.vsc4education/theory/`
-- `.vsc4education/tasks/`
-- `.vsc4education/agent/`
-- `.vsc4education/agent/instructions.master.md`
-- `.vsc4education/starter/`
-- `.vsc4education/signatures/`
-- `.vsc4education/activity-manifest.json`
-- `.vsc4education/activity-configuration.json`
-
-`activity-configuration.json` indicates whether Git is disabled and whether the
-repository was created by the extension or already existed.
-
-Each student has an independent space:
-
-```text
-.vsc4education/contributions/<studentId>/
-|-- profile.json
-|-- state.json
-|-- events.jsonl
-|-- agent-interactions.jsonl
-|-- AGENTS.generated.md
-|-- current-task.json
-`-- task-metadata/
-```
-
-The active identity is stored in `workspaceState`, not in a shared repository
-marker. A VS Code installation is bound to one student for that workspace.
-
-## Agent Interactions
-
-The root `AGENTS.md` is regenerated by combining the hardcoded extension base
-instructions in `src/services/AgentBaseInstructions.ts`, the teacher-authored
-`.vsc4education/agent/instructions.md`, and a contract asking agents to record
-the conversation in
-`.vsc4education/contributions/<studentId>/agent-interactions.jsonl`.
-
-Each line has one of these formats:
-
-```json
-{"timestamp":"2026-06-11T12:00:00.000Z","actor":"student","message":"Message"}
-{"timestamp":"2026-06-11T12:00:01.000Z","actor":"agent","agent":"copilot","message":"Response"}
-```
-
-For agent entries, `agent` must be `chatGPT`, `claude`, or `copilot`. This log
-depends on the agent following the instructions; the extension does not read
-conversations through private APIs.
-
-To create an activity from scratch, see the
-[complete activity authoring guide](../docs/activity-authoring-guide.md).
-
-Specialized documentation:
-
-- [Central documentation](../docs/README.md)
-- [General documentation and extension specification](../docs/project-and-extensions-spec.md)
-- [Activity format](../docs/activity-format.md)
-- [Events and evidence](../docs/events.md)
-- [Security and limitations](../docs/security-limitations.md)
+- A compatible version of Visual Studio Code.
+- Git, when required by the activity configuration.

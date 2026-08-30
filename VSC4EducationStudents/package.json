@@ -3,6 +3,8 @@
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
   "version": "0.0.8",
+  "publisher": "SDFZ",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.114.0"
   },
