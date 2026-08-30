@@ -7,6 +7,7 @@ import { LearningEvent } from '../types/LearningEvent';
 import { StudentProfile } from '../types/StudentProfile';
 import { ensureDirectory, pathExists, writeJson } from '../utils/fs';
 import { contributionPath, learningPath } from '../utils/paths';
+import { BASE_AGENT_INSTRUCTIONS } from './AgentBaseInstructions';
 
 const TRACE_INSTRUCTIONS_MARKER = '<!-- VSC4EDUCATION_AGENT_TRACE_V1 -->';
 
@@ -62,45 +63,55 @@ export class AgentInstructionsService {
 		canonicalInstructions?: string
 	): Promise<boolean> {
 		const expected = canonicalInstructions ?? await this.getCanonicalInstructions();
-		const instructionsPath = learningPath(this.root, 'agent', 'instructions.md');
 		const agentsPath = path.join(this.root, 'AGENTS.md');
-		const currentInstructions = await pathExists(instructionsPath)
-			? await fs.readFile(instructionsPath, 'utf8')
-			: undefined;
 		const currentAgents = await pathExists(agentsPath)
 			? await fs.readFile(agentsPath, 'utf8')
 			: undefined;
-		if (currentInstructions === expected && currentAgents === expected) {
+		if (currentAgents === expected) {
 			return false;
-		}
-		if (currentInstructions !== expected) {
-			await fs.writeFile(instructionsPath, expected, 'utf8');
 		}
 		await fs.writeFile(agentsPath, expected, 'utf8');
 		return true;
 	}
 
 	public async getCanonicalInstructions(): Promise<string> {
+		const teacherInstructions = await this.getTeacherInstructions();
+		return [
+			BASE_AGENT_INSTRUCTIONS.trimEnd(),
+			'## Activity-Specific Instructions',
+			teacherInstructions.trimEnd(),
+			getTraceInstructions(this.profile).trimEnd()
+		].join('\n\n') + '\n';
+	}
+
+	private async getTeacherInstructions(): Promise<string> {
 		const instructionsPath = learningPath(this.root, 'agent', 'instructions.md');
 		const masterPath = learningPath(this.root, 'agent', 'instructions.master.md');
-		let baseInstructions: string;
+		let teacherInstructions: string;
 		if (await pathExists(masterPath)) {
-			baseInstructions = await fs.readFile(masterPath, 'utf8');
+			teacherInstructions = await fs.readFile(masterPath, 'utf8');
 		} else if (await pathExists(instructionsPath)) {
-			baseInstructions = await fs.readFile(instructionsPath, 'utf8');
-			const markerIndex = baseInstructions.indexOf(TRACE_INSTRUCTIONS_MARKER);
+			teacherInstructions = await fs.readFile(instructionsPath, 'utf8');
+			const markerIndex = teacherInstructions.indexOf(TRACE_INSTRUCTIONS_MARKER);
 			if (markerIndex >= 0) {
-				baseInstructions = baseInstructions.slice(0, markerIndex).trimEnd();
+				teacherInstructions = teacherInstructions.slice(0, markerIndex).trimEnd();
 			}
-			await fs.writeFile(masterPath, `${baseInstructions.trimEnd()}\n`, 'utf8');
+			const activityMarker = '## Activity-Specific Instructions';
+			const activityMarkerIndex = teacherInstructions.indexOf(activityMarker);
+			if (activityMarkerIndex >= 0) {
+				teacherInstructions = teacherInstructions.slice(
+					activityMarkerIndex + activityMarker.length
+				).trim();
+			}
+			await fs.writeFile(masterPath, `${teacherInstructions.trimEnd()}\n`, 'utf8');
 		} else {
 			throw new Error(
 				'The activity does not contain .vsc4education/agent/instructions.md.'
 			);
 		}
-		const canonical = `${baseInstructions.trimEnd()}\n\n${getTraceInstructions(this.profile)}`;
-		await fs.writeFile(instructionsPath, canonical, 'utf8');
-		return canonical;
+		const normalizedTeacherInstructions = `${teacherInstructions.trimEnd()}\n`;
+		await fs.writeFile(instructionsPath, normalizedTeacherInstructions, 'utf8');
+		return normalizedTeacherInstructions;
 	}
 
 	private async ensureInteractionLog(): Promise<void> {
