@@ -1,8 +1,8 @@
 {
-  "name": "learning-activity-tracker-student",
+  "name": "vsc4se2-student",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.0.1",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.114.0"
   },
