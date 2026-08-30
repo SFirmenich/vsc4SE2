@@ -1,5 +1,5 @@
 {
-  "extension.displayName": "Learning Activity Tracker - Student",
+  "extension.displayName": "VSC4SE2 - Student",
   "extension.description": "Load programming activities, track student work, manage Git evidence, and generate local AI-agent context.",
   "command.loadFromZip": "Learning Activity: Load Activity from ZIP",
   "command.loadFromUrl": "Learning Activity: Load Activity from URL",
@@ -8,7 +8,7 @@
   "command.startTask": "Learning Activity: Start Task",
   "command.finishTask": "Learning Activity: Finish Task",
   "command.exportSubmission": "Learning Activity: Export Submission",
-  "configuration.title": "Learning Activity Tracker",
+  "configuration.title": "VSC4SE2 - Learning Activity Tracker",
   "configuration.heartbeatIntervalSeconds": "Interval, in seconds, between heartbeat events.",
   "configuration.autoOpenPanelAfterLoad": "Automatically opens the panel after loading an activity.",
   "configuration.enableGitIntegration": "Initializes and manages a local Git repository for the activity.",
