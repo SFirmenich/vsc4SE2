@@ -3,7 +3,7 @@
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
   "version": "0.1.0",
-  "publisher": "vsc4education",
+  "publisher": "SDFZ",
   "license": "MIT",
   "engines": {
     "vscode": "^1.95.0"
@@ -14,9 +14,7 @@
   ],
   "activationEvents": [
     "onCommand:teacherActivity.openPanel",
-    "onCommand:teacherActivity.openCreationMode",
     "onCommand:teacherActivity.openCreationModeV2",
-    "onCommand:teacherActivity.openRevisionMode",
     "onCommand:teacherActivity.openRevisionModeV2",
     "onWebviewPanel:learningActivityTeacherCreation",
     "onWebviewPanel:learningActivityTeacherCreationV2",
@@ -28,16 +26,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "teacherActivity.openCreationMode",
-        "title": "%command.openCreationMode%"
-      },
-      {
         "command": "teacherActivity.openCreationModeV2",
         "title": "%command.openCreationModeV2%"
-      },
-      {
-        "command": "teacherActivity.openRevisionMode",
-        "title": "%command.openRevisionMode%"
       },
       {
         "command": "teacherActivity.openRevisionModeV2",
