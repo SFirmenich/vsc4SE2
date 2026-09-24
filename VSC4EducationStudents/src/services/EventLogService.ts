@@ -33,8 +33,8 @@ export class EventLogService {
 			.split(/\r?\n/)
 			.filter(Boolean)
 			.slice(-limit)
-			.map(line => JSON.parse(line) as LearningEvent)
-			.filter(event => typeof event.event === 'string');
+			.map(line => this.parseLine(line))
+			.filter((event): event is LearningEvent => !!event && typeof event.event === 'string');
 	}
 
 	public async count(eventName: string, taskId?: string): Promise<number> {
@@ -55,11 +55,42 @@ export class EventLogService {
 		return content
 			.split(/\r?\n/)
 			.filter(Boolean)
-			.map(line => JSON.parse(line) as LearningEvent);
+			.map(line => this.parseLine(line))
+			.filter((event): event is LearningEvent => !!event);
+	}
+
+	/**
+	 * Parses a single line of events.jsonl, tolerating a malformed line instead of
+	 * throwing. A line can be left truncated on disk if the process was interrupted
+	 * mid-write (VS Code closed abruptly, OS crash, antivirus/sync lock, etc.).
+	 *
+	 * This only affects what is read back into memory for display/context purposes;
+	 * events.jsonl itself is never rewritten here. The evidentiary hash chain is not
+	 * at risk from a skipped line: `state.lastEventHash` (the source of the next
+	 * event's `previousHash`, see appendImmediately below) is only advanced *after*
+	 * a write to this file has fully completed, so a truncated trailing line was
+	 * never adopted into the chain in the first place — it is safe to ignore.
+	 */
+	private parseLine(line: string): LearningEvent | undefined {
+		try {
+			return JSON.parse(line) as LearningEvent;
+		} catch {
+			return undefined;
+		}
 	}
 
 	private async appendImmediately(input: LearningEventInput): Promise<LearningEvent> {
 		const { event, envelope, shouldAnchor } = await this.stateService.withLock(async state => {
+			// `state.lastEventHash` (persisted in state.json, not re-derived from
+			// events.jsonl) is always the hash of the last event that was fully
+			// appended AND committed below. It is only ever advanced after the
+			// `fs.appendFile` call below resolves, and `state.json` is only saved
+			// once this whole callback returns (see ActivityStateService.withLock).
+			// So if a previous append was interrupted mid-write (leaving a
+			// truncated trailing line in events.jsonl), `state.lastEventHash` was
+			// never advanced past the last *good* event, and this new event's
+			// `previousHash` correctly chains from that last good event, ignoring
+			// whatever partial bytes were left behind.
 			const eventWithoutHash = {
 				id: randomUUID(),
 				studentId: this.stateService.profile.studentId,
@@ -90,12 +121,17 @@ export class EventLogService {
 				this.stateService.root,
 				this.stateService.profile.contributionId
 			));
+			// Leading newline defensively separates this entry from any truncated
+			// trailing bytes a previous interrupted write may have left behind
+			// (so this event's own line stays independently parseable even if the
+			// one before it was torn mid-write). Readers already ignore blank
+			// lines, so this is harmless on a clean file.
 			await fs.appendFile(
 				eventsPath(
 					this.stateService.root,
 					this.stateService.profile.contributionId
 				),
-				`${JSON.stringify(envelope)}\n`,
+				`\n${JSON.stringify(envelope)}\n`,
 				'utf8'
 			);
 			state.lastEventHash = event.hash;

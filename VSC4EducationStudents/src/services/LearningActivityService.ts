@@ -188,6 +188,9 @@ export class LearningActivityService {
 		}
 		const manifest = await readJson<ActivityManifest>(manifestPath(this.root));
 		const profile = await this.profiles.getActive(this.root);
+		if (!await pathExists(activityConfigurationPath(this.root))) {
+			return { root: this.root, manifest, profile, recentEvents: [], gitStatus: 'Git disabled' };
+		}
 		const configuration = await readJson<ActivityConfiguration>(
 			activityConfigurationPath(this.root)
 		);

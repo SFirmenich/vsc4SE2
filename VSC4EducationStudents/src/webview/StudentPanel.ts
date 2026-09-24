@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { studentPanelStrings, t } from '../i18n';
 import { LearningActivityService } from '../services/LearningActivityService';
 import { LEARNING_DIRECTORY } from '../utils/paths';
-import { getStudentPanelHtml } from './html';
+import { getErrorPanelHtml, getStudentPanelHtml } from './html';
 
 export class StudentPanel {
 	private static current: StudentPanel | undefined;
@@ -41,18 +41,38 @@ export class StudentPanel {
 	}
 
 	private async initialize(): Promise<void> {
-		this.panel.webview.html = getStudentPanelHtml(
-			await this.activityService.getSnapshot(),
-			randomBytes(16).toString('base64'),
-			studentPanelStrings()
-		);
+		try {
+			this.panel.webview.html = getStudentPanelHtml(
+				await this.activityService.getSnapshot(),
+				randomBytes(16).toString('base64'),
+				studentPanelStrings()
+			);
+		} catch (error) {
+			this.renderError(error);
+		}
 	}
 
 	private async refresh(): Promise<void> {
-		await this.panel.webview.postMessage({
-			command: 'refresh',
-			snapshot: await this.activityService.getSnapshot()
-		});
+		try {
+			await this.panel.webview.postMessage({
+				command: 'refresh',
+				snapshot: await this.activityService.getSnapshot()
+			});
+		} catch (error) {
+			// A failed refresh must not leave the last-rendered content silently
+			// stale or, worse, an unset `webview.html`: fall back to a visible
+			// error state instead of a blank/unresponsive panel.
+			this.renderError(error);
+		}
+	}
+
+	private renderError(error: unknown): void {
+		const message = error instanceof Error ? error.message : String(error);
+		this.panel.webview.html = getErrorPanelHtml(
+			randomBytes(16).toString('base64'),
+			studentPanelStrings(),
+			message
+		);
 	}
 
 	private async handleMessage(message: { command?: string; taskId?: string }): Promise<void> {
@@ -77,6 +97,9 @@ export class StudentPanel {
 				break;
 			case 'exportSubmission':
 				await vscode.commands.executeCommand('learningActivity.exportSubmission');
+				break;
+			case 'closeSession':
+				await vscode.commands.executeCommand('learningActivity.closeSession');
 				break;
 		}
 		await this.refresh();

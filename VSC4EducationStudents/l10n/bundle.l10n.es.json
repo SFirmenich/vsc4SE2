@@ -47,5 +47,13 @@
   "Register the student before exporting.": "Debes registrar al estudiante antes de exportar.",
   "Submission ZIP": "Entrega ZIP",
   "Exporting submission...": "Exportando entrega...",
-  "Submission exported to {0}": "Entrega exportada en {0}"
+  "Submission exported to {0}": "Entrega exportada en {0}",
+  "Something went wrong while loading the panel.": "Ocurrio un problema al cargar el panel.",
+  "Close this panel and reopen it. If the problem persists, contact your instructor.": "Cierra este panel y vuelve a abrirlo. Si el problema persiste, contacta a tu profesor.",
+  "Close session": "Cerrar sesion",
+  "There is no active session to close.": "No hay una sesion activa para cerrar.",
+  "Save all and continue": "Guardar todo y continuar",
+  "Cancel": "Cancelar",
+  "You have unsaved files in this activity. Save them before closing the session?": "Tienes archivos sin guardar en esta actividad. Deseas guardarlos antes de cerrar la sesion?",
+  "All your work is saved. You can safely close VS Code now.": "Todo tu trabajo esta guardado. Ya puedes cerrar VS Code con tranquilidad."
 }

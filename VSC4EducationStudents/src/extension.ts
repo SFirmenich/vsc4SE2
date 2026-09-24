@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { registerCloseSessionCommand } from './commands/closeSessionCommand';
 import { registerExportSubmissionCommand } from './commands/exportSubmissionCommand';
 import { registerFinishTaskCommand } from './commands/finishTaskCommand';
 import { registerLoadFromUrlCommand } from './commands/loadFromUrlCommand';
@@ -30,7 +31,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		registerStudentCommand(activityService),
 		registerStartTaskCommand(activityService),
 		registerFinishTaskCommand(activityService),
-		registerExportSubmissionCommand(activityService, zipService, agentEvidenceService)
+		registerExportSubmissionCommand(activityService, zipService, agentEvidenceService),
+		registerCloseSessionCommand(activityService)
 	);
 
 	for (const folder of vscode.workspace.workspaceFolders ?? []) {

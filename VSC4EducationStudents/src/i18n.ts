@@ -20,7 +20,10 @@ export interface StudentPanelStrings {
 	viewTask: string;
 	finishTask: string;
 	exportSubmission: string;
+	closeSession: string;
 	tasks: string;
+	panelErrorTitle: string;
+	panelErrorDescription: string;
 }
 
 export function studentPanelStrings(): StudentPanelStrings {
@@ -36,6 +39,9 @@ export function studentPanelStrings(): StudentPanelStrings {
 		viewTask: t('View task brief'),
 		finishTask: t('Finish task'),
 		exportSubmission: t('Export submission'),
-		tasks: t('Tasks')
+		closeSession: t('Close session'),
+		tasks: t('Tasks'),
+		panelErrorTitle: t('Something went wrong while loading the panel.'),
+		panelErrorDescription: t('Close this panel and reopen it. If the problem persists, contact your instructor.')
 	};
 }

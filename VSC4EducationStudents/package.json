@@ -19,6 +19,7 @@
     "onCommand:learningActivity.startTask",
     "onCommand:learningActivity.finishTask",
     "onCommand:learningActivity.exportSubmission",
+    "onCommand:learningActivity.closeSession",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -51,6 +52,10 @@
       {
         "command": "learningActivity.exportSubmission",
         "title": "%command.exportSubmission%"
+      },
+      {
+        "command": "learningActivity.closeSession",
+        "title": "%command.closeSession%"
       }
     ],
     "configuration": {

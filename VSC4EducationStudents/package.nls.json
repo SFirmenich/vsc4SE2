@@ -8,6 +8,7 @@
   "command.startTask": "Learning Activity: Start Task",
   "command.finishTask": "Learning Activity: Finish Task",
   "command.exportSubmission": "Learning Activity: Export Submission",
+  "command.closeSession": "Learning Activity: Close Session",
   "configuration.title": "VSC4SE2 - Learning Activity Tracker",
   "configuration.heartbeatIntervalSeconds": "Interval, in seconds, between heartbeat events.",
   "configuration.autoOpenPanelAfterLoad": "Automatically opens the panel after loading an activity.",
