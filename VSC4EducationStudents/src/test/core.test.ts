@@ -151,7 +151,7 @@ suite('Learning Activity core', () => {
 				firstName: 'Juan',
 				lastName: 'Pérez'
 			}),
-			/ya está vinculado/
+			{ message: 'This workspace is already linked to student "ana-001".' }
 		);
 		assert.strictEqual((await profiles.getActive(root))?.studentId, 'ana-001');
 	});
