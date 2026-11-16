@@ -151,7 +151,7 @@ suite('Learning Activity core', () => {
 				firstName: 'Juan',
 				lastName: 'Pérez'
 			}),
-			/ya está vinculado/
+			{ message: 'This workspace is already linked to student "ana-001".' }
 		);
 		assert.strictEqual((await profiles.getActive(root))?.studentId, 'ana-001');
 	});
@@ -167,8 +167,17 @@ suite('Learning Activity core', () => {
 		const state = await stateService.create(manifest, false);
 		await new AgentInstructionsService(root, ana).generate(manifest, state, []);
 		const agents = await fs.readFile(path.join(root, 'AGENTS.md'), 'utf8');
+		const activityInstructions = await fs.readFile(
+			learningPath(root, 'agent', 'instructions.md'),
+			'utf8'
+		);
 
+		assert.match(agents, /Pedagogical Role/);
+		assert.match(agents, /Do not provide full solutions in the chat/);
+		assert.match(agents, /Do not include a final list, summary, or report of files you edited/);
+		assert.match(agents, /Regla del profesor\./);
 		assert.match(agents, /contributions\/ana-001\/agent-interactions\.jsonl/);
+		assert.strictEqual(activityInstructions, 'Regla del profesor.\n');
 		assert.ok(await fs.stat(contributionPath(
 			root,
 			ana.contributionId,
@@ -179,6 +188,29 @@ suite('Learning Activity core', () => {
 			ana.contributionId,
 			'agent-interactions.jsonl'
 		)));
+	});
+
+	test('AgentInstructionsService restores generated root instructions only', async () => {
+		await fs.mkdir(learningPath(root, 'agent'), { recursive: true });
+		await fs.writeFile(
+			learningPath(root, 'agent', 'instructions.md'),
+			'Pista configurable.',
+			'utf8'
+		);
+		const service = new AgentInstructionsService(root, ana);
+		await service.ensureRootInstructions();
+		await fs.writeFile(path.join(root, 'AGENTS.md'), 'Manual edit.', 'utf8');
+
+		assert.strictEqual(await service.ensureRootInstructions(), true);
+
+		const agents = await fs.readFile(path.join(root, 'AGENTS.md'), 'utf8');
+		const activityInstructions = await fs.readFile(
+			learningPath(root, 'agent', 'instructions.md'),
+			'utf8'
+		);
+		assert.match(agents, /Pedagogical Role/);
+		assert.match(agents, /Pista configurable\./);
+		assert.strictEqual(activityInstructions, 'Pista configurable.\n');
 	});
 
 	test('GitService handles missing Git executable', async () => {

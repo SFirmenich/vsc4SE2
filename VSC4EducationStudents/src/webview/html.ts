@@ -1,6 +1,73 @@
 import { ActivitySnapshot } from '../services/LearningActivityService';
 import { StudentPanelStrings } from '../i18n';
 
+function escapeHtml(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#039;');
+}
+
+/**
+ * Fallback page shown when the panel fails to load or refresh (e.g. corrupted
+ * activity state on disk). Rendering this instead of leaving `webview.html`
+ * unset is what keeps the panel from going permanently blank.
+ */
+export function getErrorPanelHtml(
+	nonce: string,
+	strings: StudentPanelStrings,
+	errorMessage: string
+): string {
+	return `<!DOCTYPE html>
+<html lang="${strings.language}">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
+	<title>Learning Activity Tracker</title>
+	<style>
+		:root { color-scheme: light dark; }
+		body {
+			padding: 24px;
+			color: var(--vscode-foreground);
+			background: var(--vscode-editor-background);
+			font-family: var(--vscode-font-family);
+		}
+		.card {
+			max-width: 640px;
+			margin: 80px auto;
+			padding: 20px;
+			border: 1px solid var(--vscode-panel-border);
+			border-radius: 6px;
+			background: var(--vscode-sideBar-background);
+			text-align: center;
+		}
+		h1 { margin: 0 0 8px; font-size: 20px; }
+		.muted { color: var(--vscode-descriptionForeground); }
+		pre {
+			margin-top: 16px;
+			padding: 10px;
+			text-align: left;
+			white-space: pre-wrap;
+			word-break: break-word;
+			color: var(--vscode-descriptionForeground);
+			background: var(--vscode-textCodeBlock-background);
+			border-radius: 4px;
+		}
+	</style>
+</head>
+<body>
+	<div class="card">
+		<h1>${escapeHtml(strings.panelErrorTitle)}</h1>
+		<p class="muted">${escapeHtml(strings.panelErrorDescription)}</p>
+		<pre>${escapeHtml(errorMessage)}</pre>
+	</div>
+</body>
+</html>`;
+}
+
 export function getStudentPanelHtml(
 	snapshot: ActivitySnapshot | undefined,
 	nonce: string,
@@ -143,7 +210,10 @@ export function getStudentPanelHtml(
 						<p class="muted">\${escapeHtml(snapshot.manifest.description ?? '')}</p>
 						<p><strong>\${escapeHtml(s.student)}:</strong> \${escapeHtml(snapshot.profile.displayName)} (\${escapeHtml(snapshot.profile.studentId)})</p>
 					</div>
-					<button data-command="exportSubmission">\${escapeHtml(s.exportSubmission)}</button>
+					<div class="actions">
+						<button class="secondary" data-command="closeSession">\${escapeHtml(s.closeSession)}</button>
+						<button data-command="exportSubmission">\${escapeHtml(s.exportSubmission)}</button>
+					</div>
 				</header>
 				<div class="grid">
 					<main><div class="section-title"><h2>\${escapeHtml(s.tasks)}</h2></div>\${tasks}</main>

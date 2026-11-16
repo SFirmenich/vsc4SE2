@@ -1,8 +1,10 @@
 {
-  "name": "learning-activity-tracker-student",
+  "name": "vsc4se2-student",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.0.1",
+  "version": "0.0.10",
+  "publisher": "SDFZ",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.114.0"
   },
@@ -17,6 +19,7 @@
     "onCommand:learningActivity.startTask",
     "onCommand:learningActivity.finishTask",
     "onCommand:learningActivity.exportSubmission",
+    "onCommand:learningActivity.closeSession",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -49,6 +52,10 @@
       {
         "command": "learningActivity.exportSubmission",
         "title": "%command.exportSubmission%"
+      },
+      {
+        "command": "learningActivity.closeSession",
+        "title": "%command.closeSession%"
       }
     ],
     "configuration": {
@@ -104,7 +111,7 @@
     "@types/node": "22.x",
     "@types/vscode": "^1.114.0",
     "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.27.3",
     "eslint": "^9.39.3",
     "npm-run-all": "^4.1.5",
